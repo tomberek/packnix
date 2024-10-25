@@ -118,13 +118,6 @@ let
         self: count:
         let
           d =
-            /*
-              (
-                if count / 1000 * 1000 == count
-                then builtins.traceVerbose "${toString count}: ${builtins.substring count 20 string}"
-                else (_: _)
-              )
-            */
             {
               self = self;
               count = count;
@@ -143,16 +136,12 @@ let
     in
     {
       X = result.X.value or false;
-      # OVER = result.LEFT_BRACE
-      # .derivs.ITEMS
-      # .value or false;
     };
 
   myrun =
     count: string:
     evalAttrs string
       {
-        COMMENT = v: "COMMENT: ";
         WHITESPACE = v: if (builtins.isList v) then builtins.concatStringsSep "" v else "";
         STRING_RAW = v: builtins.concatStringsSep "" v;
         STRING = v: { string = builtins.elemAt v 1; };
@@ -192,7 +181,14 @@ let
 
       # A JSON Grammar w/ additions!
       {
-        X = [ "WHITESPACE" { choice = [ "SET" "LIST" "STRING" "NUMBER" "BOOL" "NULL" ]; } "WHITESPACE" ];
+        X = [ "WHITESPACE" { choice = [
+                "SET"
+                "LIST"
+                "STRING"
+                "NUMBER"
+                "BOOL"
+                "NULL"
+        ]; } "WHITESPACE" ];
 
         WHITESPACE = { choice = [ [ { regex = "([[:space:]]+)"; } "WHITESPACE" ] "" ]; };
         NULL = { lit = "null"; };
@@ -229,17 +225,12 @@ let
 
 
       count;
-  # file = builtins.unsafeDiscardStringContext (builtins.readFile /home/tom/flox/nixpkgs-flox/x86_64-linux/smaller2.7.json);
+in
+
+# API: give us a file
+file:
+let
   file = builtins.unsafeDiscardStringContext (builtins.readFile ./lock.json);
   len = builtins.stringLength file;
 in
-#builtins.fromJSON file
 (myrun 0 file).X
-#lib.strings.stringToCharacters file
-#myrun 0 file
-#myrun 0 ''
-#      {
-#      "alice": 1,
-#      "bob": false,
-#      "charlie": [ 1, 2, 3]
-#      }''
