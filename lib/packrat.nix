@@ -498,18 +498,34 @@ rec {
       # Resolved once per rule name, not once per node.
       resolvedHandlers = builtins.mapAttrs (name: _: handlers.${name} or (v: v)) grammar;
 
-      applyHandler =
-        name: r:
+      # Compiled once per rule, before mkNode builds any per-position node.
+      compiledRules = builtins.mapAttrs (name: rule: compile rule) grammar;
+
+      # One `node -> result` function per rule, with that rule's handler
+      # already baked in via closure capture -- computed once per rule
+      # here, not once per rule PER NODE. This replaces a generic
+      # `applyHandler name r` that took `name` as an argument and did
+      # `resolvedHandlers.${name}` afresh at every node despite
+      # `resolvedHandlers` itself already being hoisted: passing `name`
+      # through and looking it up again at call time still cost a curried
+      # call plus an attrset lookup on every node, for every rule.
+      compiledFields = builtins.mapAttrs (
+        name: compiled:
+        let
+          handler = resolvedHandlers.${name};
+        in
+        node:
+        let
+          r = compiled node;
+        in
         if r != false then
           [
-            (resolvedHandlers.${name} (builtins.elemAt r 0))
+            (handler (builtins.elemAt r 0))
             (builtins.elemAt r 1)
           ]
         else
-          r;
-
-      # Compiled once per rule, before mkNode builds any per-position node.
-      compiledRules = builtins.mapAttrs (name: rule: compile rule) grammar;
+          r
+      ) compiledRules;
 
       mkNode =
         count:
@@ -519,7 +535,7 @@ rec {
               inherit count;
               next = if count >= len then null else mkNode (count + 1);
             }
-            // builtins.mapAttrs (name: _: applyHandler name (compiledRules.${name} node)) grammar;
+            // builtins.mapAttrs (_: field: field node) compiledFields;
         in
         node;
     in
