@@ -134,17 +134,10 @@ let
   rNotPasses = run basicGrammar 0 "ab";
 
   # --- Regression: evalRegex's bounded lookahead window must not silently
-  # truncate a match longer than the window. A regex used directly in a
-  # sequence (NOT wrapped in `star`, which self-chunks and so was already
-  # safe at any length) previously broke on real input once the match
-  # exceeded the fixed window -- confirmed directly against
-  # grammar/json.nix's COMMENT rule: at a fixed window of 512, a 512-char
-  # comment line parsed fine but a 513-char one made an otherwise-valid
-  # file fail to parse entirely. evalRegex now retries with a doubled
-  # window whenever a match exactly fills the current window, so this
-  # grammar's regexWindow is a pure speed/memory tuning knob now, not a
-  # correctness bound. Test directly against a plain (non-star) regex atom
-  # with a match longer than any realistic window default.
+  # truncate a match longer than the window (a plain, non-`star`-wrapped
+  # regex atom is not otherwise self-chunking). evalRegex retries with a
+  # doubled window whenever a match exactly fills the current one, so this
+  # is a pure speed/memory tuning knob, not a correctness bound.
   longMatchGrammar = {
     LONG = { regex = "([a-z]+)"; };
   };
