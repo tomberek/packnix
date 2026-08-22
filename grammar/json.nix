@@ -41,9 +41,20 @@ let
     COMMENT = [
       "WHITESPACE"
       { lit = "#"; }
-      { regex = "([^\n]+)"; }
+      "COMMENT_BODY"
       "WHITESPACE"
     ];
+    # Self-chunking, matching STRING_RAW/WHITESPACE's pattern: a `star` over
+    # single-character regex matches, rather than one greedy `([^\n]+)`
+    # match over the whole line. This makes COMMENT robust to a comment
+    # line of ANY length regardless of evalRegex's bounded lookahead
+    # window at the grammar level, as a second line of defense alongside
+    # (not instead of) the engine-level growing-window retry in
+    # lib/packrat.nix's evalRegex -- other grammars/rules can still write a
+    # plain non-star regex atom and rely on the engine to handle a match
+    # longer than the window correctly, but this rule no longer needs to.
+    COMMENT_CHAR = { regex = "([^\n])"; };
+    COMMENT_BODY = { star = "COMMENT_CHAR"; };
 
     # e? lets LIST/SET accept an empty body ("[]"/"{}"), which the original
     # grammar could not parse at all (its LIST_ITEMS/ITEMS required >= 1
