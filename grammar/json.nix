@@ -6,6 +6,20 @@
 # variants are kept for A/B benchmarking (see bench/measure.sh); default.nix
 # picks one via `useCut`.
 let
+  # STRING_RAW was previously a standalone nonterminal referenced only
+  # from STRING; inlined into STRING's own sequence body below for the
+  # same per-node thunk-allocation reason as STRING_FRAG/COMMENT_CHAR
+  # before it -- every nonterminal is a field on every Derivs node
+  # regardless of whether it's touched at a given position. Named here
+  # (rather than written inline in `common`) purely for readability.
+  stringFragment = {
+    choice = [
+      { regex = ''([^\\\"]+)''; }
+      { lit = ''\"''; }
+      { lit = ''\''; }
+    ];
+  };
+
   # Rules shared verbatim between the cut and no-cut variants.
   common = {
     # `opt`, not `star`: `[[:space:]]+` already greedily consumes the WHOLE
@@ -28,21 +42,9 @@ let
 
     STRING = [
       { lit = "\""; }
-      "STRING_RAW"
+      { star = stringFragment; }
       { lit = "\""; }
     ];
-    # Fragment alternatives inlined rather than a separate STRING_FRAG
-    # rule: every nonterminal is a field on every Derivs node, so a
-    # single-use wrapper costs real per-node allocation for nothing.
-    STRING_RAW = {
-      star = {
-        choice = [
-          { regex = ''([^\\\"]+)''; }
-          { lit = ''\"''; }
-          { lit = ''\''; }
-        ];
-      };
-    };
 
     # `opt` lets LIST/SET accept an empty body ("[]"/"{}").
     LIST = [
@@ -142,10 +144,9 @@ let
     # `opt`'s raw value is the matched string directly, or `null` if there
     # was no whitespace to match (unlike `star`'s list-of-matches shape).
     WHITESPACE = v: if v == null then "" else v;
-    STRING_RAW = v: builtins.concatStringsSep "" v;
-    # Plain Nix string, not `{ string = ...; }` -- JSON strings decode to
-    # (and must re-encode as) plain strings.
-    STRING = v: builtins.elemAt v 1;
+    # [lit fragmentList lit]; concatenate the inlined star's fragments
+    # directly (no separate STRING_RAW handler now that it's inlined).
+    STRING = v: builtins.concatStringsSep "" (builtins.elemAt v 1);
     ITEM = v: {
       name = builtins.elemAt v 1;
       value = builtins.elemAt v 4;
