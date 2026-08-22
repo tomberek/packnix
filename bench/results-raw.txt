@@ -1398,3 +1398,203 @@
 	Page size (bytes): 4096
 	Exit status: 0
 
+=== fixture=50000 variant=noCut ===
+	Command being timed: "nix eval --impure --expr let packrat = import ./lib/packrat.nix; j = import ./grammar/json.nix; content = builtins.unsafeDiscardStringContext (builtins.readFile ./bench/fixtures/fixture-50000.json); in (packrat.run { grammar = j.grammarNoCut; handlers = j.handlersNoCut; } 0 content).X --json"
+	User time (seconds): 0.22
+	System time (seconds): 0.05
+	Percent of CPU this job got: 98%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.29
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 133564
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 26740
+	Voluntary context switches: 142
+	Involuntary context switches: 8
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== fixture=50000 variant=cut ===
+	Command being timed: "nix eval --impure --expr let packrat = import ./lib/packrat.nix; j = import ./grammar/json.nix; content = builtins.unsafeDiscardStringContext (builtins.readFile ./bench/fixtures/fixture-50000.json); in (packrat.run { grammar = j.grammar; handlers = j.handlers; } 0 content).X --json"
+	User time (seconds): 0.13
+	System time (seconds): 0.05
+	Percent of CPU this job got: 98%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.19
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 134112
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 26870
+	Voluntary context switches: 163
+	Involuntary context switches: 4
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== fixture=150000 variant=noCut ===
+	Command being timed: "nix eval --impure --expr let packrat = import ./lib/packrat.nix; j = import ./grammar/json.nix; content = builtins.unsafeDiscardStringContext (builtins.readFile ./bench/fixtures/fixture-150000.json); in (packrat.run { grammar = j.grammarNoCut; handlers = j.handlersNoCut; } 0 content).X --json"
+	User time (seconds): 0.64
+	System time (seconds): 0.12
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.76
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 321540
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 73832
+	Voluntary context switches: 155
+	Involuntary context switches: 23
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== fixture=150000 variant=cut ===
+	Command being timed: "nix eval --impure --expr let packrat = import ./lib/packrat.nix; j = import ./grammar/json.nix; content = builtins.unsafeDiscardStringContext (builtins.readFile ./bench/fixtures/fixture-150000.json); in (packrat.run { grammar = j.grammar; handlers = j.handlers; } 0 content).X --json"
+	User time (seconds): 0.42
+	System time (seconds): 0.11
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.53
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 322948
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 74243
+	Voluntary context switches: 143
+	Involuntary context switches: 7
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== fixture=300000 variant=noCut ===
+	Command being timed: "nix eval --impure --expr let packrat = import ./lib/packrat.nix; j = import ./grammar/json.nix; content = builtins.unsafeDiscardStringContext (builtins.readFile ./bench/fixtures/fixture-300000.json); in (packrat.run { grammar = j.grammarNoCut; handlers = j.handlersNoCut; } 0 content).X --json"
+	User time (seconds): 0.84
+	System time (seconds): 0.18
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.02
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 601904
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 144136
+	Voluntary context switches: 138
+	Involuntary context switches: 19
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== fixture=300000 variant=cut ===
+	Command being timed: "nix eval --impure --expr let packrat = import ./lib/packrat.nix; j = import ./grammar/json.nix; content = builtins.unsafeDiscardStringContext (builtins.readFile ./bench/fixtures/fixture-300000.json); in (packrat.run { grammar = j.grammar; handlers = j.handlers; } 0 content).X --json"
+	User time (seconds): 0.92
+	System time (seconds): 0.19
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.11
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 605596
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 144942
+	Voluntary context switches: 155
+	Involuntary context switches: 26
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== fixture=full(391947) variant=noCut ===
+	Command being timed: "nix eval --impure --expr let packrat = import ./lib/packrat.nix; j = import ./grammar/json.nix; content = builtins.unsafeDiscardStringContext (builtins.readFile ./bench/fixtures/fixture-full.json); in (packrat.run { grammar = j.grammarNoCut; handlers = j.handlersNoCut; } 0 content).X --json"
+	User time (seconds): 1.37
+	System time (seconds): 0.32
+	Percent of CPU this job got: 114%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.48
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 790692
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 191787
+	Voluntary context switches: 11881
+	Involuntary context switches: 80
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 568
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== fixture=full(391947) variant=cut ===
+	Command being timed: "nix eval --impure --expr let packrat = import ./lib/packrat.nix; j = import ./grammar/json.nix; content = builtins.unsafeDiscardStringContext (builtins.readFile ./bench/fixtures/fixture-full.json); in (packrat.run { grammar = j.grammar; handlers = j.handlers; } 0 content).X --json"
+	User time (seconds): 1.39
+	System time (seconds): 0.30
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.47
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 794764
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 192907
+	Voluntary context switches: 12333
+	Involuntary context switches: 561
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 568
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+

@@ -26,17 +26,34 @@ let
       "STRING_RAW"
       { lit = "\""; }
     ];
-    STRING_FRAG = {
-      choice = [
-        { regex = ''([^\\\"]+)''; }
-        { lit = ''\"''; }
-        { lit = ''\''; }
-      ];
+    # STRING_FRAG was previously a standalone nonterminal referenced only
+    # from here; inlined directly into STRING_RAW's star body. Each
+    # nonterminal is a separate field on EVERY Derivs node (one node per
+    # input position, ~392000 of them for a 391947-byte file) regardless
+    # of whether that position ever uses it, so a single-use wrapper
+    # nonterminal like this one was pure per-node thunk-allocation
+    # overhead with no benefit -- confirmed by profiling (see the research
+    # notes that led to this change): unused grammar fields cost real,
+    # measurable memory (each unforced thunk still gets allocated at every
+    # node) and a modest amount of time (the extra nonterminal-reference
+    # indirection hop), and there is no engine-level fix for that -- Nix's
+    # mapAttrs-based lazy field construction can't skip allocating a thunk
+    # just because it happens to go unused at a given position, and the
+    # engine's memoization design depends on every field being a real,
+    # shared attrset field (not something built through a dynamic-dispatch
+    # cache). The only real lever is trimming the grammar's own rule
+    # count, which is what this change does for STRING_FRAG/COMMENT_CHAR
+    # (both single-use, both had no other purpose besides being one
+    # `star`'s body).
+    STRING_RAW = {
+      star = {
+        choice = [
+          { regex = ''([^\\\"]+)''; }
+          { lit = ''\"''; }
+          { lit = ''\''; }
+        ];
+      };
     };
-    # e* replaces the old hand-rolled right-recursive
-    # choice=[[FRAG RAW] FRAG ""]; the handler (concatStringsSep) works the
-    # same on the flat list `star` produces.
-    STRING_RAW = { star = "STRING_FRAG"; };
 
     COMMENT = [
       "WHITESPACE"
@@ -53,8 +70,10 @@ let
     # lib/packrat.nix's evalRegex -- other grammars/rules can still write a
     # plain non-star regex atom and rely on the engine to handle a match
     # longer than the window correctly, but this rule no longer needs to.
-    COMMENT_CHAR = { regex = "([^\n])"; };
-    COMMENT_BODY = { star = "COMMENT_CHAR"; };
+    # COMMENT_CHAR was previously a standalone nonterminal referenced only
+    # from here; inlined into COMMENT_BODY's star body for the same
+    # per-node thunk-allocation reason as STRING_FRAG above.
+    COMMENT_BODY = { star = { regex = "([^\n])"; }; };
 
     # e? lets LIST/SET accept an empty body ("[]"/"{}"), which the original
     # grammar could not parse at all (its LIST_ITEMS/ITEMS required >= 1
