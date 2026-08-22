@@ -13,7 +13,7 @@ let
   packrat = import ./lib/packrat.nix;
   jsonGrammar = import ./grammar/json.nix;
 
-  useCut = false;
+  useCut = true;
 
   grammar = if useCut then jsonGrammar.grammar else jsonGrammar.grammarNoCut;
   handlers = if useCut then jsonGrammar.handlers else jsonGrammar.handlersNoCut;
