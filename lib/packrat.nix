@@ -4,9 +4,9 @@
 # cs/0603077). Each node is built exactly once, from `builtins.genList`'s
 # per-element laziness (confirmed directly: genList's generator only runs
 # for elements actually accessed, never eagerly for the whole list) --
-# accessing a given position via `.next`, a fresh `elemAt`, or any other
-# path always lands on the identical shared thunk, so Nix's ordinary
-# thunk-sharing gives memoization for free.
+# accessing a given position via `elemAt at pos`, from any caller, always
+# lands on the identical shared thunk, so Nix's ordinary thunk-sharing
+# gives memoization for free.
 #
 # Grammar DSL (attrset-as-data):
 #   "Name"                -> nonterminal reference (bare "" = epsilon)
@@ -134,7 +134,7 @@ rec {
         if c != "" && c >= start && c <= end then
           [
             c
-            derivs.next
+            (builtins.elemAt at (derivs.count + 1))
           ]
         else
           false;
@@ -550,10 +550,10 @@ rec {
           r
       ) compiledRules;
 
-      # `count`/`next` as regular entries alongside every rule's compiled
-      # field, so mkNode's mapAttrs below builds each node's ENTIRE field
-      # set in one pass instead of building a rule-fields-only attrset via
-      # mapAttrs and then copying it into a base `{count;next;}` via `//`.
+      # `count` as a regular entry alongside every rule's compiled field,
+      # so mkNode's mapAttrs below builds each node's ENTIRE field set in
+      # one pass instead of building a rule-fields-only attrset via
+      # mapAttrs and then copying it into a base `{count;}` via `//`.
       # `//` isn't a lazy structural merge -- it allocates a fresh
       # Bindings array and copies every binding from both sides into it,
       # so stacking it on an already-built mapAttrs result was two full
@@ -561,22 +561,20 @@ rec {
       # directly (400k-node microbenchmark matching this engine's actual
       # per-node shape): ~195MB set bytes two-pass vs. ~99MB one-pass --
       # roughly half, and it's the highest-volume allocation site in the
-      # whole engine (once per input position, unconditionally).
+      # whole engine (once per input position, unconditionally). `next`
+      # used to be a base field here too, but nothing reads it anymore
+      # now that every jump (including evalRange's single-char advance)
+      # goes through `elemAt at pos` directly -- one fewer field built
+      # per node, confirmed a further ~2% RSS reduction.
       compiledFieldsAndBase = compiledFields // {
         count = null;
-        next = null;
       };
 
       mkNode =
         count:
         builtins.mapAttrs (
           name: field:
-          if name == "count" then
-            count
-          else if name == "next" then
-            (if count >= len then null else builtins.elemAt at (count + 1))
-          else
-            field (builtins.elemAt at count)
+          if name == "count" then count else field (builtins.elemAt at count)
         ) compiledFieldsAndBase;
 
       at = builtins.genList mkNode (len + 1);
