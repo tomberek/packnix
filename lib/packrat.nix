@@ -141,8 +141,25 @@ rec {
       # (391KB) during Phase 1 verification. A fixed window is O(1) per
       # call regardless of input size, at the cost of capping how long a
       # single regex match can be (matches this grammar's tokens: runs of
-      # whitespace, string fragments, comment lines, digit runs).
-      regexWindow = 4096;
+      # whitespace, string fragments, comment lines, digit runs) -- longer
+      # runs still parse correctly wherever the regex is used inside a
+      # `star` (as STRING_RAW/WHITESPACE are), since each iteration only
+      # needs to match up to the window before looping for the next chunk.
+      #
+      # Measured directly (see bench/results.txt and the final report):
+      # this constant matters a LOT in practice, not just asymptotically.
+      # On lock-large.json (391947 bytes), window=4096 costs 4.17s wall /
+      # 1575MB RSS; window=512 (this value) costs 1.54s / 810MB -- ~2.7x
+      # faster and ~2x less memory, for byte-identical output, because
+      # `builtins.substring` still copies the ENTIRE window every call even
+      # when the actual match is short (whitespace runs here are <= 11
+      # chars), and this grammar calls evalRegex extremely often (once per
+      # WHITESPACE position and once per STRING_FRAG position). 512 keeps a
+      # safety margin over this repo's observed longest single-regex match
+      # (180 chars, a COMMENT line) for other inputs with longer comments;
+      # push it lower (down to ~192-256) if profiling another corpus shows
+      # it's safe and the extra speed is worth less margin.
+      regexWindow = 512;
 
       evalRegex =
         regex: derivs:
