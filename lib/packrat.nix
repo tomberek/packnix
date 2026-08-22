@@ -106,7 +106,26 @@ rec {
     builtins.foldl' (acc: _: builtins.seq acc acc.next) derivs (builtins.genList (_: null) n);
 
   # mkCompile : string -> (expr -> (derivs -> result))
-  # result = { success = true; value = ...; derivs = ...; } | { success = false; }
+  # result = { value = ...; derivs = ...; }  (success)  |  false  (failure)
+  #
+  # Failure used to be its own attrset `{ success = false; }`, and success
+  # carried a redundant `success = true;` field alongside `value`/`derivs`.
+  # Nix is dynamically typed and an attrset never compares equal to a bool
+  # (confirmed directly: `{ a = 1; } == false` is `false`, no type error) --
+  # so `false` itself can serve as the failure sentinel, with two wins: (1)
+  # every failure now returns the same pre-existing interned `false` value
+  # instead of allocating a fresh one-field attrset on every single leaf
+  # mismatch (by far the hottest path -- most `lit`/`range`/`regex` attempts
+  # against real input fail at the first character), and (2) success drops
+  # one field (`success = true` is now implicit in "the result isn't
+  # `false`"). This can't collide with a legitimate match VALUE that
+  # happens to be the boolean `false` (e.g. after grammar/json.nix's BOOL
+  # handler turns matched text "false" into the real boolean): the sentinel
+  # replaces the whole result, never the `.value` field, so a successful
+  # result is always `{ value = false; derivs = ...; }` -- an attrset,
+  # which is `!= false` -- never the bare sentinel itself. Every call site
+  # below follows the same shape: `if r == false then <propagate false> else
+  # let ... = r.value; ... = r.derivs; in <use them>`.
   mkCompile =
     string:
     let
@@ -125,7 +144,6 @@ rec {
           (
             derivs:
             {
-              success = true;
               value = "";
               derivs = derivs;
             }
@@ -175,26 +193,28 @@ rec {
       # extra wrapping required -- these were never re-dispatching on
       # their own shape the way the OLD evalExpr's outer if/elif chain did,
       # so there's nothing further to hoist here.
+      # One-shot slice-and-compare instead of a char-by-char walk: `lit`'s
+      # length is fixed at compile time, so there's no need to re-derive it
+      # one `substring _ 1` call and one `.next` dereference at a time (the
+      # old `go` also risked the same no-TCO stack-overflow `advanceN`'s
+      # comment above documents, for any literal longer than ~10000 chars).
+      # A single `substring derivs.count n string` plus one `==` covers the
+      # whole match, and `advanceN` (already proven to scale via `foldl'`)
+      # does the equivalent position jump in one call.
       evalLit =
         lit: derivs:
         let
           n = builtins.stringLength lit;
-          go =
-            i: d:
-            if i == n then
-              {
-                success = true;
-                value = lit;
-                derivs = d;
-              }
-            else if d == null then
-              { success = false; }
-            else if builtins.substring i 1 lit == builtins.substring d.count 1 string then
-              go (i + 1) d.next
-            else
-              { success = false; };
         in
-        go 0 derivs;
+        if derivs.count + n > len then
+          false
+        else if builtins.substring derivs.count n string == lit then
+          {
+            value = lit;
+            derivs = advanceN derivs n;
+          }
+        else
+          false;
 
       evalRange =
         range: derivs:
@@ -205,12 +225,11 @@ rec {
         in
         if c != "" && c >= start && c <= end then
           {
-            success = true;
             value = c;
             derivs = derivs.next;
           }
         else
-          { success = false; };
+          false;
 
       # Bounded lookahead window, matching the original engine's approach
       # (`builtins.substring derivs.count 128 string`): `builtins.substring`
@@ -288,7 +307,6 @@ rec {
                 # off), or the window already reached the end of the input
                 # (nothing more it could have matched anyway) -- accept.
                 {
-                  success = true;
                   value = matched;
                   derivs = advanceN derivs matchedLen;
                 }
@@ -297,7 +315,7 @@ rec {
                 # might be truncated. Grow and retry.
                 tryWindow (windowSize * 2)
             else
-              { success = false; };
+              false;
         in
         tryWindow regexWindow;
 
@@ -315,23 +333,21 @@ rec {
         builtins.foldl'
           (
             acc: subCompiled:
-            if !acc.success then
-              acc
+            if acc == false then
+              false
             else
               let
                 r = subCompiled acc.derivs;
               in
-              if r.success then
+              if r == false then
+                false
+              else
                 {
-                  success = true;
                   value = acc.value ++ [ r.value ];
                   derivs = r.derivs;
                 }
-              else
-                { success = false; }
           )
           {
-            success = true;
             value = [ ];
             derivs = derivs;
           }
@@ -371,7 +387,7 @@ rec {
           go =
             bs:
             if bs == [ ] then
-              { success = false; }
+              false
             else
               let
                 b = builtins.head bs;
@@ -381,15 +397,14 @@ rec {
                 let
                   r1 = b.c1 derivs;
                 in
-                if !r1.success then
+                if r1 == false then
                   go rest
                 else
                   let
                     r2 = b.c2 r1.derivs;
                   in
-                  if r2.success then
+                  if r2 != false then
                     {
-                      success = true;
                       value = [
                         r1.value
                         r2.value
@@ -399,12 +414,12 @@ rec {
                   else
                     # Committed failure: cut forbids trying `rest` even
                     # though ordinary choice would.
-                    { success = false; }
+                    false
               else
                 let
                   r = b.c derivs;
                 in
-                if r.success then r else go rest;
+                if r != false then r else go rest;
         in
         go compiledBranches;
 
@@ -463,7 +478,7 @@ rec {
                 let
                   r1 = c1 item.d;
                 in
-                if !r1.success then
+                if r1 == false then
                   [
                     {
                       key = item.key + 1;
@@ -476,7 +491,7 @@ rec {
                   let
                     r2 = c2 r1.derivs;
                   in
-                  if !r2.success then
+                  if r2 == false then
                     [
                       {
                         key = item.key + 1;
@@ -502,10 +517,9 @@ rec {
           pairs = builtins.filter (x: x != null) (map (i: i.pair) closure);
         in
         if lastItem.status == "stopFail" then
-          { success = false; }
+          false
         else
           {
-            success = true;
             value = pairs;
             derivs = lastItem.d;
           };
@@ -571,7 +585,7 @@ rec {
               let
                 r = compiledBody d;
               in
-              if !r.success then
+              if r == false then
                 {
                   hitLimit = false;
                   values = acc;
@@ -583,7 +597,6 @@ rec {
         in
         if !first.hitLimit then
           {
-            success = true;
             value = first.values;
             derivs = first.d;
           }
@@ -606,7 +619,7 @@ rec {
                   let
                     r = compiledBody item.d;
                   in
-                  if r.success then
+                  if r != false then
                     builtins.seq r.derivs [
                       {
                         key = item.key + 1;
@@ -629,7 +642,6 @@ rec {
             restValues = builtins.filter (x: x != null) (map (i: i.v) closure);
           in
           {
-            success = true;
             value = first.values ++ restValues;
             derivs = lastItem.d;
           };
@@ -713,15 +725,10 @@ rec {
         let
           r = compiledBody derivs;
         in
-        if r.success then
-          {
-            success = true;
-            value = r.value;
-            derivs = r.derivs;
-          }
+        if r != false then
+          r
         else
           {
-            success = true;
             value = null;
             derivs = derivs;
           };
@@ -735,14 +742,13 @@ rec {
         let
           r = compiledBody derivs;
         in
-        if r.success then
+        if r != false then
           {
-            success = true;
             value = null;
             derivs = derivs;
           }
         else
-          { success = false; };
+          false;
 
       compileNot =
         body:
@@ -753,11 +759,10 @@ rec {
         let
           r = compiledBody derivs;
         in
-        if r.success then
-          { success = false; }
+        if r != false then
+          false
         else
           {
-            success = true;
             value = null;
             derivs = derivs;
           };
@@ -808,9 +813,8 @@ rec {
 
       applyHandler =
         name: r:
-        if r.success then
+        if r != false then
           {
-            success = true;
             value = resolvedHandlers.${name} r.value;
             derivs = r.derivs;
           }
@@ -854,5 +858,5 @@ rec {
       root = buildDerivs grammar handlers string;
       at = advanceN root count;
     in
-    builtins.mapAttrs (name: _: if at.${name}.success then at.${name}.value else false) grammar;
+    builtins.mapAttrs (name: _: if at.${name} != false then at.${name}.value else false) grammar;
 }
