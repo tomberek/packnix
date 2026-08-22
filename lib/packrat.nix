@@ -157,27 +157,64 @@ rec {
       # WHITESPACE position and once per STRING_FRAG position). 512 keeps a
       # safety margin over this repo's observed longest single-regex match
       # (180 chars, a COMMENT line) for other inputs with longer comments;
-      # push it lower (down to ~192-256) if profiling another corpus shows
-      # it's safe and the extra speed is worth less margin.
-      regexWindow = 512;
+      # push it lower (down to ~192-256) for more speed -- correctness no
+      # longer depends on this being "big enough" for the corpus, since
+      # evalRegex below retries with a doubled window whenever a match
+      # exactly fills the window (see tryWindow); this is now purely a
+      # speed/memory tuning knob, not a correctness one.
+      regexWindow = 256;
 
       evalRegex =
         regex: derivs:
         let
-          rest = builtins.substring derivs.count regexWindow string;
-          m = builtins.match "${regex}.*" rest;
+          # Try with a bounded window first (the O(1)-per-call fast path
+          # that keeps evalRegex cheap on the overwhelmingly common case of
+          # short matches). If the match fills the ENTIRE window, it may
+          # have been truncated -- a match that happens to be exactly
+          # `windowSize` characters long is indistinguishable from one that
+          # got cut off mid-token, so in that case only, retry with a
+          # doubled window and keep doubling until either the match no
+          # longer fills the window (definitely complete) or the window
+          # already covers the rest of the input (nothing left to find).
+          #
+          # This matters for real correctness, not just an asymptotic edge
+          # case: COMMENT's regex ([^\n]+) is used directly in a sequence,
+          # NOT wrapped in `star` the way STRING_RAW/WHITESPACE are, so
+          # without this retry a single comment line longer than the fixed
+          # window would silently truncate and typically desync the rest of
+          # the parse -- confirmed directly: at a fixed window of 512, a
+          # 512-char comment line parsed fine but a 513-char one made an
+          # otherwise-valid file fail to parse at all.
+          tryWindow =
+            windowSize:
+            let
+              rest = builtins.substring derivs.count windowSize string;
+              m = builtins.match "${regex}.*" rest;
+              restLen = builtins.stringLength rest;
+            in
+            if builtins.isList m && m != [ ] && builtins.head m != null then
+              let
+                matched = builtins.head m;
+                matchedLen = builtins.stringLength matched;
+              in
+              if matchedLen < restLen || derivs.count + restLen >= len then
+                # Match didn't fill the window (so it can't have been cut
+                # off), or the window already reached the end of the input
+                # (nothing more it could have matched anyway) -- accept.
+                {
+                  success = true;
+                  value = matched;
+                  derivs = advanceN derivs matchedLen;
+                }
+              else
+                # Match exactly filled the window and more input remains:
+                # might be truncated. Grow and retry.
+                tryWindow (windowSize * 2)
+            else
+              { success = false; };
         in
-        if builtins.isList m && m != [ ] && builtins.head m != null then
-          let
-            matched = builtins.head m;
-          in
-          {
-            success = true;
-            value = matched;
-            derivs = advanceN derivs (builtins.stringLength matched);
-          }
-        else
-          { success = false; };
+        tryWindow regexWindow;
+
 
       evalSeq =
         exprs: derivs:
