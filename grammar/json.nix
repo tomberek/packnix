@@ -46,53 +46,58 @@ let
       { lit = "\""; }
     ];
 
-    # `opt` lets LIST/SET accept an empty body ("[]"/"{}").
+    # `opt` lets LIST/SET accept an empty body ("[]"/"{}"). LIST_ITEMS was
+    # previously a standalone nonterminal referenced only from LIST's
+    # `opt`; inlined for the same reason as stringFragment above. Cut on
+    # the repetition body: verified this only changes WHY a trailing
+    # comma is rejected (whole star fails outright, vs. plain (e1 e2)*
+    # stopping early and letting the outer "]" reject the leftover ","),
+    # not WHETHER -- "," is never a valid start of "]". Also
+    # faster/lighter than plain on long runs (compileStarCut goes
+    # straight to genericClosure once, vs. plain's cheap-path/
+    # genericClosure-escalation splicing every 500 items; measured ~9%
+    # less RSS at 50000 items) and statistically tied at this repo's
+    # realistic sizes (<=20 items).
     LIST = [
       { lit = "["; }
       "WHITESPACE"
-      { opt = "LIST_ITEMS"; }
+      {
+        opt = [
+          "X"
+          {
+            star = {
+              cutSeq = [
+                { lit = ","; }
+                "X"
+              ];
+            };
+          }
+        ];
+      }
       "WHITESPACE"
       { lit = "]"; }
     ];
-    # Cut here changes WHY a trailing comma is rejected (the whole star
-    # fails outright, vs. plain (e1 e2)* stopping early and letting the
-    # outer "]"/"}" reject the leftover ","), but not WHETHER it's
-    # rejected: "," is never a valid start of "]"/"}", so both encodings
-    # accept/reject identically here (verified directly against
-    # trailing-comma, empty, and valid inputs). Also faster/lighter than
-    # plain on long runs: measured ~9% less RSS at 50000 items (compileStarCut
-    # goes straight to genericClosure once, vs. plain's cheap-path/
-    # genericClosure-escalation splicing every 500 items) and statistically
-    # tied at this repo's realistic sizes (<=20 items).
-    LIST_ITEMS = [
-      "X"
-      {
-        star = {
-          cutSeq = [
-            { lit = ","; }
-            "X"
-          ];
-        };
-      }
-    ];
 
+    # ITEMS was previously a standalone nonterminal referenced only from
+    # SET's `opt`; inlined for the same reason as LIST_ITEMS above.
     SET = [
       { lit = "{"; }
       "WHITESPACE"
-      { opt = "ITEMS"; }
+      {
+        opt = [
+          "ITEM"
+          {
+            star = {
+              cutSeq = [
+                { lit = ","; }
+                "ITEM"
+              ];
+            };
+          }
+        ];
+      }
       "WHITESPACE"
       { lit = "}"; }
-    ];
-    ITEMS = [
-      "ITEM"
-      {
-        star = {
-          cutSeq = [
-            { lit = ","; }
-            "ITEM"
-          ];
-        };
-      }
     ];
     ITEM = [
       "WHITESPACE"
