@@ -143,14 +143,23 @@ let
   handlersCommon = {
     WHITESPACE = v: builtins.concatStringsSep "" v;
     STRING_RAW = v: builtins.concatStringsSep "" v;
-    STRING = v: {
-      string = builtins.elemAt v 1;
-    };
+    # Return a plain Nix string rather than the old `{ string = ...; }`
+    # wrapper -- that wrapper is what made every JSON string leaf come back
+    # out as an object like `{"string": "..."}` instead of a plain JSON
+    # string, breaking round-tripping. A real JSON string decodes to a
+    # plain string and must re-encode the same way.
+    STRING = v: builtins.elemAt v 1;
     ITEM = v: {
-      name = (builtins.elemAt v 1).string;
+      name = builtins.elemAt v 1;
       value = builtins.elemAt v 4;
     };
     NUMBER = builtins.fromJSON;
+    # Likewise for BOOL/NULL: without a handler these pass through as the
+    # literally-matched text ("true"/"false"/"null", i.e. Nix strings), not
+    # actual Nix `true`/`false`/`null` -- which `builtins.toJSON`/`--json`
+    # would then render as quoted strings, also breaking round-tripping.
+    BOOL = v: v == "true";
+    NULL = v: null;
 
     LIST =
       v:
