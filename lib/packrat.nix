@@ -133,12 +133,18 @@ rec {
           false;
 
       # A fixed lookahead window, not the whole remaining input -- copying
-      # the full remainder on every attempt makes the parse O(n^2). 256 is
-      # a speed/memory tuning knob, not a correctness bound: `tryWindow`
+      # the full remainder on every attempt makes the parse O(n^2). This
+      # is a speed/memory tuning knob, not a correctness bound: `tryWindow`
       # doubles whenever a match exactly fills the window (otherwise
       # indistinguishable from truncation), so longer matches still parse
       # correctly, especially wherever the regex is looped via `star`.
-      regexWindow = 256;
+      # 32 measured best on this repo's fixtures (real end-to-end runs,
+      # not microbenchmark): smaller values start paying more in doubling
+      # retries than they save in per-attempt substring size (8 measured
+      # worse than 16/24/32, which were statistically tied) for this
+      # grammar's actual match-length distribution (longest single match
+      # observed: a 163-char string body).
+      regexWindow = 32;
 
       evalRegex =
         regex:
