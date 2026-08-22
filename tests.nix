@@ -151,6 +151,53 @@ let
   longInput = builtins.concatStringsSep "" (builtins.genList (_: "x") 2000);
   rLongMatch = run longMatchGrammar 0 longInput;
 
+  # --- Regression: a `star` whose body matches MANY times in a row (e.g.
+  # a long run of single-character tokens) must not stack-overflow, and
+  # must not be quadratic-time. Both were real, confirmed bugs at
+  # different points during development:
+  #   - A hand-written recursive `loop` function overflowed Nix's
+  #     max-call-depth (Nix has no tail-call optimization) around
+  #     ~10000 iterations.
+  #   - A `builtins.foldl'`-based accumulator that grows a list via
+  #     `acc.values ++ [x]` each iteration is O(current length) per
+  #     step (Nix lists are array-like, not linked), making the whole
+  #     star genuinely quadratic: confirmed directly at the time, 32000
+  #     iterations took ~1.8s but 64000 took ~32s -- not the ~2x a linear
+  #     implementation would show.
+  # evalStar is now built on `builtins.genericClosure` (whose own
+  # returned list is NOT built via repeated Nix-level `++`) with an
+  # explicit `builtins.seq` forcing each step's Derivs pointer to WHNF
+  # (needed because genericClosure's traversal loop itself doesn't force
+  # per-item payload, which would otherwise just move the overflow into a
+  # different unforced thunk chain). This test only checks correctness
+  # (the star matches the right number of times, in reasonable time) --
+  # bench/results.txt documents the actual before/after timing.
+  manyRepeatsGrammar = {
+    MANY = { star = { lit = "a"; }; };
+  };
+  manyRepeatsInput = builtins.concatStringsSep "" (builtins.genList (_: "a") 64000);
+  rManyRepeats = run manyRepeatsGrammar 0 manyRepeatsInput;
+
+  # --- Regression: advancing far along the Derivs chain (a single match
+  # consuming many characters at once, e.g. one big regex match) must not
+  # stack-overflow either -- this was a separate bug from the star-loop
+  # one above, in `advanceN` itself (originally a hand-written recursive
+  # `derivs: n: if n == 0 then derivs else advanceN derivs.next (n - 1)`,
+  # which hit the same ~10000-deep call-depth wall). advanceN is now built
+  # on `builtins.foldl'` with `builtins.seq` forcing each step's node to
+  # WHNF (foldl' alone isn't enough -- it only forces its OWN accumulator
+  # to WHNF each step, not the fields inside it, so `acc: _: acc.next`
+  # alone just reintroduces an equally deep unforced thunk chain).
+  bigJumpGrammar = {
+    A = { regex = "([a-z]+)"; };
+    B = [
+      "A"
+      { lit = "!"; }
+    ];
+  };
+  bigJumpInput = builtins.concatStringsSep "" (builtins.genList (_: "a") 90000) + "!";
+  rBigJump = run bigJumpGrammar 0 bigJumpInput;
+
   checks = {
     cutMain_parsesFullString = cutMainResult.M != false;
     cutMain_correctValue =
@@ -189,6 +236,11 @@ let
 
     regex_matchLongerThanWindowIsNotTruncated =
       rLongMatch.LONG != false && builtins.stringLength rLongMatch.LONG == 2000;
+
+    star_manyRepeatsDoesNotOverflowOrHang =
+      rManyRepeats.MANY != false && builtins.length rManyRepeats.MANY == 64000;
+
+    advanceN_bigJumpDoesNotOverflow = rBigJump.B != false;
   };
 
   allPassed = builtins.all (x: x) (builtins.attrValues checks);

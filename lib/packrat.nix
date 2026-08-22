@@ -33,7 +33,35 @@ rec {
   # along the chain that was going to be built anyway, never re-derives a
   # position from scratch. Because `.next` is a single shared attrset field
   # per node, repeated walks over the same span reuse the same nodes.
-  advanceN = derivs: n: if n == 0 then derivs else advanceN derivs.next (n - 1);
+  #
+  # Implemented via builtins.foldl' with an explicit builtins.seq, rather
+  # than plain Nix-level self-recursion: Nix's evaluator has NO tail-call
+  # optimization (verified directly -- even a manifestly tail-recursive
+  # accumulator function like `f = n: acc: if n == 0 then acc else f (n-1)
+  # (acc+1)` stack-overflows around n~10000), so a naive `advanceN
+  # derivs.next (n-1)` blows Nix's max-call-depth once a single match needs
+  # to advance more than ~10000 characters in one hop -- confirmed directly
+  # against a >=10000-char unbroken match. `foldl'` itself IS a genuine C++
+  # loop (confirmed directly at 500000 iterations with no depth error), so
+  # switching to it removes the Nix-level call-depth problem -- but
+  # `foldl'` only forces its accumulator to WHNF (i.e. confirms "yes, this
+  # is an attrset") each step, NOT the fields inside it, so
+  # `acc: _: acc.next` alone would just replace the recursive-call problem
+  # with an equally deep chain of unforced `.next` thunks that then
+  # overflows the instant something finally forces the result (confirmed
+  # directly: builtins.genericClosure has this same problem in practice,
+  # breaking down around ~70000 items when carrying this chain's lazy
+  # payload, for exactly this reason). `builtins.seq acc acc.next` forces
+  # `acc` (the previous node) to WHNF before returning the next one, which
+  # is enough to stop the per-step thunk from being deferred -- confirmed
+  # directly this scales cleanly to 500000+ steps. `seq` only forces to
+  # WHNF (one level), not deep-forces the whole node (that would force
+  # every nonterminal field at every position, defeating the engine's
+  # whole memoization premise of "only compute what's actually asked
+  # for") -- deepSeq would be the wrong tool here for exactly that reason.
+  advanceN =
+    derivs: n:
+    builtins.foldl' (acc: _: builtins.seq acc acc.next) derivs (builtins.genList (_: null) n);
 
   # mkEvalExpr : string -> (expr -> derivs -> result)
   # result = { success = true; value = ...; derivs = ...; } | { success = false; }
@@ -299,60 +327,177 @@ rec {
       # the WHOLE STAR FAILS (no partial-match success, unlike plain
       # `(e1 e2)*`, which would just stop and succeed with prior matches).
       # If e2 succeeds, accumulate [e1val e2val] and loop.
+      #
+      # Implemented via builtins.genericClosure -- THREE approaches were
+      # tried and measured before landing here, because each earlier one
+      # had a real, confirmed problem, not a hypothetical one:
+      #
+      #   1. A plain recursive `loop = acc: d: ... loop acc' d'` function.
+      #      Nix has NO tail-call optimization (confirmed directly: even a
+      #      manifestly tail-recursive counter function stack-overflows
+      #      around n~10000), so this broke on a single star body matching
+      #      more than ~10000 times in a row (confirmed directly against a
+      #      long unbroken JSON string value).
+      #
+      #   2. `builtins.genericClosure` WITHOUT forcing the payload each
+      #      step. genericClosure's traversal loop itself IS a genuine C++
+      #      loop (confirmed at 200000+ steps on a trivial payload-free
+      #      chain with no depth error), but carrying this engine's lazy
+      #      Derivs-node pointer through it without forcing it each step
+      #      reintroduces the exact same problem one level up: the
+      #      unforced `.d` references build up as their own unevaluated
+      #      thunk chain, overflowing the instant something finally forces
+      #      the result (confirmed directly: broke around ~70000 items).
+      #
+      #   3. `builtins.foldl'` with an explicit `builtins.seq` on the
+      #      accumulator's `d` pointer each step (the fix for (2)'s
+      #      problem, and the right tool for advanceN above, which only
+      #      ever needs the FINAL node, no list accumulation). But
+      #      evalStar's accumulator must also grow a list of matched
+      #      values every iteration, and `newValues = acc.values ++
+      #      [x]` is an O(current length) COPY every single step (Nix
+      #      lists are array-like, not linked) -- confirmed directly this
+      #      makes the whole star cost genuinely quadratic: 32000
+      #      iterations took ~1.8s, 64000 took ~32s (not the ~2x a linear
+      #      approach would show). `genericClosure`'s own returned list,
+      #      by contrast, is NOT built via repeated Nix-level `++` -- it's
+      #      an internal C++ vector -- confirmed directly: 500000 items
+      #      collected via genericClosure + a single `map`/`filter` pass
+      #      completes in <1s / ~220MB, no quadratic blowup, AS LONG AS
+      #      the per-step payload is also forced via `builtins.seq`
+      #      (fixing (2)'s problem) rather than left as a growing
+      #      Nix-level list inside the accumulator itself.
+      #
+      # So: force each step's Derivs pointer to WHNF via `builtins.seq`
+      # (avoids problem 2), and let genericClosure's own list -- extracted
+      # afterward via `map`/`filter`, not accumulated step-by-step --
+      # hold the matched values (avoids problem 3). `builtins.seq x y`
+      # only forces `x` to WHNF (one level), never the whole Derivs node
+      # recursively -- `builtins.deepSeq` would be the wrong tool here,
+      # since it would force every nonterminal field at every position
+      # touched, defeating the engine's whole memoization premise of
+      # "only compute what's actually asked for".
+      #
+      # genericClosure's operator can only signal "stop" by returning []
+      # -- it can't itself distinguish "stopped because done/succeeded"
+      # from "stopped because of a committed failure", so each item
+      # carries an explicit `status` ("cont" / "stopSuccess" / "stopFail")
+      # inspected on the FINAL item after the closure completes.
       evalStar =
         body: derivs:
         if builtins.isAttrs body && body ? cutSeq then
           let
             e1 = builtins.elemAt body.cutSeq 0;
             e2 = builtins.elemAt body.cutSeq 1;
-            loop =
-              acc: d:
-              let
-                r1 = evalExpr e1 d;
-              in
-              if !r1.success then
+            closure = builtins.genericClosure {
+              startSet = [
                 {
-                  success = true;
-                  value = acc;
-                  derivs = d;
+                  key = 0;
+                  d = derivs;
+                  status = "cont";
+                  pair = null;
                 }
-              else
-                let
-                  r2 = evalExpr e2 r1.derivs;
-                in
-                if !r2.success then
-                  { success = false; }
+              ];
+              operator =
+                item:
+                if item.status != "cont" then
+                  [ ]
                 else
-                  loop
-                    (
-                      acc
-                      ++ [
-                        [
-                          r1.value
-                          r2.value
-                        ]
+                  let
+                    r1 = evalExpr e1 item.d;
+                  in
+                  if !r1.success then
+                    [
+                      {
+                        key = item.key + 1;
+                        d = item.d;
+                        status = "stopSuccess";
+                        pair = null;
+                      }
+                    ]
+                  else
+                    let
+                      r2 = evalExpr e2 r1.derivs;
+                    in
+                    if !r2.success then
+                      [
+                        {
+                          key = item.key + 1;
+                          d = item.d;
+                          status = "stopFail";
+                          pair = null;
+                        }
                       ]
-                    )
-                    r2.derivs;
+                    else
+                      builtins.seq r2.derivs [
+                        {
+                          key = item.key + 1;
+                          d = r2.derivs;
+                          status = "cont";
+                          pair = [
+                            r1.value
+                            r2.value
+                          ];
+                        }
+                      ];
+            };
+            lastItem = builtins.elemAt closure (builtins.length closure - 1);
+            pairs = builtins.filter (x: x != null) (map (i: i.pair) closure);
           in
-          loop [ ] derivs
+          if lastItem.status == "stopFail" then
+            { success = false; }
+          else
+            {
+              success = true;
+              value = pairs;
+              derivs = lastItem.d;
+            }
         else
           let
-            loop =
-              acc: d:
-              let
-                r = evalExpr body d;
-              in
-              if r.success then
-                loop (acc ++ [ r.value ]) r.derivs
-              else
+            closure = builtins.genericClosure {
+              startSet = [
                 {
-                  success = true;
-                  value = acc;
-                  derivs = d;
-                };
+                  key = 0;
+                  d = derivs;
+                  matched = true;
+                  v = null;
+                }
+              ];
+              operator =
+                item:
+                if !item.matched then
+                  [ ]
+                else
+                  let
+                    r = evalExpr body item.d;
+                  in
+                  if r.success then
+                    builtins.seq r.derivs [
+                      {
+                        key = item.key + 1;
+                        d = r.derivs;
+                        matched = true;
+                        v = r.value;
+                      }
+                    ]
+                  else
+                    [
+                      {
+                        key = item.key + 1;
+                        d = item.d;
+                        matched = false;
+                        v = null;
+                      }
+                    ];
+            };
+            lastItem = builtins.elemAt closure (builtins.length closure - 1);
+            values = builtins.filter (x: x != null) (map (i: i.v) closure);
           in
-          loop [ ] derivs;
+          {
+            success = true;
+            value = values;
+            derivs = lastItem.d;
+          };
 
       evalOpt =
         body: derivs:
