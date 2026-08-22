@@ -20,6 +20,33 @@ let
     ];
   };
 
+  # `item ("," item)*`, LIST_ITEMS's/ITEMS's shared shape before they were
+  # inlined into LIST's/SET's `opt` (each was a standalone nonterminal
+  # referenced only once, same lever as stringFragment above). Kept as a
+  # named function rather than duplicating the pattern twice inline --
+  # LIST passes "X", SET passes "ITEM".
+  #
+  # Cut on the repetition body: verified this only changes WHY a trailing
+  # comma is rejected (whole star fails outright, vs. plain (e1 e2)*
+  # stopping early and letting the outer "]"/"}" reject the leftover ","),
+  # not WHETHER -- "," is never a valid start of "]"/"}". Also
+  # faster/lighter than plain on long runs (compileStarCut goes straight
+  # to genericClosure once, vs. plain's cheap-path/genericClosure-
+  # escalation splicing every 500 items; measured ~9% less RSS at 50000
+  # items) and statistically tied at this repo's realistic sizes
+  # (<=20 items).
+  commaSeparated = item: [
+    item
+    {
+      star = {
+        cutSeq = [
+          { lit = ","; }
+          item
+        ];
+      };
+    }
+  ];
+
   # Rules shared verbatim between the cut and no-cut variants.
   common = {
     # `opt`, not `star`: `[[:space:]]+` already greedily consumes the WHOLE
@@ -46,57 +73,29 @@ let
       { lit = "\""; }
     ];
 
-    # `opt` lets LIST/SET accept an empty body ("[]"/"{}"). LIST_ITEMS was
-    # previously a standalone nonterminal referenced only from LIST's
-    # `opt`; inlined for the same reason as stringFragment above. Cut on
-    # the repetition body: verified this only changes WHY a trailing
-    # comma is rejected (whole star fails outright, vs. plain (e1 e2)*
-    # stopping early and letting the outer "]" reject the leftover ","),
-    # not WHETHER -- "," is never a valid start of "]". Also
-    # faster/lighter than plain on long runs (compileStarCut goes
-    # straight to genericClosure once, vs. plain's cheap-path/
-    # genericClosure-escalation splicing every 500 items; measured ~9%
-    # less RSS at 50000 items) and statistically tied at this repo's
-    # realistic sizes (<=20 items).
+    # `opt` lets LIST/SET accept an empty body ("[]"/"{}"). Only ONE
+    # WHITESPACE around the body, not two: X and ITEM both already eat
+    # their own leading and trailing whitespace (X = [WHITESPACE choice
+    # WHITESPACE]; ITEM ends in "X", inheriting X's trailing WHITESPACE
+    # too), so a second WHITESPACE right before "]"/"}" would be
+    # redundant either way -- the last item already ate it if the body
+    # is non-empty, or the first WHITESPACE (kept, since there's no item
+    # to eat the space in "[ ]"/"{ }") already did if it's empty.
+    # Confirmed directly: removing the second WHITESPACE produces
+    # byte-identical output on this repo's lock-large.json, and
+    # "[]"/"[ ]"/"[1,2,3]"/"[1,2,3 ]"/"[ 1,2,3]" (and the SET/nested
+    # equivalents) all still parse correctly.
     LIST = [
       { lit = "["; }
       "WHITESPACE"
-      {
-        opt = [
-          "X"
-          {
-            star = {
-              cutSeq = [
-                { lit = ","; }
-                "X"
-              ];
-            };
-          }
-        ];
-      }
-      "WHITESPACE"
+      { opt = commaSeparated "X"; }
       { lit = "]"; }
     ];
 
-    # ITEMS was previously a standalone nonterminal referenced only from
-    # SET's `opt`; inlined for the same reason as LIST_ITEMS above.
     SET = [
       { lit = "{"; }
       "WHITESPACE"
-      {
-        opt = [
-          "ITEM"
-          {
-            star = {
-              cutSeq = [
-                { lit = ","; }
-                "ITEM"
-              ];
-            };
-          }
-        ];
-      }
-      "WHITESPACE"
+      { opt = commaSeparated "ITEM"; }
       { lit = "}"; }
     ];
     ITEM = [
