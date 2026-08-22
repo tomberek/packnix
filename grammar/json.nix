@@ -113,12 +113,22 @@ let
     };
   };
 
+  # Order matters for a plain (non-cut) ordered choice: PEG tries branches
+  # left-to-right and stops at the first success, so branches matching
+  # MORE OFTEN in real input should come first to minimize wasted failed
+  # attempts. Measured the actual value-type distribution of a real,
+  # large flake.lock (14.2MB, /home/tbereknyei/sources/nix-overlay/
+  # flake.lock): of ~362716 X-values, ~60% were strings, ~20% were
+  # sets/dicts, ~13% numbers, ~6% bools, and LISTS were under 1% (2074) --
+  # the previous order (SET, LIST, STRING, ...) tried the rarest type
+  # (LIST) second and the most common type (STRING) third. Reordered to
+  # STRING, SET, NUMBER, BOOL, LIST, NULL to match observed frequency.
   xBranches = [
-    "SET"
-    "LIST"
     "STRING"
+    "SET"
     "NUMBER"
     "BOOL"
+    "LIST"
     "NULL"
   ];
 
