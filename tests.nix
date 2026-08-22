@@ -171,16 +171,14 @@ let
   manyRepeatsInput = builtins.concatStringsSep "" (builtins.genList (_: "a") 64000);
   rManyRepeats = run manyRepeatsGrammar 0 manyRepeatsInput;
 
-  # --- Regression: advancing far along the Derivs chain (a single match
-  # consuming many characters at once, e.g. one big regex match) must not
-  # stack-overflow either -- this was a separate bug from the star-loop
-  # one above, in `advanceN` itself (originally a hand-written recursive
-  # `derivs: n: if n == 0 then derivs else advanceN derivs.next (n - 1)`,
-  # which hit the same ~10000-deep call-depth wall). advanceN is now built
-  # on `builtins.foldl'` with `builtins.seq` forcing each step's node to
-  # WHNF (foldl' alone isn't enough -- it only forces its OWN accumulator
-  # to WHNF each step, not the fields inside it, so `acc: _: acc.next`
-  # alone just reintroduces an equally deep unforced thunk chain).
+  # --- Regression: jumping far ahead in the position-indexed Derivs array
+  # (a single match consuming many characters at once, e.g. one big regex
+  # match) must not stack-overflow or otherwise break. This used to be a
+  # real bug in a hand-written recursive `advanceN` that walked one `.next`
+  # hop at a time (`derivs: n: if n == 0 then derivs else advanceN
+  # derivs.next (n - 1)`, hitting Nix's ~10000-deep call-depth wall); now
+  # jumping to a known target position is a single `builtins.elemAt`,
+  # which has no such depth limit regardless of how far it jumps.
   bigJumpGrammar = {
     A = { regex = "([a-z]+)"; };
     B = [
@@ -233,7 +231,7 @@ let
     star_manyRepeatsDoesNotOverflowOrHang =
       rManyRepeats.MANY != false && builtins.length rManyRepeats.MANY == 64000;
 
-    advanceN_bigJumpDoesNotOverflow = rBigJump.B != false;
+    bigJumpDoesNotOverflow = rBigJump.B != false;
   };
 
   allPassed = builtins.all (x: x) (builtins.attrValues checks);
