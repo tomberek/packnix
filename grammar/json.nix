@@ -24,7 +24,8 @@ let
   # inlined into LIST's/SET's `opt` (each was a standalone nonterminal
   # referenced only once, same lever as stringFragment above). Kept as a
   # named function rather than duplicating the pattern twice inline --
-  # LIST passes "X", SET passes "ITEM".
+  # LIST passes the nonterminal reference "X", SET passes setItem's
+  # expression directly (see below).
   #
   # Cut on the repetition body: verified this only changes WHY a trailing
   # comma is rejected (whole star fails outright, vs. plain (e1 e2)*
@@ -45,6 +46,22 @@ let
         ];
       };
     }
+  ];
+
+  # `"name": value`, ITEM's body before it was inlined into SET's
+  # commaSeparated call below (referenced only from there, same lever as
+  # stringFragment/commaSeparated above). Unlike stringFragment, this one
+  # ends up duplicated in the compiled grammar tree -- commaSeparated
+  # uses `item` twice (the head element and the star body) -- but that's
+  # a one-time, position-independent compile cost, not a per-node one:
+  # confirmed directly, this measured a further ~3% RSS reduction on
+  # lock-large.json from removing this one field, byte-identical output.
+  setItem = [
+    "WHITESPACE"
+    "STRING"
+    "WHITESPACE"
+    { lit = ":"; }
+    "X"
   ];
 
   # Rules shared verbatim between the cut and no-cut variants.
@@ -74,17 +91,17 @@ let
     ];
 
     # `opt` lets LIST/SET accept an empty body ("[]"/"{}"). Only ONE
-    # WHITESPACE around the body, not two: X and ITEM both already eat
-    # their own leading and trailing whitespace (X = [WHITESPACE choice
-    # WHITESPACE]; ITEM ends in "X", inheriting X's trailing WHITESPACE
-    # too), so a second WHITESPACE right before "]"/"}" would be
-    # redundant either way -- the last item already ate it if the body
-    # is non-empty, or the first WHITESPACE (kept, since there's no item
-    # to eat the space in "[ ]"/"{ }") already did if it's empty.
-    # Confirmed directly: removing the second WHITESPACE produces
-    # byte-identical output on this repo's lock-large.json, and
-    # "[]"/"[ ]"/"[1,2,3]"/"[1,2,3 ]"/"[ 1,2,3]" (and the SET/nested
-    # equivalents) all still parse correctly.
+    # WHITESPACE around the body, not two: X already eats its own leading
+    # and trailing whitespace (X = [WHITESPACE choice WHITESPACE]), and
+    # setItem ends in "X" so it inherits that trailing WHITESPACE too --
+    # so a second WHITESPACE right before "]"/"}" would be redundant
+    # either way: the last item already ate it if the body is non-empty,
+    # or the first WHITESPACE (kept, since there's no item to eat the
+    # space in "[ ]"/"{ }") already did if it's empty. Confirmed
+    # directly: removing the second WHITESPACE produces byte-identical
+    # output on this repo's lock-large.json, and "[]"/"[ ]"/"[1,2,3]"/
+    # "[1,2,3 ]"/"[ 1,2,3]" (and the SET/nested equivalents) all still
+    # parse correctly.
     LIST = [
       { lit = "["; }
       "WHITESPACE"
@@ -95,15 +112,8 @@ let
     SET = [
       { lit = "{"; }
       "WHITESPACE"
-      { opt = commaSeparated "ITEM"; }
+      { opt = commaSeparated setItem; }
       { lit = "}"; }
-    ];
-    ITEM = [
-      "WHITESPACE"
-      "STRING"
-      "WHITESPACE"
-      { lit = ":"; }
-      "X"
     ];
   };
 
@@ -151,10 +161,6 @@ let
     # [lit fragmentList lit]; concatenate the inlined star's fragments
     # directly (no separate STRING_RAW handler now that it's inlined).
     STRING = v: builtins.concatStringsSep "" (builtins.elemAt v 1);
-    ITEM = v: {
-      name = builtins.elemAt v 1;
-      value = builtins.elemAt v 4;
-    };
     NUMBER = builtins.fromJSON;
     # Real Nix true/false/null, not the literally matched text.
     BOOL = v: v == "true";
@@ -169,13 +175,24 @@ let
       in
       if opt == null then [ ] else [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1);
 
+    # Each raw item is setItem's shape, [WHITESPACE STRING WHITESPACE lit
+    # X] -- no separate ITEM handler runs anymore (it's inlined, not a
+    # nonterminal), so SET pulls name/value out of the raw sequence
+    # itself instead of relying on a pre-transformed {name;value;}.
     SET =
       v:
       let
         opt = builtins.elemAt v 2;
+        toPair = item: {
+          name = builtins.elemAt item 1;
+          value = builtins.elemAt item 4;
+        };
       in
       builtins.listToAttrs (
-        if opt == null then [ ] else [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1)
+        if opt == null then
+          [ ]
+        else
+          [ (toPair (builtins.elemAt opt 0)) ] ++ map (p: toPair (builtins.elemAt p 1)) (builtins.elemAt opt 1)
       );
   };
 
