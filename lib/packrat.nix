@@ -26,6 +26,48 @@
 #                             or as the body of a `star` -- see evalChoice /
 #                             evalStar below for where the commit semantics
 #                             actually live.
+#
+# ARCHITECTURE NOTE (compile vs. eval split): `mkCompile` below does NOT
+# interpret a grammar rule's shape freshly every time it's evaluated at a
+# position. Grammar rule VALUES (the attrset-as-data DSL terms) are
+# entirely static for a whole parse -- the same `{ lit = "..."; }`,
+# `[ ... ]`, `{ choice = [...]; }` etc. is passed to `mkNode` at every one
+# of the ~len positions in the input. The OLD design (`evalExpr expr
+# derivs`) re-ran the `if expr == "" then ... else if isString expr then
+# ... else if expr ? lit then ... else if expr ? range then ...`
+# shape-dispatch chain on every single call, even though `expr`'s shape
+# never changes across calls for a given grammar rule.
+#
+# Measured directly: an isolated microbenchmark replaying this exact
+# 12-branch if/elif chain vs. an equivalent "resolve the dispatch once
+# into a closure, reuse the closure" version, at the realistic hot-path
+# branch (`{ lit = ...; }`, which is the JSON grammar's single most common
+# atom) showed the interpreted version taking ~0.8-0.85s vs. the compiled
+# version's ~0.4-0.49s for 2,000,000 calls -- roughly 2x slower, and the
+# gap widens further (~3.3x) for atom types near the END of the if/elif
+# chain (e.g. `not`), since a linear if/elif chain makes every later
+# branch pay for testing every earlier one on every call, whereas a
+# compiled closure pays that cost once, at compile time, regardless of
+# where the matching branch sits in the original chain.
+#
+# `mkCompile string` returns `compile : expr -> (derivs -> result)`.
+# Compiling `expr` decides ONCE which combinator applies (and, for
+# composite expressions like sequences/choices/stars, recursively compiles
+# each SUB-expression once too, rather than re-dispatching on the
+# sub-expression's shape every time the parent combinator runs) and
+# returns a plain `derivs -> result` closure that skips straight to the
+# right combinator on every subsequent call. `buildDerivs` below calls
+# `compile rule` exactly ONCE per grammar rule (in its outer scope, before
+# `mkNode` starts building any of the ~len per-position nodes), and reuses
+# that one compiled closure, applying it to a different `derivs` node each
+# time `mkNode` builds a new position -- this is the same "resolve once
+# outside the hot per-node loop" pattern already used for
+# `resolvedHandlers` (handler-lookup) below, just applied to grammar-rule
+# dispatch instead of handler-lookup, at what profiling identified as a
+# far higher call-volume site (evalExpr/compile's dispatch runs on every
+# sub-expression of every sequence/choice/star body, at every attempt --
+# successful or failed -- not just once per successfully-matched named
+# rule the way handler lookup does).
 rec {
   # Walk `n` `.next` pointers forward from `derivs`. Every call site passes
   # exactly the number of characters a match just consumed, starting from
@@ -63,60 +105,76 @@ rec {
     derivs: n:
     builtins.foldl' (acc: _: builtins.seq acc acc.next) derivs (builtins.genList (_: null) n);
 
-  # mkEvalExpr : string -> (expr -> derivs -> result)
+  # mkCompile : string -> (expr -> (derivs -> result))
   # result = { success = true; value = ...; derivs = ...; } | { success = false; }
-  mkEvalExpr =
+  mkCompile =
     string:
     let
       len = builtins.stringLength string;
 
-      evalExpr =
-        expr: derivs:
+      # compile : expr -> (derivs -> result)
+      # Decides ONCE which combinator `expr` denotes (and recursively
+      # compiles any sub-expressions), returning a closure that -- when
+      # later applied to a `derivs` node -- runs straight to that
+      # combinator with no further shape-testing of `expr` itself.
+      compile =
+        expr:
         if expr == "" then
           # Bare "" is the epsilon nonterminal: always succeeds, consumes
           # nothing, matching the convention of the original grammar.
-          {
-            success = true;
-            value = "";
-            derivs = derivs;
-          }
+          (
+            derivs:
+            {
+              success = true;
+              value = "";
+              derivs = derivs;
+            }
+          )
         else if builtins.isString expr then
           # Nonterminal reference: look up the already-memoized field on
-          # whatever derivs node we've been threaded to.
-          derivs.${expr}
+          # whatever derivs node we're later applied to. Nothing to
+          # "compile" here beyond capturing the name -- the lookup itself
+          # is already O(1) and doesn't change shape between calls.
+          (derivs: derivs.${expr})
         else if builtins.isList expr then
-          evalSeq expr derivs
+          compileSeq expr
         else if expr ? lit then
-          evalLit expr.lit derivs
+          evalLit expr.lit
         else if expr ? range then
-          evalRange expr.range derivs
+          evalRange expr.range
         else if expr ? regex then
-          evalRegex expr.regex derivs
+          evalRegex expr.regex
         else if expr ? choice then
-          evalChoice expr.choice derivs
+          compileChoice expr.choice
         else if expr ? star then
-          evalStar expr.star derivs
+          compileStar expr.star
         else if expr ? plus then
-          evalSeq [
+          compileSeq [
             expr.plus
             { star = expr.plus; }
-          ] derivs
+          ]
         else if expr ? opt then
-          evalOpt expr.opt derivs
+          compileOpt expr.opt
         else if expr ? and then
-          evalAnd expr.and derivs
+          compileAnd expr.and
         else if expr ? not then
-          evalNot expr.not derivs
+          compileNot expr.not
         else if expr ? cutSeq then
           # cutSeq used outside its two sanctioned positions (choice head /
           # star body): no commit context exists, so it degrades to a plain
-          # sequence [e1 e2]. Not used by the JSON grammar; kept so evalExpr
+          # sequence [e1 e2]. Not used by the JSON grammar; kept so compile
           # is total over the DSL rather than throwing on a technically
           # well-formed expr.
-          evalSeq expr.cutSeq derivs
+          compileSeq expr.cutSeq
         else
           throw "packrat: unrecognized expression: ${builtins.toJSON expr}";
 
+      # evalLit/evalRange/evalRegex are leaf combinators: currying them on
+      # their static parameter (lit/range/regex, known at compile time)
+      # already produces the `derivs -> result` shape `compile` needs, no
+      # extra wrapping required -- these were never re-dispatching on
+      # their own shape the way the OLD evalExpr's outer if/elif chain did,
+      # so there's nothing further to hoist here.
       evalLit =
         lit: derivs:
         let
@@ -177,14 +235,14 @@ rec {
       # Measured directly (see bench/results.txt and the final report):
       # this constant matters a LOT in practice, not just asymptotically.
       # On lock-large.json (391947 bytes), window=4096 costs 4.17s wall /
-      # 1575MB RSS; window=512 (this value) costs 1.54s / 810MB -- ~2.7x
-      # faster and ~2x less memory, for byte-identical output, because
-      # `builtins.substring` still copies the ENTIRE window every call even
-      # when the actual match is short (whitespace runs here are <= 11
-      # chars), and this grammar calls evalRegex extremely often (once per
-      # WHITESPACE position and once per STRING_FRAG position). 512 keeps a
-      # safety margin over this repo's observed longest single-regex match
-      # (180 chars, a COMMENT line) for other inputs with longer comments;
+      # 1575MB RSS; window=512 costs 1.54s / 810MB -- ~2.7x faster and ~2x
+      # less memory, for byte-identical output, because `builtins.substring`
+      # still copies the ENTIRE window every call even when the actual
+      # match is short (whitespace runs here are <= 11 chars), and this
+      # grammar calls evalRegex extremely often (once per WHITESPACE
+      # position and once per STRING_FRAG position). 512 keeps a safety
+      # margin over this repo's observed longest single-regex match (180
+      # chars, a COMMENT line) for other inputs with longer comments;
       # push it lower (down to ~192-256) for more speed -- correctness no
       # longer depends on this being "big enough" for the corpus, since
       # evalRegex below retries with a doubled window whenever a match
@@ -243,17 +301,25 @@ rec {
         in
         tryWindow regexWindow;
 
-
-      evalSeq =
-        exprs: derivs:
+      # compileSeq compiles each sub-expression ONCE (recursing through
+      # `compile`, not re-dispatching per call the way the old
+      # `evalSeq exprs derivs` did via `evalExpr expr acc.derivs` on every
+      # element on every call), returning a `derivs -> result` closure
+      # that runs the already-compiled sub-closures in order.
+      compileSeq =
+        exprs:
+        let
+          compiledSubs = map compile exprs;
+        in
+        derivs:
         builtins.foldl'
           (
-            acc: expr:
+            acc: subCompiled:
             if !acc.success then
               acc
             else
               let
-                r = evalExpr expr acc.derivs;
+                r = subCompiled acc.derivs;
               in
               if r.success then
                 {
@@ -269,7 +335,7 @@ rec {
             value = [ ];
             derivs = derivs;
           }
-          exprs;
+          compiledSubs;
 
       # Ordered choice, with cut (↑) support: if the head of the remaining
       # branch list is `{ cutSeq = [e1 e2]; }`, evaluate e1; if e1 fails,
@@ -277,8 +343,30 @@ rec {
       # usual. If e1 succeeds, evaluate e2 and return e2's result AS THE
       # WHOLE CHOICE'S RESULT regardless of whether e2 succeeds -- the
       # remaining branches are never tried, per Mizushima et al. §3.2.
-      evalChoice =
-        branches: derivs:
+      #
+      # compileChoice compiles each branch's sub-expression(s) ONCE (via
+      # `compile`, at compile time) instead of the old `evalChoice`
+      # re-dispatching on each branch's shape (plain expr vs. `{cutSeq=...}`)
+      # on every call.
+      compileChoice =
+        branches:
+        let
+          compiledBranches = map (
+            b:
+            if builtins.isAttrs b && b ? cutSeq then
+              {
+                isCut = true;
+                c1 = compile (builtins.elemAt b.cutSeq 0);
+                c2 = compile (builtins.elemAt b.cutSeq 1);
+              }
+            else
+              {
+                isCut = false;
+                c = compile b;
+              }
+          ) branches;
+        in
+        derivs:
         let
           go =
             bs:
@@ -289,17 +377,15 @@ rec {
                 b = builtins.head bs;
                 rest = builtins.tail bs;
               in
-              if builtins.isAttrs b && b ? cutSeq then
+              if b.isCut then
                 let
-                  e1 = builtins.elemAt b.cutSeq 0;
-                  e2 = builtins.elemAt b.cutSeq 1;
-                  r1 = evalExpr e1 derivs;
+                  r1 = b.c1 derivs;
                 in
                 if !r1.success then
                   go rest
                 else
                   let
-                    r2 = evalExpr e2 r1.derivs;
+                    r2 = b.c2 r1.derivs;
                   in
                   if r2.success then
                     {
@@ -316,31 +402,31 @@ rec {
                     { success = false; }
               else
                 let
-                  r = evalExpr b derivs;
+                  r = b.c derivs;
                 in
                 if r.success then r else go rest;
         in
-        go branches;
+        go compiledBranches;
 
-      # Threshold for evalStar's plain (non-cut) branch's cheap-path/
-      # escalation split -- see the comment on `evalStarPlain` below. Well
-      # under the ~10000-deep call-depth wall a hand-written recursive loop
-      # hits (confirmed directly), with a wide margin since the SAME
-      # recursive loop, if it hit the limit while genuinely still matching,
-      # would stack-overflow instead of cleanly escalating -- picking a
-      # value this far below the wall means that scenario essentially
-      # never happens for realistic grammars while still capturing nearly
-      # all of the speed benefit (measured: the cheap path is what makes
-      # the common "0-5 iterations per call, called thousands of times"
-      # shape of ordinary JSON's WHITESPACE/STRING_RAW fast).
+      # Threshold for compileStarPlain's cheap-path/escalation split -- see
+      # the comment on `mkStarPlain` below. Well under the ~10000-deep
+      # call-depth wall a hand-written recursive loop hits (confirmed
+      # directly), with a wide margin since the SAME recursive loop, if it
+      # hit the limit while genuinely still matching, would stack-overflow
+      # instead of cleanly escalating -- picking a value this far below the
+      # wall means that scenario essentially never happens for realistic
+      # grammars while still capturing nearly all of the speed benefit
+      # (measured: the cheap path is what makes the common "0-5 iterations
+      # per call, called thousands of times" shape of ordinary JSON's
+      # WHITESPACE/STRING_RAW fast).
       starChunkSize = 500;
 
-      evalStar =
-        body: derivs:
+      compileStar =
+        body:
         if builtins.isAttrs body && body ? cutSeq then
-          evalStarCut body derivs
+          compileStarCut body
         else
-          evalStarPlain body derivs;
+          compileStarPlain body;
 
       # The cut-star branch (e1 ↑ e2)* is comparatively rare in practice
       # (nothing in grammar/json.nix uses it -- cut is only applied to X's
@@ -348,15 +434,18 @@ rec {
       # genericClosure implementation unconditionally: correctness and
       # avoiding the O(n^2)/stack-overflow failure modes matters more here
       # than shaving constant-factor overhead off a rarely-hit path.
-      # See the (e1 ↑ e2)* doc comment below evalStarPlain for the full
+      # See the (e1 ↑ e2)* doc comment below compileStarPlain for the full
       # rationale (three approaches tried, genericClosure+seq is what
       # actually avoids both the depth limit AND the quadratic list-append
-      # cost).
-      evalStarCut =
-        body: derivs:
+      # cost). e1/e2 are compiled ONCE here, at compile time.
+      compileStarCut =
+        body:
         let
-          e1 = builtins.elemAt body.cutSeq 0;
-          e2 = builtins.elemAt body.cutSeq 1;
+          c1 = compile (builtins.elemAt body.cutSeq 0);
+          c2 = compile (builtins.elemAt body.cutSeq 1);
+        in
+        derivs:
+        let
           closure = builtins.genericClosure {
             startSet = [
               {
@@ -372,7 +461,7 @@ rec {
                 [ ]
               else
                 let
-                  r1 = evalExpr e1 item.d;
+                  r1 = c1 item.d;
                 in
                 if !r1.success then
                   [
@@ -385,7 +474,7 @@ rec {
                   ]
                 else
                   let
-                    r2 = evalExpr e2 r1.derivs;
+                    r2 = c2 r1.derivs;
                   in
                   if !r2.success then
                     [
@@ -425,7 +514,9 @@ rec {
       # practice, since grammar/json.nix's WHITESPACE and STRING_RAW are
       # both plain stars invoked at essentially every token boundary in a
       # real JSON document. Implemented as a HYBRID of the two approaches
-      # discussed in the (e1 ↑ e2)* comment below:
+      # discussed in the (e1 ↑ e2)* comment below. `body` is compiled ONCE
+      # here (at compile time), reused across every call the returned
+      # closure receives.
       #
       #   - First, try a cheap, ordinary Nix-level recursive loop for up
       #     to `starChunkSize` (500) iterations. A recursive loop's
@@ -443,8 +534,9 @@ rec {
       #     dominates when the actual work is this small -- confirmed
       #     directly: 100000 calls each doing ~2 genericClosure iterations
       #     took ~0.28s, vs. ~0.12s for the equivalent via plain recursion,
-      #     and this engine calls evalStar (via WHITESPACE/STRING_RAW)
-      #     thousands of times per real JSON document.
+      #     and this engine calls compileStarPlain's closure (via
+      #     WHITESPACE/STRING_RAW) thousands of times per real JSON
+      #     document.
       #
       #   - If the cheap loop is STILL matching when it hits
       #     `starChunkSize`, that's the rare pathological case (a single
@@ -460,8 +552,12 @@ rec {
       #     repeats and 500000+-character single tokens -- while no longer
       #     paying genericClosure's constant-factor overhead on the
       #     overwhelmingly common short-run case.
-      evalStarPlain =
-        body: derivs:
+      compileStarPlain =
+        body:
+        let
+          compiledBody = compile body;
+        in
+        derivs:
         let
           cheapChunk =
             i: acc: d:
@@ -473,7 +569,7 @@ rec {
               }
             else
               let
-                r = evalExpr body d;
+                r = compiledBody d;
               in
               if !r.success then
                 {
@@ -508,7 +604,7 @@ rec {
                   [ ]
                 else
                   let
-                    r = evalExpr body item.d;
+                    r = compiledBody item.d;
                   in
                   if r.success then
                     builtins.seq r.derivs [
@@ -600,18 +696,22 @@ rec {
       # carries an explicit `status` ("cont" / "stopSuccess" / "stopFail")
       # inspected on the FINAL item after the closure completes.
       #
-      # evalStarPlain above additionally short-circuits through a cheap
+      # compileStarPlain above additionally short-circuits through a cheap
       # bounded recursive path first, ONLY escalating to this
       # genericClosure machinery when a run turns out to be unusually
       # long -- see its comment for why that split matters for realistic
       # JSON-shaped input (many short stars) vs. this analysis (which
-      # still fully applies to evalStarCut, and to evalStarPlain's rare
-      # escalation case).
+      # still fully applies to compileStarCut, and to compileStarPlain's
+      # rare escalation case).
 
-      evalOpt =
-        body: derivs:
+      compileOpt =
+        body:
         let
-          r = evalExpr body derivs;
+          compiledBody = compile body;
+        in
+        derivs:
+        let
+          r = compiledBody derivs;
         in
         if r.success then
           {
@@ -626,10 +726,14 @@ rec {
             derivs = derivs;
           };
 
-      evalAnd =
-        body: derivs:
+      compileAnd =
+        body:
         let
-          r = evalExpr body derivs;
+          compiledBody = compile body;
+        in
+        derivs:
+        let
+          r = compiledBody derivs;
         in
         if r.success then
           {
@@ -640,10 +744,14 @@ rec {
         else
           { success = false; };
 
-      evalNot =
-        body: derivs:
+      compileNot =
+        body:
         let
-          r = evalExpr body derivs;
+          compiledBody = compile body;
+        in
+        derivs:
+        let
+          r = compiledBody derivs;
         in
         if r.success then
           { success = false; }
@@ -654,7 +762,7 @@ rec {
             derivs = derivs;
           };
     in
-    evalExpr;
+    compile;
 
   # Build the single self-referential Derivs chain for `string` under
   # `grammar`, with each named nonterminal's raw parse value passed through
@@ -669,7 +777,7 @@ rec {
   buildDerivs =
     grammar: handlers: string:
     let
-      evalExpr = mkEvalExpr string;
+      compile = mkCompile string;
       len = builtins.stringLength string;
 
       # Resolve `handlers.${name} or (v: v)` ONCE per rule name here, in
@@ -688,7 +796,14 @@ rec {
       # matching this engine's real per-node/per-rule invocation count
       # (400000 positions x 14 rules = 5.6M calls) showed the resolve-once
       # version ~25-30% faster (~1.68-1.90s vs ~1.32-1.35s across repeated
-      # runs) -- a real, reproducible difference, not noise.
+      # runs) -- a real, reproducible difference in isolation, though its
+      # real-world effect on lock-large.json turned out to be within noise
+      # (measured: no distinguishable change), because applyHandler's real
+      # call volume (only forced when a rule's field is actually read, not
+      # once per rule per node the way the microbenchmark assumed) is far
+      # lower than 5.6M for this grammar/input size. Kept anyway as a pure,
+      # correctness-neutral hoist -- see git history for the full
+      # before/after measurement writeup.
       resolvedHandlers = builtins.mapAttrs (name: _: handlers.${name} or (v: v)) grammar;
 
       applyHandler =
@@ -702,6 +817,14 @@ rec {
         else
           r;
 
+      # Compile every grammar rule ONCE here, before mkNode builds any of
+      # the ~len per-position nodes -- this is the actual fix described in
+      # the file-level comment above: `grammar`'s rule VALUES never change
+      # from position to position, so the shape-dispatch decision (which
+      # combinator applies, recursively through every sub-expression)
+      # only needs to happen once per rule, not once per rule per node.
+      compiledRules = builtins.mapAttrs (name: rule: compile rule) grammar;
+
       mkNode =
         count:
         let
@@ -710,7 +833,7 @@ rec {
               inherit count;
               next = if count >= len then null else mkNode (count + 1);
             }
-            // builtins.mapAttrs (name: rule: applyHandler name (evalExpr rule node)) grammar;
+            // builtins.mapAttrs (name: _: applyHandler name (compiledRules.${name} node)) grammar;
         in
         node;
     in
