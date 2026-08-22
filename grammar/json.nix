@@ -1,0 +1,193 @@
+# The JSON-with-comments grammar, ported from the original default.nix's
+# embedded grammar, using the new star/opt/cutSeq combinators from
+# lib/packrat.nix instead of hand-rolled right-recursive `choice` chains.
+#
+# Exposes both a `grammarNoCut` variant (Phase 1: top-level `X` is a plain
+# ordered choice) and a `grammar` variant (Phase 2: top-level `X` applies
+# the cut operator to each alternative, since SET/LIST/STRING/NUMBER/
+# BOOL/NULL are first-token-disjoint -- see default.nix / final report for
+# why this is semantically safe here, mirroring the cut paper's AC-FIRST
+# motivating example in §4.2).
+let
+  # Rules shared verbatim between the cut and no-cut variants.
+  common = {
+    WHITESPACE = { star = { regex = "([[:space:]]+)"; }; };
+    NULL = { lit = "null"; };
+    BOOL = {
+      choice = [
+        { lit = "true"; }
+        { lit = "false"; }
+      ];
+    };
+    NUMBER = { regex = "([0-9]+)"; };
+
+    STRING = [
+      { lit = "\""; }
+      "STRING_RAW"
+      { lit = "\""; }
+    ];
+    STRING_FRAG = {
+      choice = [
+        { regex = ''([^\\\"]+)''; }
+        { lit = ''\"''; }
+        { lit = ''\''; }
+      ];
+    };
+    # e* replaces the old hand-rolled right-recursive
+    # choice=[[FRAG RAW] FRAG ""]; the handler (concatStringsSep) works the
+    # same on the flat list `star` produces.
+    STRING_RAW = { star = "STRING_FRAG"; };
+
+    COMMENT = [
+      "WHITESPACE"
+      { lit = "#"; }
+      { regex = "([^\n]+)"; }
+      "WHITESPACE"
+    ];
+
+    # e? lets LIST/SET accept an empty body ("[]"/"{}"), which the original
+    # grammar could not parse at all (its LIST_ITEMS/ITEMS required >= 1
+    # item). This can only add acceptance, never regress anything that
+    # already parsed under the old grammar.
+    LIST = [
+      { lit = "["; }
+      "WHITESPACE"
+      { opt = "LIST_ITEMS"; }
+      "WHITESPACE"
+      { lit = "]"; }
+    ];
+    LIST_ITEMS = [
+      "X"
+      {
+        star = [
+          { lit = ","; }
+          "X"
+        ];
+      }
+    ];
+
+    SET = [
+      { lit = "{"; }
+      "WHITESPACE"
+      { opt = "ITEMS"; }
+      "WHITESPACE"
+      { lit = "}"; }
+    ];
+    ITEMS = [
+      "ITEM"
+      {
+        star = [
+          { lit = ","; }
+          "ITEM"
+        ];
+      }
+    ];
+    ITEM = {
+      choice = [
+        [
+          "WHITESPACE"
+          "STRING"
+          "WHITESPACE"
+          { lit = ":"; }
+          "X"
+        ]
+        [
+          "COMMENT"
+          "STRING"
+          "WHITESPACE"
+          { lit = ":"; }
+          "X"
+        ]
+      ];
+    };
+  };
+
+  xBranches = [
+    "SET"
+    "LIST"
+    "STRING"
+    "NUMBER"
+    "BOOL"
+    "NULL"
+  ];
+
+  grammarNoCut = common // {
+    X = [
+      "WHITESPACE"
+      { choice = xBranches; }
+      "WHITESPACE"
+    ];
+  };
+
+  # Phase 2: cut applied to every branch of the top-level choice. Each
+  # branch becomes `{ cutSeq = [ "<NAME>" ""]; }` -- e1 is the real
+  # sub-parse, e2 is epsilon purely to give the cut something to commit
+  # after. Since the branches are first-token-disjoint ("{", "[", "\"",
+  # digit, "t"/"f", "n"), committing right after e1 succeeds changes no
+  # accept/reject outcome for this grammar; it's here for fidelity to the
+  # task/paper, and Phase 3 measures whether it has any actual effect.
+  grammar = common // {
+    X = [
+      "WHITESPACE"
+      {
+        choice = map (name: { cutSeq = [ name "" ]; }) xBranches;
+      }
+      "WHITESPACE"
+    ];
+  };
+
+  # Handlers shared between both variants; only X's differs (see below),
+  # since the cut variant's inner choice value is wrapped one level deeper
+  # ([branchVal ""] per matched cutSeq branch) than the plain-choice
+  # variant's (branchVal directly).
+  handlersCommon = {
+    WHITESPACE = v: builtins.concatStringsSep "" v;
+    STRING_RAW = v: builtins.concatStringsSep "" v;
+    STRING = v: {
+      string = builtins.elemAt v 1;
+    };
+    ITEM = v: {
+      name = (builtins.elemAt v 1).string;
+      value = builtins.elemAt v 4;
+    };
+    NUMBER = builtins.fromJSON;
+
+    LIST =
+      v:
+      let
+        opt = builtins.elemAt v 2;
+      in
+      if opt == null then [ ] else [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1);
+
+    SET =
+      v:
+      let
+        opt = builtins.elemAt v 2;
+        items =
+          if opt == null then
+            [ ]
+          else
+            [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1);
+      in
+      builtins.listToAttrs items;
+  };
+
+  handlersNoCut = handlersCommon // {
+    X = v: builtins.elemAt v 1;
+  };
+
+  handlers = handlersCommon // {
+    # Inner choice value for the cut variant is [branchVal ""] (from the
+    # matched cutSeq's [e1val e2val]); unwrap one more level than the
+    # no-cut variant.
+    X = v: builtins.elemAt (builtins.elemAt v 1) 0;
+  };
+in
+{
+  inherit
+    grammarNoCut
+    grammar
+    handlersNoCut
+    handlers
+    ;
+}
