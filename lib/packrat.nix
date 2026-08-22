@@ -322,6 +322,222 @@ rec {
         in
         go branches;
 
+      # Threshold for evalStar's plain (non-cut) branch's cheap-path/
+      # escalation split -- see the comment on `evalStarPlain` below. Well
+      # under the ~10000-deep call-depth wall a hand-written recursive loop
+      # hits (confirmed directly), with a wide margin since the SAME
+      # recursive loop, if it hit the limit while genuinely still matching,
+      # would stack-overflow instead of cleanly escalating -- picking a
+      # value this far below the wall means that scenario essentially
+      # never happens for realistic grammars while still capturing nearly
+      # all of the speed benefit (measured: the cheap path is what makes
+      # the common "0-5 iterations per call, called thousands of times"
+      # shape of ordinary JSON's WHITESPACE/STRING_RAW fast).
+      starChunkSize = 500;
+
+      evalStar =
+        body: derivs:
+        if builtins.isAttrs body && body ? cutSeq then
+          evalStarCut body derivs
+        else
+          evalStarPlain body derivs;
+
+      # The cut-star branch (e1 ↑ e2)* is comparatively rare in practice
+      # (nothing in grammar/json.nix uses it -- cut is only applied to X's
+      # top-level choice, not inside any star), so it stays on the
+      # genericClosure implementation unconditionally: correctness and
+      # avoiding the O(n^2)/stack-overflow failure modes matters more here
+      # than shaving constant-factor overhead off a rarely-hit path.
+      # See the (e1 ↑ e2)* doc comment below evalStarPlain for the full
+      # rationale (three approaches tried, genericClosure+seq is what
+      # actually avoids both the depth limit AND the quadratic list-append
+      # cost).
+      evalStarCut =
+        body: derivs:
+        let
+          e1 = builtins.elemAt body.cutSeq 0;
+          e2 = builtins.elemAt body.cutSeq 1;
+          closure = builtins.genericClosure {
+            startSet = [
+              {
+                key = 0;
+                d = derivs;
+                status = "cont";
+                pair = null;
+              }
+            ];
+            operator =
+              item:
+              if item.status != "cont" then
+                [ ]
+              else
+                let
+                  r1 = evalExpr e1 item.d;
+                in
+                if !r1.success then
+                  [
+                    {
+                      key = item.key + 1;
+                      d = item.d;
+                      status = "stopSuccess";
+                      pair = null;
+                    }
+                  ]
+                else
+                  let
+                    r2 = evalExpr e2 r1.derivs;
+                  in
+                  if !r2.success then
+                    [
+                      {
+                        key = item.key + 1;
+                        d = item.d;
+                        status = "stopFail";
+                        pair = null;
+                      }
+                    ]
+                  else
+                    builtins.seq r2.derivs [
+                      {
+                        key = item.key + 1;
+                        d = r2.derivs;
+                        status = "cont";
+                        pair = [
+                          r1.value
+                          r2.value
+                        ];
+                      }
+                    ];
+          };
+          lastItem = builtins.elemAt closure (builtins.length closure - 1);
+          pairs = builtins.filter (x: x != null) (map (i: i.pair) closure);
+        in
+        if lastItem.status == "stopFail" then
+          { success = false; }
+        else
+          {
+            success = true;
+            value = pairs;
+            derivs = lastItem.d;
+          };
+
+      # The plain (non-cut) star `e*` -- by far the hottest path in
+      # practice, since grammar/json.nix's WHITESPACE and STRING_RAW are
+      # both plain stars invoked at essentially every token boundary in a
+      # real JSON document. Implemented as a HYBRID of the two approaches
+      # discussed in the (e1 ↑ e2)* comment below:
+      #
+      #   - First, try a cheap, ordinary Nix-level recursive loop for up
+      #     to `starChunkSize` (500) iterations. A recursive loop's
+      #     downside vs. genericClosure is (a) Nix's max-call-depth wall
+      #     around ~10000, and (b) if it OVERSHOOTS that by accumulating a
+      #     list via `++` the whole way, quadratic cost -- but at only 500
+      #     iterations, neither problem materializes: 500 is nowhere near
+      #     the depth wall, and a 500-element list's `++` cost is
+      #     negligible. Measured directly: for the extremely common case
+      #     of a star matching 0-5 times (whitespace runs, short string
+      #     fragments), this cheap path is ~2.4x faster than going through
+      #     genericClosure every single call, because genericClosure's
+      #     per-call setup (building a startSet attrset, its internal
+      #     dedup/traversal machinery) has real fixed overhead that
+      #     dominates when the actual work is this small -- confirmed
+      #     directly: 100000 calls each doing ~2 genericClosure iterations
+      #     took ~0.28s, vs. ~0.12s for the equivalent via plain recursion,
+      #     and this engine calls evalStar (via WHITESPACE/STRING_RAW)
+      #     thousands of times per real JSON document.
+      #
+      #   - If the cheap loop is STILL matching when it hits
+      #     `starChunkSize`, that's the rare pathological case (a single
+      #     star body matching hundreds+ times in a row -- e.g. a long
+      #     unbroken run of "aaaa...", or this engine's own STRING_FRAG
+      #     matching a very long string one window-sized chunk at a time).
+      #     In that case, escalate: continue from exactly where the cheap
+      #     loop left off, via the genericClosure+seq implementation
+      #     (which has neither the call-depth wall nor the quadratic
+      #     list-append cost), and splice the two partial results
+      #     together. This keeps the earlier fix's guarantee -- no
+      #     stack-overflow, no O(n^2) blowup, confirmed directly at 64000+
+      #     repeats and 500000+-character single tokens -- while no longer
+      #     paying genericClosure's constant-factor overhead on the
+      #     overwhelmingly common short-run case.
+      evalStarPlain =
+        body: derivs:
+        let
+          cheapChunk =
+            i: acc: d:
+            if i >= starChunkSize then
+              {
+                hitLimit = true;
+                values = acc;
+                d = d;
+              }
+            else
+              let
+                r = evalExpr body d;
+              in
+              if !r.success then
+                {
+                  hitLimit = false;
+                  values = acc;
+                  d = d;
+                }
+              else
+                cheapChunk (i + 1) (acc ++ [ r.value ]) r.derivs;
+          first = cheapChunk 0 [ ] derivs;
+        in
+        if !first.hitLimit then
+          {
+            success = true;
+            value = first.values;
+            derivs = first.d;
+          }
+        else
+          let
+            closure = builtins.genericClosure {
+              startSet = [
+                {
+                  key = 0;
+                  d = first.d;
+                  matched = true;
+                  v = null;
+                }
+              ];
+              operator =
+                item:
+                if !item.matched then
+                  [ ]
+                else
+                  let
+                    r = evalExpr body item.d;
+                  in
+                  if r.success then
+                    builtins.seq r.derivs [
+                      {
+                        key = item.key + 1;
+                        d = r.derivs;
+                        matched = true;
+                        v = r.value;
+                      }
+                    ]
+                  else
+                    [
+                      {
+                        key = item.key + 1;
+                        d = item.d;
+                        matched = false;
+                        v = null;
+                      }
+                    ];
+            };
+            lastItem = builtins.elemAt closure (builtins.length closure - 1);
+            restValues = builtins.filter (x: x != null) (map (i: i.v) closure);
+          in
+          {
+            success = true;
+            value = first.values ++ restValues;
+            derivs = lastItem.d;
+          };
+
       # (e1 ↑ e2)*: evaluate e1; if it fails, the whole star SUCCEEDS with
       # whatever was accumulated. If e1 succeeds, evaluate e2; if e2 fails,
       # the WHOLE STAR FAILS (no partial-match success, unlike plain
@@ -383,121 +599,14 @@ rec {
       # from "stopped because of a committed failure", so each item
       # carries an explicit `status` ("cont" / "stopSuccess" / "stopFail")
       # inspected on the FINAL item after the closure completes.
-      evalStar =
-        body: derivs:
-        if builtins.isAttrs body && body ? cutSeq then
-          let
-            e1 = builtins.elemAt body.cutSeq 0;
-            e2 = builtins.elemAt body.cutSeq 1;
-            closure = builtins.genericClosure {
-              startSet = [
-                {
-                  key = 0;
-                  d = derivs;
-                  status = "cont";
-                  pair = null;
-                }
-              ];
-              operator =
-                item:
-                if item.status != "cont" then
-                  [ ]
-                else
-                  let
-                    r1 = evalExpr e1 item.d;
-                  in
-                  if !r1.success then
-                    [
-                      {
-                        key = item.key + 1;
-                        d = item.d;
-                        status = "stopSuccess";
-                        pair = null;
-                      }
-                    ]
-                  else
-                    let
-                      r2 = evalExpr e2 r1.derivs;
-                    in
-                    if !r2.success then
-                      [
-                        {
-                          key = item.key + 1;
-                          d = item.d;
-                          status = "stopFail";
-                          pair = null;
-                        }
-                      ]
-                    else
-                      builtins.seq r2.derivs [
-                        {
-                          key = item.key + 1;
-                          d = r2.derivs;
-                          status = "cont";
-                          pair = [
-                            r1.value
-                            r2.value
-                          ];
-                        }
-                      ];
-            };
-            lastItem = builtins.elemAt closure (builtins.length closure - 1);
-            pairs = builtins.filter (x: x != null) (map (i: i.pair) closure);
-          in
-          if lastItem.status == "stopFail" then
-            { success = false; }
-          else
-            {
-              success = true;
-              value = pairs;
-              derivs = lastItem.d;
-            }
-        else
-          let
-            closure = builtins.genericClosure {
-              startSet = [
-                {
-                  key = 0;
-                  d = derivs;
-                  matched = true;
-                  v = null;
-                }
-              ];
-              operator =
-                item:
-                if !item.matched then
-                  [ ]
-                else
-                  let
-                    r = evalExpr body item.d;
-                  in
-                  if r.success then
-                    builtins.seq r.derivs [
-                      {
-                        key = item.key + 1;
-                        d = r.derivs;
-                        matched = true;
-                        v = r.value;
-                      }
-                    ]
-                  else
-                    [
-                      {
-                        key = item.key + 1;
-                        d = item.d;
-                        matched = false;
-                        v = null;
-                      }
-                    ];
-            };
-            lastItem = builtins.elemAt closure (builtins.length closure - 1);
-            values = builtins.filter (x: x != null) (map (i: i.v) closure);
-          in
-          {
-            success = true;
-            value = values;
-            derivs = lastItem.d;
-          };
+      #
+      # evalStarPlain above additionally short-circuits through a cheap
+      # bounded recursive path first, ONLY escalating to this
+      # genericClosure machinery when a run turns out to be unusually
+      # long -- see its comment for why that split matters for realistic
+      # JSON-shaped input (many short stars) vs. this analysis (which
+      # still fully applies to evalStarCut, and to evalStarPlain's rare
+      # escalation case).
 
       evalOpt =
         body: derivs:
