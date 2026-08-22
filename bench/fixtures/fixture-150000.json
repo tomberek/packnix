@@ -1,0 +1,4674 @@
+{
+  "nodes": {
+    "AndurilSim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786999730,
+        "narHash": "sha256-dtmYFIX6+WSP++tOJj8pHmgE1+Debp22XN/NRJ2BYyQ=",
+        "ref": "refs/tags/0.48.5",
+        "rev": "c88be2793cf56bfe5fdbc13ad92c21125692c86c",
+        "revCount": 5557,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/AndurilSim"
+      },
+      "original": {
+        "ref": "refs/tags/0.48.5",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/AndurilSim"
+      }
+    },
+    "abandonware-cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1765209401,
+        "narHash": "sha256-ySZjUUGELDmGumOX3jlQOF0tY1MT+EbqNfzwlmL//Ik=",
+        "ref": "master",
+        "rev": "e2a00d33d18829e3295a97a8ed6a3f22188856ad",
+        "revCount": 54,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/abandonware-cpp"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/abandonware-cpp"
+      }
+    },
+    "adsb": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1770163414,
+        "narHash": "sha256-UewbaFCa/HOELG7VeKEYyitThkX1HNp/iczV8ALvK1g=",
+        "ref": "refs/tags/3.1.6",
+        "rev": "5fa000d29534c04f1cd347451f1d6d93512ba4b5",
+        "revCount": 50,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/adsb"
+      },
+      "original": {
+        "ref": "refs/tags/3.1.6",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/adsb"
+      }
+    },
+    "adsb-track-publisherd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779214248,
+        "narHash": "sha256-TjQP5uCgSQ1UnGXHiT4P4xzhgUNWJCXr76I9vAp/owk=",
+        "ref": "master",
+        "rev": "0cd4814934be418f19db92b5236fc81589e5ef64",
+        "revCount": 7,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/adsb-track-publisher"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/adsb-track-publisher"
+      }
+    },
+    "aerial-plugins": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779900104,
+        "narHash": "sha256-FgVvUjryvQgBT5tQOOnGbOcdWl+oUN02257cM0a7m38=",
+        "ref": "refs/heads/master",
+        "rev": "270e892bf4766352a32495b0daa19db0e72f1272",
+        "shallow": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aerial-plugins"
+      },
+      "original": {
+        "shallow": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aerial-plugins"
+      }
+    },
+    "aerial-sensor-library": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1738604979,
+        "narHash": "sha256-maxJGPWL/KfWMvZY2YRpkQxHRsnQbgVkN+zXB7fsA+U=",
+        "ref": "refs/heads/master",
+        "rev": "c53bc20e10482ea832fc0fac0253b5528f5afcd6",
+        "revCount": 18,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aerial-sensor-library"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aerial-sensor-library"
+      }
+    },
+    "aeroscoped": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1710198761,
+        "narHash": "sha256-3byDxopfG8ouf7tc6D+ju/B74J4pm/ePKjoEEUWmbwg=",
+        "ref": "refs/heads/master",
+        "rev": "daa3242bbd2b4595778205a6bcff7f90d91b0a0f",
+        "revCount": 54,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aeroscoped"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aeroscoped"
+      }
+    },
+    "aerovironment-apis": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1762970398,
+        "narHash": "sha256-96FHVLM1q8n2atM6syZzi6SyJidTYBZo1BgxuoZsAXQ=",
+        "ref": "master",
+        "rev": "d0241e17418e4bf7b4207b63aef0dd81ebfc805d",
+        "revCount": 11,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aerovironment-apis"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "d0241e17418e4bf7b4207b63aef0dd81ebfc805d",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aerovironment-apis"
+      }
+    },
+    "aeson-better-errors": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1715644133,
+        "narHash": "sha256-wcaY0+B6fqkhgjS07Apb8H5lizhJDmviF2nTDa9jm+U=",
+        "ref": "master",
+        "rev": "5828617859b6733a9fdcf8fc963994e4a3bcc981",
+        "revCount": 66,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/cbarlow/aeson-better-errors"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "5828617859b6733a9fdcf8fc963994e4a3bcc981",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/cbarlow/aeson-better-errors"
+      }
+    },
+    "agentsim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780504409,
+        "narHash": "sha256-6SjmCbuZmesuwPlX1W3IIa+bYVVmKtuRT6IGkdTS35g=",
+        "ref": "master",
+        "rev": "a2220a1d331fedf359e9a9e9e418c489c7170171",
+        "revCount": 1983,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/agentsim"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "a2220a1d331fedf359e9a9e9e418c489c7170171",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/agentsim"
+      }
+    },
+    "ai-derive": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1696614786,
+        "narHash": "sha256-/LCS0dVbbjHHzjYHWcvbmjJtt5JuYstQAw0PJ8yhF+0=",
+        "ref": "refs/heads/master",
+        "rev": "0a03c309bcffb7578c06bcc9c71956c3cdb27ea1",
+        "revCount": 17,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/bcape/ai-derive.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/bcape/ai-derive.git"
+      }
+    },
+    "ai_bazel": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782767173,
+        "narHash": "sha256-l13cISaqODOu4dlS9umtK9mxKZt6Z4m3ucuG5qqj7kU=",
+        "ref": "refs/heads/master",
+        "rev": "ccb90d8877ab4160158347dca5babbf2e1c4b137",
+        "revCount": 139,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/ai_bazel"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "ccb90d8877ab4160158347dca5babbf2e1c4b137",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/ai_bazel"
+      }
+    },
+    "aic2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780363399,
+        "narHash": "sha256-f3CRTGaF8MHphJcrYzS0ivAa25J2V5EN7lmjRyRJgR8=",
+        "ref": "master",
+        "rev": "e4c04c20ba961dcf30d0ec146d6947eac4790bec",
+        "revCount": 246,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aic2"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aic2"
+      }
+    },
+    "aicv": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787094836,
+        "narHash": "sha256-RI00/apVWwMNFAOZvXAtd1HuLO/z0Cbd5g3atfcmOOo=",
+        "ref": "refs/heads/master",
+        "rev": "db9d789faba54d3aa452747d6fbb454c5d697b3f",
+        "revCount": 520,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/aicv"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "db9d789faba54d3aa452747d6fbb454c5d697b3f",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/aicv"
+      }
+    },
+    "aifcs_guidance_wrapper": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786638850,
+        "narHash": "sha256-IOxRn1o6E2s+NWysKzzwLpouLNlNVQaRKKDjY/U7DUY=",
+        "ref": "refs/heads/master",
+        "rev": "9efd91fbbc932329786e3e09cb62e880c344373f",
+        "revCount": 47,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aifcs_guidance_wrapper"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "9efd91fbbc932329786e3e09cb62e880c344373f",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aifcs_guidance_wrapper"
+      }
+    },
+    "aik-shim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1704994324,
+        "narHash": "sha256-q1PBc2RgiHMG2arFLGDsoaTaZrYAwRqXg7iJDtd8/8s=",
+        "ref": "master",
+        "rev": "e605de88a78a4079963101e6b43a4c3bb15f95e4",
+        "revCount": 14,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aik-shim"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "e605de88a78a4079963101e6b43a4c3bb15f95e4",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aik-shim"
+      }
+    },
+    "aimavlink-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787080909,
+        "narHash": "sha256-xvkrIwkBaF4utSX07T51Lpm0usC9qoAIiDfHllffL48=",
+        "ref": "refs/heads/master",
+        "rev": "912588f1eccc0dafeaa0c7f55d3e854d7479a496",
+        "revCount": 3893,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aimavlink"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "912588f1eccc0dafeaa0c7f55d3e854d7479a496",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aimavlink"
+      }
+    },
+    "ainstein-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1714655590,
+        "narHash": "sha256-S+54eRLCFmzTpupaaEqJGmm/RhJnNNi5HLMZ4g4ieiU=",
+        "ref": "refs/heads/main",
+        "rev": "488e103958700be129a5dd2dd598694ded788cb6",
+        "revCount": 3,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ainstein-rs"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ainstein-rs"
+      }
+    },
+    "aisd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1763663484,
+        "narHash": "sha256-unEvAP6R4uu90eJTt1dm6+ffk8ZgHdy842vyBgwWyWE=",
+        "ref": "refs/heads/master",
+        "rev": "39f3016dc2196e2e143c10634717d7ea2b39d7f3",
+        "revCount": 34,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aisd"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aisd"
+      }
+    },
+    "aivbus-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1678833940,
+        "narHash": "sha256-qxR5hlgWRY9fBk6B+68v5OcXNQSgyThyfwnjW6Law+E=",
+        "ref": "refs/heads/master",
+        "rev": "253fba10b38a076920ef001467b3417776fa6826",
+        "revCount": 36,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aivbus-rs"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aivbus-rs"
+      }
+    },
+    "aivideo": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787073385,
+        "narHash": "sha256-HOPsS3C5hzIEtbNPnUMkya20YLvzL5Tbq3Mb/KYfxDk=",
+        "ref": "refs/heads/master",
+        "rev": "e6276ade9ad1d87eb790a7052d1a20cc5eb31693",
+        "revCount": 4951,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aivideo"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aivideo"
+      }
+    },
+    "anduin": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787101027,
+        "narHash": "sha256-6pLHHaNdS+Ri32qMlQ782EiRDIH8iG6oxfWWyQkaNuI=",
+        "ref": "refs/tags/v2.26.0",
+        "rev": "828eaae1931470609cb8dd179992eda671e3c8c3",
+        "revCount": 115,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/anduin"
+      },
+      "original": {
+        "ref": "refs/tags/v2.26.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/anduin"
+      }
+    },
+    "anduril-chrony": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1741469414,
+        "narHash": "sha256-26iQNL5XqOwUpjhQsK3koGeYa7GQSYFAZbP+VTu11sg=",
+        "ref": "refs/heads/master",
+        "rev": "97267d9468b04092b145f75e2c03a70fd426b402",
+        "revCount": 52,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduril-chrony"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduril-chrony"
+      }
+    },
+    "anduril-cmake-utils": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1734728212,
+        "narHash": "sha256-Z9OxTGYehgcYKUupmGgfJJm9x7pYMD88jmNdBqu/ZY4=",
+        "ref": "dev",
+        "rev": "39ef7e17d9f511a72777bab0773c53847d553324",
+        "revCount": 10,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduril-cmake-utils"
+      },
+      "original": {
+        "ref": "dev",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduril-cmake-utils"
+      }
+    },
+    "anduril-sim-plugin-trilliumd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1756430635,
+        "narHash": "sha256-UbkrVQk/i1yCALC3xv8RtvY4bcdcSC07vkE5QYulaPA=",
+        "ref": "refs/heads/master",
+        "rev": "1dae8b76f4bfda1720566040ea134ee68e79f986",
+        "revCount": 32,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduril-sim-plugin-trilliumd"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduril-sim-plugin-trilliumd"
+      }
+    },
+    "anduril-sim-taskable-agent": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1775240771,
+        "narHash": "sha256-9tsbBd2OnlwsQbo9WHeDf+y4HDaNMncOaMY76CGOG5c=",
+        "ref": "refs/heads/master",
+        "rev": "b024f635d9f69fb351c6988c9148059bd61dae24",
+        "revCount": 14,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduril-sim-taskable-agent"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "b024f635d9f69fb351c6988c9148059bd61dae24",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduril-sim-taskable-agent"
+      }
+    },
+    "andurilapis": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787063482,
+        "narHash": "sha256-00lgBkcwMlCWlgGxwAMXHUDy/Ji32TSzgB8KeXBjunE=",
+        "ref": "refs/heads/master",
+        "rev": "391302fe6cd4f87d3a53602b898e82698610edc8",
+        "revCount": 12453,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilapis"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "391302fe6cd4f87d3a53602b898e82698610edc8",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilapis"
+      }
+    },
+    "andurilapis-haskell-lens": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1722577604,
+        "narHash": "sha256-kYd7Vyfo8lnhC31ZC5drYu04dMqKkR5WGnJo9n86QjI=",
+        "ref": "master",
+        "rev": "85bc6706b31cbd427e9cd56af687c9d11f36bbe2",
+        "shallow": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilapis"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "85bc6706b31cbd427e9cd56af687c9d11f36bbe2",
+        "shallow": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilapis"
+      }
+    },
+    "andurilnetd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780084520,
+        "narHash": "sha256-Ax6HOFICLzgto+2Hbv/FQmT/y3hImR/AwFbHdx8ZZOA=",
+        "ref": "refs/tags/12.2.1",
+        "rev": "39b341cd93105ce7e98c34ca3dfadbf15794b0c8",
+        "revCount": 608,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilnetd"
+      },
+      "original": {
+        "ref": "refs/tags/12.2.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilnetd"
+      }
+    },
+    "andurilsie": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784920008,
+        "narHash": "sha256-7CgG1/nEZc9Kzq6r+nEA019kIflJrOg53mqsYBT2R7M=",
+        "ref": "refs/tags/1.51.3",
+        "rev": "0d0dfc69adef9b6245edb3c749ea0f864733c506",
+        "revCount": 173,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilsie"
+      },
+      "original": {
+        "ref": "refs/tags/1.51.3",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilsie"
+      }
+    },
+    "andurilsim-observers-py": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1733961541,
+        "narHash": "sha256-tzj89fbYiI/vboWI3WmQMME+ea/NP99G9DhmZJMuUfY=",
+        "ref": "refs/heads/master",
+        "rev": "4deedbe43df4f24343d8238ca83c047e01cd43ea",
+        "revCount": 3,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilsim-observers-py"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/andurilsim-observers-py"
+      }
+    },
+    "anduriltest": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787003921,
+        "narHash": "sha256-g/xKhg+V6JLDLAaTcVvS46M/B0zObVtrBXMhJ6Ywy+c=",
+        "ref": "refs/tags/2.69.1",
+        "rev": "2ade8568e9ccbc415a5c7a3aa9e54a4cef19b47e",
+        "revCount": 274,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduriltest"
+      },
+      "original": {
+        "ref": "refs/tags/2.69.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anduriltest"
+      }
+    },
+    "anvil-extract-sd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1749059026,
+        "narHash": "sha256-b2gZioX3JOYeC0AY4f6VVK4E7li4dp5ubrltCvgsLLk=",
+        "ref": "refs/heads/master",
+        "rev": "885f801d81a3732daa41fdbf7e11016a65c5be9b",
+        "revCount": 2,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anvil-extract-sd"
+      },
+      "original": {
+        "rev": "885f801d81a3732daa41fdbf7e11016a65c5be9b",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anvil-extract-sd"
+      }
+    },
+    "anvil-mcap-util": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1749691355,
+        "narHash": "sha256-HDi9tmnSLeVlia21RwtUFtDp6dOElu5qL9MNxcYdok8=",
+        "ref": "refs/heads/master",
+        "rev": "e1c1cda6c1dba698f9dfd56dff27b3a0553ab5d8",
+        "revCount": 7,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anvil-mcap-util"
+      },
+      "original": {
+        "rev": "e1c1cda6c1dba698f9dfd56dff27b3a0553ab5d8",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anvil-mcap-util"
+      }
+    },
+    "anvil_sim_cfg": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1724709027,
+        "narHash": "sha256-imU8XKH5xzf7DfeDyNCZ7c2lLJJY7xy82bsd0eN/BOE=",
+        "ref": "refs/heads/master",
+        "rev": "3bc53a1980532c373f0ff411d1a9a2824118cf51",
+        "revCount": 193,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anvil_sim_cfg"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/anvil_sim_cfg"
+      }
+    },
+    "apium-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782938614,
+        "narHash": "sha256-j5SaLp5tvwJFJird8SJ4DacrNJqTGef9cgkknbxYg/8=",
+        "ref": "master",
+        "rev": "6b4bdb301f15a2382d655c82488bd499a48c0658",
+        "revCount": 55,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/apium-rs"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/apium-rs"
+      }
+    },
+    "appctl": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786737992,
+        "narHash": "sha256-UffoM3wOfFG+6yW8ufWSqSCVy8EMOwXGdLArAR3N09A=",
+        "ref": "refs/tags/v3.160.0",
+        "rev": "dfe9ccaacc14576cf8374d2d258047f41b381405",
+        "revCount": 1124,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/appctl"
+      },
+      "original": {
+        "ref": "refs/tags/v3.160.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/appctl"
+      }
+    },
+    "ardu-tools": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1715892089,
+        "narHash": "sha256-sx9LkS/kB5HOOBigQVxRygDBpqaot0GXU0LUN5qGdV4=",
+        "ref": "master",
+        "rev": "bfc84b656e1f2b40c28eb65623439e4fd7dbbea2",
+        "revCount": 150,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardu-tools"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "bfc84b656e1f2b40c28eb65623439e4fd7dbbea2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardu-tools"
+      }
+    },
+    "ardupilot-bolt": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1758745028,
+        "narHash": "sha256-kyhwvY9VsB21mRI9ELFuLalzSyT3lvWfHkcTpjtlKTs=",
+        "ref": "anduril-4.4.3",
+        "rev": "d75193b40e5680eab818ede1191b3ffea3f2f93a",
+        "revCount": 57480,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-ix"
+      },
+      "original": {
+        "ref": "anduril-4.4.3",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-ix"
+      }
+    },
+    "ardupilot-ix": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1691600951,
+        "narHash": "sha256-BWqe68NUuZmXl7HGUJHhfL3L9wkj0uhx8a4xjshSwkM=",
+        "ref": "refs/tags/2.2",
+        "rev": "e48e61ce98c5160b9f5fe63f4ddaa21a63bbdf34",
+        "revCount": 55130,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-ix"
+      },
+      "original": {
+        "ref": "refs/tags/2.2",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-ix"
+      }
+    },
+    "ardupilot-supervolo": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1758041832,
+        "narHash": "sha256-xHQnhEXBZ9s4uCfM5k0i3XlATNBQ/0UylShhPOQFL7k=",
+        "ref": "ardu-4.6",
+        "rev": "ed3a936f77edffdbb1866c14192e63b5b6dbcee3",
+        "revCount": 41444,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-supervolo"
+      },
+      "original": {
+        "ref": "ardu-4.6",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-supervolo"
+      }
+    },
+    "ardupilot-surrogate-boat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1733184460,
+        "narHash": "sha256-rn9nWEV8ldAFl+zt7+9wOt7WHzLJVoFyHJYbThufECM=",
+        "ref": "surrogate/Boat",
+        "rev": "b2246a2fa1863f54a29dc5365cd90b62934554db",
+        "revCount": 62332,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      },
+      "original": {
+        "ref": "surrogate/Boat",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      }
+    },
+    "ardupilot-surrogate-cpj100": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1710289652,
+        "narHash": "sha256-lE/zTxE704eAL6WfskXIggD5iaXdCyqzpYiy27QbOJw=",
+        "ref": "refs/tags/Cpj100-4.3.3-Surrogate-1.2.0",
+        "rev": "a372ec247fb7f47f20cec7ee2f2eee85609e7d81",
+        "revCount": 55080,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      },
+      "original": {
+        "ref": "refs/tags/Cpj100-4.3.3-Surrogate-1.2.0",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      }
+    },
+    "ardupilot-surrogate-cpj100-sim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1720797841,
+        "narHash": "sha256-MoYJmkw9nuLKJx2RZegPl00Zl8gpyUVDLqLjfqwb3Dk=",
+        "ref": "refs/tags/Cpj100-4.3.3-Surrogate-1.4.0",
+        "rev": "a50c3dd3158e4282a3a32f8ecb7201a8d0cef98f",
+        "revCount": 55082,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      },
+      "original": {
+        "ref": "refs/tags/Cpj100-4.3.3-Surrogate-1.4.0",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      }
+    },
+    "ardupilot-surrogate-heli": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1715568893,
+        "narHash": "sha256-sSy4HHaa1ii0wTbhcVioD9Iks3yaiaCp2LPvBdkIB7o=",
+        "ref": "release/7",
+        "rev": "ff973179128526c8f8be975f8c96fcf16ebd286c",
+        "revCount": 55096,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/ardupilot-ghost"
+      },
+      "original": {
+        "ref": "release/7",
+        "rev": "ff973179128526c8f8be975f8c96fcf16ebd286c",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/ardupilot-ghost"
+      }
+    },
+    "ardupilot-surrogate-plane": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1674177368,
+        "narHash": "sha256-B4Z6GhQy3NF6umwFeIRXxtE0WUZ3+xMn/jlg3JW+3qE=",
+        "ref": "refs/tags/Plane-4.3.3",
+        "rev": "d808133aedc39a650a2492cd01da07a4b76b3df7",
+        "revCount": 55062,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      },
+      "original": {
+        "ref": "refs/tags/Plane-4.3.3",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      }
+    },
+    "ardupilot-surrogate-volanti": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1691530822,
+        "narHash": "sha256-ykOkh8ElXG3mbH+WhTp5TJzphUK3p7DAum/btt4J8WE=",
+        "ref": "refs/tags/Plane-4.3.3-guided-patch",
+        "rev": "57a6d426d8b5fcdd09cb45806d104b3c62afc636",
+        "revCount": 55063,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      },
+      "original": {
+        "ref": "refs/tags/Plane-4.3.3-guided-patch",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ardupilot-surrogate"
+      }
+    },
+    "arduserver": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778196961,
+        "narHash": "sha256-V1o2lflkaYPjg6AWA92XW4CoVb1ZP088IsAD9+p94bw=",
+        "ref": "master",
+        "rev": "d2d4e4b4ce34d4a67130db392c1a50ee2bf9f91a",
+        "revCount": 24,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/arduserver"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "d2d4e4b4ce34d4a67130db392c1a50ee2bf9f91a",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/arduserver"
+      }
+    },
+    "arena-processors": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759248497,
+        "narHash": "sha256-TzrZL1YQxsNsxf7N2yKJBVA+UhIVhLP2xGsDHbZwzAA=",
+        "ref": "master",
+        "rev": "37ac718209e3812fd2b84ed37bd5dc2d951c33f2",
+        "revCount": 7,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/arena-processors"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/arena-processors"
+      }
+    },
+    "argos-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786661716,
+        "narHash": "sha256-3nGL+0Cwj1mKXR//yrOS1Qb8nS0SlN14+GlgNaC8eI0=",
+        "ref": "refs/tags/4.6.2",
+        "rev": "a6cba3e28028e0a98dca8638d061e223335a90c0",
+        "revCount": 235,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/argos-rs"
+      },
+      "original": {
+        "ref": "refs/tags/4.6.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/argos-rs"
+      }
+    },
+    "ark": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1769802514,
+        "narHash": "sha256-fq6AfHHfny60yD5Gqi3LgCwwQLTPVm5UtHJMsVzipvY=",
+        "ref": "master",
+        "rev": "33cb2507c1570d2bad07bc5c290dd0ad775b2f02",
+        "revCount": 758,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ark"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ark"
+      }
+    },
+    "ark-asim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1773092952,
+        "narHash": "sha256-nlmAKUpc5KyTA3EmP1GOMwg40iSKnoo63cKbbMwCAoQ=",
+        "ref": "master",
+        "rev": "168d465cae07075f67a45479e962b4cbf6ca8cf1",
+        "revCount": 47,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ark-asim"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ark-asim"
+      }
+    },
+    "arke": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777869300,
+        "narHash": "sha256-xIa6nx/+R496hVslosyzi8SSn+Pja2S3echuOrXehKE=",
+        "ref": "refs/heads/master",
+        "rev": "2dd479456c0f867e6402effe924aa4ba54f180bb",
+        "revCount": 97,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/arke"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "2dd479456c0f867e6402effe924aa4ba54f180bb",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/arke"
+      }
+    },
+    "asby-internal": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1754489946,
+        "narHash": "sha256-cCEi4kryt2HTQ+HBJ5ssNIYvh8unFerh0ur/YkhCEmg=",
+        "ref": "refs/heads/master",
+        "rev": "86bdbe9a4421abe13ca1ec636035f4fc8996a4bf",
+        "revCount": 26,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/space/asby-internal.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/space/asby-internal.git"
+      }
+    },
+    "aspen": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784217015,
+        "narHash": "sha256-gYG2gyQrWxWMJOfUA2LVPJUI6bdJQo0XwinjioFJK7M=",
+        "ref": "refs/heads/master",
+        "rev": "6541aa34670af41eabdb172372f55cf846090665",
+        "revCount": 21,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aspen"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/aspen"
+      }
+    },
+    "asset-log-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786644609,
+        "narHash": "sha256-rfu6XKwzLSn+dnPw7Kbn+UBB5uX3yiUEYHxlLvONW50=",
+        "ref": "refs/tags/1.26.3",
+        "rev": "d3313c153f7ffbc30937280d43115fa6c3b6275a",
+        "revCount": 120,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/asset-log-rs"
+      },
+      "original": {
+        "ref": "refs/tags/1.26.3",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/asset-log-rs"
+      }
+    },
+    "asset-updater": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787010980,
+        "narHash": "sha256-XyF5v5xA252CGg2xte3LwiwwAYcMBdJy3a70AQugIeU=",
+        "ref": "refs/tags/0.45.0",
+        "rev": "618ae2cfb3a27e389e2b0b2f80b87c76bccb3ef3",
+        "revCount": 119,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/asset-updater"
+      },
+      "original": {
+        "ref": "refs/tags/0.45.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/asset-updater"
+      }
+    },
+    "assetmetadatad": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778186278,
+        "narHash": "sha256-fHHnSc2+R1oJNORqvjMuboZbxwlLvHqcncpq54Y+ahA=",
+        "ref": "refs/tags/4.9.0",
+        "rev": "a15d1cbfde032cd001413e785b90846e6ece652a",
+        "revCount": 45,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/assetmetadatad"
+      },
+      "original": {
+        "ref": "refs/tags/4.9.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/assetmetadatad"
+      }
+    },
+    "asterix-egress": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781209882,
+        "narHash": "sha256-n+TZIE8VBOqSjdezZy4TRfaKLyLCIhetyAJeM7BrfY4=",
+        "ref": "refs/heads/master",
+        "rev": "c3704f8f7a90eb12b76629d255a624e3ed367130",
+        "revCount": 11,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/asterix-egress"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "c3704f8f7a90eb12b76629d255a624e3ed367130",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/asterix-egress"
+      }
+    },
+    "asterix-ingest": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787016030,
+        "narHash": "sha256-XRZ4xeCe5ICVkKKgvbGS+n/GRE3mwgdJilVAN3OfKDQ=",
+        "ref": "refs/tags/v1.22.0",
+        "rev": "1c0c39b1ef5f16cfbabdc6970c69c51e16e39ee2",
+        "revCount": 328,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/asterix-ingest.git"
+      },
+      "original": {
+        "ref": "refs/tags/v1.22.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/asterix-ingest.git"
+      }
+    },
+    "athena": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786392367,
+        "narHash": "sha256-+3TWNh2qWjNONZO3KhC0MTRQuqMvxlUQmF+QnV8RFJY=",
+        "ref": "refs/tags/2608.1.1",
+        "rev": "518d55492721f6530dfb3e2976066ecc058bc4ce",
+        "revCount": 2258,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/athena"
+      },
+      "original": {
+        "ref": "refs/tags/2608.1.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/athena"
+      }
+    },
+    "athena-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786129882,
+        "narHash": "sha256-5yswpFfLFPZgxnC7w21byo61J13uf/kb0H+YHY2Aq40=",
+        "ref": "refs/heads/master",
+        "rev": "6c238b6cf01b285c1d0205d7f40460d9a26eb6bc",
+        "revCount": 103,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/athena-rs"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "6c238b6cf01b285c1d0205d7f40460d9a26eb6bc",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/athena-rs"
+      }
+    },
+    "audit-publisher": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1766009960,
+        "narHash": "sha256-n+9p30zvlcN4VpAl1BXLa6C4pKiCfW3dUk5dssIaJk0=",
+        "ref": "refs/tags/v0.16.3",
+        "rev": "d9b088350f06859498f4733ad498cfb61ead75fb",
+        "revCount": 126,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/audit-publisher"
+      },
+      "original": {
+        "ref": "refs/tags/v0.16.3",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/audit-publisher"
+      }
+    },
+    "auth-manager": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787071080,
+        "narHash": "sha256-mAU10bV1Q2zPorZWZYGQjsLMg6xYu3QYAlwjtQkgm0s=",
+        "ref": "refs/tags/v2.14.0",
+        "rev": "78cf29552bff3ee5fa2eb0aa8159705e12c78d09",
+        "revCount": 763,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/auth-manager"
+      },
+      "original": {
+        "ref": "refs/tags/v2.14.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/auth-manager"
+      }
+    },
+    "authx": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786997969,
+        "narHash": "sha256-9W3YKUTLm9mlTuh8leUjpX4GS4GRE/dbLYDX+pri8z4=",
+        "ref": "refs/tags/v8.90.41",
+        "rev": "5f8d66941bd21f73fe69faa8cf526354c3b7abfe",
+        "revCount": 2033,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/authx"
+      },
+      "original": {
+        "ref": "refs/tags/v8.90.41",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/authx"
+      }
+    },
+    "auto-capd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786918067,
+        "narHash": "sha256-i5WtyjpgJfrisy6a+DBtRj4VmTBwX4LDScQRvdVylNw=",
+        "ref": "refs/heads/master",
+        "rev": "1b98dee524d14be6a292bf6f78409ff8942bad84",
+        "revCount": 130,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/auto-capd"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "1b98dee524d14be6a292bf6f78409ff8942bad84",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/auto-capd"
+      }
+    },
+    "autonomy-boomerang": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1763071750,
+        "narHash": "sha256-AgV6B2kQPkwg3L40b4nJGLocVli2gdCwL4Vev6237ic=",
+        "ref": "refs/heads/master",
+        "rev": "808852e000b9f20fe1d779a5324eedcff97cf8bb",
+        "revCount": 155,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-boomerang"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-boomerang"
+      }
+    },
+    "autonomy-core": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781193640,
+        "narHash": "sha256-7TWqKEMtObZXiEZ2O73V/phacnqKgwXDODpMArFARNs=",
+        "ref": "refs/heads/master",
+        "rev": "c4702b69525a3afad29163e5ba9cda587f799637",
+        "revCount": 170,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-core"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "c4702b69525a3afad29163e5ba9cda587f799637",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-core"
+      }
+    },
+    "autonomy-core-plugins": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776820897,
+        "narHash": "sha256-vp0F9/zpCpwZXOb+2cf7K09dcOTeniHYctroZDj+X6s=",
+        "ref": "master",
+        "rev": "7d70c754010608390ac87a9b764e32649695a475",
+        "revCount": 63,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-core-plugins"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "7d70c754010608390ac87a9b764e32649695a475",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-core-plugins"
+      }
+    },
+    "autonomy-example": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787098796,
+        "narHash": "sha256-MIeBF1oT97vribwz+v4ryvkpehMviuwltPlEQELaXj8=",
+        "ref": "refs/heads/master",
+        "rev": "f413c968752c045e52830bcac8c7bc165342582b",
+        "revCount": 283,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/autonomy-example"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "f413c968752c045e52830bcac8c7bc165342582b",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/autonomy-example"
+      }
+    },
+    "autonomy-ground": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1730742772,
+        "narHash": "sha256-xkndeSs1lyM9ujJLNqvevnFrleiwx3UGvVJ4+CswZac=",
+        "ref": "refs/heads/master",
+        "rev": "0b47eddc537e569942214ad4286006dd17e61409",
+        "revCount": 42,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-ground"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-ground"
+      }
+    },
+    "autonomy-grouping": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755032818,
+        "narHash": "sha256-PDM2sswkb/AJrQhwlfsnJlaky631jb/r2DnWN/ATom4=",
+        "ref": "master",
+        "rev": "35c389152772b2c285ed81a62aefd16da177065f",
+        "revCount": 10,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-grouping"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-grouping"
+      }
+    },
+    "autonomy-lsp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1752611341,
+        "narHash": "sha256-SufnDzbTO/EN3S5GMTznD8Vmux8l4dy9uIyEml3AOMI=",
+        "ref": "refs/heads/master",
+        "rev": "a1839ec737e18c9d86e114792db87ec11530efd0",
+        "revCount": 44,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-lsp"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-lsp"
+      }
+    },
+    "autonomy-maritime-product": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786391418,
+        "narHash": "sha256-QIfSvl7TPhtQMpum31WCRDIlv+50BlFjvJ83t7je+P0=",
+        "ref": "refs/heads/master",
+        "rev": "1961cb358839e86cb8323a31899f8cc394e0bebd",
+        "revCount": 40,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-maritime-product"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "1961cb358839e86cb8323a31899f8cc394e0bebd",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-maritime-product"
+      }
+    },
+    "autonomy-mass-effects": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786671005,
+        "narHash": "sha256-VcnvJgUDuSWmHlQA8iX1JwnFOdxVtGiMy3zuKEDhWdI=",
+        "ref": "refs/heads/master",
+        "rev": "9edb651f22e0676956f4d13833f1f25aa2d12466",
+        "revCount": 1569,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-mass-effects"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "9edb651f22e0676956f4d13833f1f25aa2d12466",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-mass-effects"
+      }
+    },
+    "autonomy-md": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786455991,
+        "narHash": "sha256-jj9420gNj7ED509ZKS+d+UtsNkdXobTiPgc9/yCuRsQ=",
+        "ref": "refs/heads/main",
+        "rev": "131ef9e4315f68ef3fd085b275bfe40fbace0dad",
+        "revCount": 1244,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-md"
+      },
+      "original": {
+        "ref": "refs/heads/main",
+        "rev": "131ef9e4315f68ef3fd085b275bfe40fbace0dad",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-md"
+      }
+    },
+    "autonomy-metrics": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780950845,
+        "narHash": "sha256-3bi/L0W5elVC7EGAyO5ggO/iwx1qlXQDtMZiiiv+D6U=",
+        "ref": "refs/heads/master",
+        "rev": "3dba7b21c7252cba62529b65e4014285a8157353",
+        "revCount": 173,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-metrics"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-metrics"
+      }
+    },
+    "autonomy-telemetry-sink": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774382113,
+        "narHash": "sha256-KpA/8U9bH5ScWBPCAlQSwXADcS6YDN1OCUDLpjqQrCI=",
+        "ref": "refs/tags/v0.8.0",
+        "rev": "06709cacf887334c8fd61124011a461087915549",
+        "revCount": 41,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-telemetry-sink"
+      },
+      "original": {
+        "ref": "refs/tags/v0.8.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-telemetry-sink"
+      }
+    },
+    "autonomy-telemetry-source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1770251122,
+        "narHash": "sha256-LdyvFifkcNulu6VW2wet8nc3X1vUGEYwSuKdjXd9omg=",
+        "ref": "refs/tags/v0.3.0",
+        "rev": "3f1348ffc948529ebd284e62f5950bd4dfc180bf",
+        "revCount": 27,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-telemetry-source"
+      },
+      "original": {
+        "ref": "refs/tags/v0.3.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-telemetry-source"
+      }
+    },
+    "autonomy-tembusu-g5": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1772839711,
+        "narHash": "sha256-BDcyfq/P2TPUl47cTTJBkNLCpGHgmhwZzb9RkBqAUH8=",
+        "ref": "master",
+        "rev": "264a1e52b7f7ba1b9bed456423290257d4452aa9",
+        "revCount": 18,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-tembusu"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "264a1e52b7f7ba1b9bed456423290257d4452aa9",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-tembusu"
+      }
+    },
+    "autonomy-tembusu-pre-g5": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759275979,
+        "narHash": "sha256-ofkeejmlY1xxRLN6BnKWIwtcixShkXwT6d7rB7YCVLU=",
+        "ref": "master",
+        "rev": "05eb026bdb712fe230b915ff28f03a46ac521e58",
+        "revCount": 4,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-tembusu"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "05eb026bdb712fe230b915ff28f03a46ac521e58",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-tembusu"
+      }
+    },
+    "autonomy-trs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774977355,
+        "narHash": "sha256-lRMLIZ+C0QUChlJI2YzADmtTeljE6FP8d4G+uauSPR8=",
+        "ref": "refs/tags/1.0.0",
+        "rev": "32bd1399e6998c2081d2769c3539a98513439d57",
+        "revCount": 3,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-trs"
+      },
+      "original": {
+        "ref": "refs/tags/1.0.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autonomy-trs"
+      }
+    },
+    "autoproto": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1708648109,
+        "narHash": "sha256-A5YjV9Up+QtUJhpKVQGK45jmGjHr0knY4HIVB1YBRCQ=",
+        "ref": "refs/heads/master",
+        "rev": "0ba4c8972fdc22320789c4d18d31144954ab0fc4",
+        "revCount": 8,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autoproto"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autoproto"
+      }
+    },
+    "autorouterd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787036655,
+        "narHash": "sha256-Tpu1L28WRXC/6yn7S+bZd/Iakw+WtCgdpfsTkrzf9YA=",
+        "ref": "refs/heads/master",
+        "rev": "68daa4b1c7223d9f655e8f3013bb8db81d28dc6e",
+        "revCount": 333,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autorouterd"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "68daa4b1c7223d9f655e8f3013bb8db81d28dc6e",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/autorouterd"
+      }
+    },
+    "babel-kg": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761668049,
+        "narHash": "sha256-duRFR6eCtfH1gddkXoIlLpo7IIQM6mawnI/nuud7vbI=",
+        "ref": "refs/heads/master",
+        "rev": "0160fd284d0455f3ba15ff38c435e6ced3839b23",
+        "revCount": 6,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/babel"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/babel"
+      }
+    },
+    "babeld": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786390978,
+        "narHash": "sha256-S+AWK8HCOM4ee63uxGdz47UhZtChxZr01cAy4k7wwIc=",
+        "ref": "refs/tags/2.3.1",
+        "rev": "80e7548925af96cd184413b0a64034389aff8db9",
+        "revCount": 2117,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/babeld"
+      },
+      "original": {
+        "ref": "refs/tags/2.3.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/babeld"
+      }
+    },
+    "babeld-managed": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786083566,
+        "narHash": "sha256-YjT2kYhof7h4DETohguyAusOmWJBW/vXWmPutaJzzkg=",
+        "ref": "refs/tags/v1.4.2",
+        "rev": "e517cd828030e119b953e62f5bcaf4e190597d31",
+        "revCount": 68,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/babeld-managed"
+      },
+      "original": {
+        "ref": "refs/tags/v1.4.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/babeld-managed"
+      }
+    },
+    "babysitter": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1742306050,
+        "narHash": "sha256-tnBsTxg9PfRbnp5J35t7UrMyETKri3tfhuhht5tr0/A=",
+        "ref": "refs/heads/master",
+        "rev": "2cdaf498d12e332219d9a57d898ad7611b87f657",
+        "revCount": 12,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/babysitter"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/babysitter"
+      }
+    },
+    "bald": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786565454,
+        "narHash": "sha256-+SWDNo+2U+4OkeeEth0+o2c5PvTlm/idYurWRGWhVE8=",
+        "ref": "refs/tags/3.3.0",
+        "rev": "725163a2ca33b1b92ca2957f44a4d9e472c991c6",
+        "revCount": 93,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bald"
+      },
+      "original": {
+        "ref": "refs/tags/3.3.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bald"
+      }
+    },
+    "bamboo-calibration": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779383610,
+        "narHash": "sha256-w9R0OLH96pA3SaJ5NHXtPtHi8bAI12wZxwFC6dvcCi4=",
+        "ref": "refs/heads/master",
+        "rev": "5f43a4125da1cccc5b821701c3437145cd2ead5b",
+        "revCount": 51,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bamboo-calibration"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bamboo-calibration"
+      }
+    },
+    "bandaid": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787046899,
+        "narHash": "sha256-9QezgeevvoFkiLgj5kOszmKlmjNzIBBiyVnCpAz1xZA=",
+        "ref": "refs/heads/master",
+        "rev": "7eb97aad9286cca431f610f7b629d63d97742a98",
+        "revCount": 117,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bandaid"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "7eb97aad9286cca431f610f7b629d63d97742a98",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bandaid"
+      }
+    },
+    "barracuda-mission-service-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781726535,
+        "narHash": "sha256-IEHyJ8XwaTV4oU6ivzeMb0XjHDp2UX6Hyfbj/hcRCOo=",
+        "ref": "refs/heads/master",
+        "rev": "f8805632c9eccb7d9ee15713cbfd08a5a399c07e",
+        "revCount": 13,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/barracuda-mission-service-rs"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/barracuda-mission-service-rs"
+      }
+    },
+    "basemapsd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779500679,
+        "narHash": "sha256-Iu7EaweZrpYlkioKxEAr2ejldeJn2NO9+1UjnjQcKyc=",
+        "ref": "refs/tags/v2.2.0",
+        "rev": "33f56bf485805262f92be15bee8ba0af4dfa75bc",
+        "revCount": 79,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/basemapsd"
+      },
+      "original": {
+        "ref": "refs/tags/v2.2.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/basemapsd"
+      }
+    },
+    "baywatch-pathing-utils": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1726270692,
+        "narHash": "sha256-XAz1glDPmVJthb64aCP7OSHRf+EmHFdSNhPWWq8cL/E=",
+        "ref": "master",
+        "rev": "99c6a6c86e1fd2b234f6af0a4170bcc21f62adb9",
+        "revCount": 43,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/baywatch-pathing-utils"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "99c6a6c86e1fd2b234f6af0a4170bcc21f62adb9",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/baywatch-pathing-utils"
+      }
+    },
+    "baywatch-terrain-query": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1752707365,
+        "narHash": "sha256-9vrh2wpVHzVwzyKlQU3JY6DGr8u89oo9S3pt+2u9Etg=",
+        "ref": "refs/heads/master",
+        "rev": "12e44c5f06f8439a39c703ca18ed0f5daae7d69f",
+        "revCount": 33,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/baywatch-terrain-query"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/baywatch-terrain-query"
+      }
+    },
+    "beacond": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1731533606,
+        "narHash": "sha256-Q0f59+ZJvZZKNJ0jMCQyRLquEv6qb57xxZR+6AxcbSI=",
+        "ref": "refs/heads/master",
+        "rev": "83bc3dfbced1d3ca6e548fefab1cde4bda46c88e",
+        "revCount": 9,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/beacond"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/beacond"
+      }
+    },
+    "bifurnix": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786659708,
+        "narHash": "sha256-L3fV6Hy5SjIOLeFDdBfMvEYh5qnLdegY+VkxOKwGZKw=",
+        "ref": "refs/heads/main",
+        "rev": "2f0afcf58661593701d979b3fbfb7a1409b8b058",
+        "revCount": 43,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bifurnix"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bifurnix"
+      }
+    },
+    "bird-parser": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1710183703,
+        "narHash": "sha256-jOx0OsDVk2NlYs5ySykEJXVDFFSa/CmO0WGVJM6dzos=",
+        "ref": "refs/heads/master",
+        "rev": "c32b705fde119d5f1aab931c6ad22f63d837548d",
+        "revCount": 90,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bird-parser"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/bird-parser"
+      }
+    },
+    "blackboxd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787002914,
+        "narHash": "sha256-pm3mCrxomXVRywDd5gNPuEttd5Wr9i8TsRm46srxIPo=",
+        "ref": "refs/tags/3.1.2",
+        "rev": "8eeeefdf8efdbd9a6dfd53fe60d1e3e5a4eb0e91",
+        "revCount": 223,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/blackbox"
+      },
+      "original": {
+        "ref": "refs/tags/3.1.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/blackbox"
+      }
+    },
+    "blobs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786372573,
+        "narHash": "sha256-4KPM2NE6v4e/1rGCME3qJSc0z50bMdVQt4wUq2frAJc=",
+        "ref": "refs/tags/v8.38.33",
+        "rev": "8ba2cbd8156f7b469c6bff05a89f0310b9c40f80",
+        "revCount": 452,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/blobs"
+      },
+      "original": {
+        "ref": "refs/tags/v8.38.33",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/blobs"
+      }
+    },
+    "boomereye": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759944683,
+        "narHash": "sha256-pE9rHlqQ0NWDWENbFSd8w0c3BrAbqzYNRjOYtZqodrY=",
+        "ref": "refs/heads/master",
+        "rev": "bf5987547f42fa9fe3fbe09f96180f8169713b3e",
+        "revCount": 22,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/boomereye"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "bf5987547f42fa9fe3fbe09f96180f8169713b3e",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/boomereye"
+      }
+    },
+    "boomereye-v2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761845542,
+        "narHash": "sha256-w7j1ikdeQ9NEt3snR5efM1OkES7v0IrnaUFluAh46sY=",
+        "ref": "refs/heads/master",
+        "rev": "b328f59250dd4330cfd5fc84e846ede3724fc40a",
+        "revCount": 13,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/boomereye-v2"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/boomereye-v2"
+      }
+    },
+    "built-in-testd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1767986690,
+        "narHash": "sha256-5HauddQ+LMRePE+Cucnc6t7noaPckCWsJWaGzifYA5Y=",
+        "ref": "refs/heads/master",
+        "rev": "4066957df41d27d08a903c94ba33afdc8be07acd",
+        "revCount": 9,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/built-in-test"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/built-in-test"
+      }
+    },
+    "byomd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780068950,
+        "narHash": "sha256-7480MBKkLf/3Ez13xM4RhbopMWGYfyOeTOKz/1hWKpg=",
+        "ref": "refs/heads/master",
+        "rev": "cbcb53e38d094fd694cace889f06be4fbcbc02db",
+        "revCount": 126,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/byomd"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/byomd"
+      }
+    },
+    "c2-evaluator": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1649377364,
+        "narHash": "sha256-LxjwEdO6qLhLm6aHmHuJ7wHMA/yVw9pXsIkrqEaUChI=",
+        "ref": "master",
+        "rev": "b37a3429623d762563d1a1f65ddbc320fc45859b",
+        "revCount": 106,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/c2-evaluator"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/c2-evaluator"
+      }
+    },
+    "calibd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780417782,
+        "narHash": "sha256-L0g6lTyuw8mmcVxZbr0Pez4AMC86v16A67jCASc9UGQ=",
+        "ref": "refs/heads/tbereknyei/fix-werror-protobuf34-nodiscard",
+        "rev": "7e12bc9aec42fba7647350b0d65b2726446fe697",
+        "revCount": 298,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/calibration-daemon"
+      },
+      "original": {
+        "ref": "refs/heads/tbereknyei/fix-werror-protobuf34-nodiscard",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/calibration-daemon"
+      }
+    },
+    "can-avionics-update": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1752525128,
+        "narHash": "sha256-Zd+ZNS46dekgURphEz3pptIkS+iq0ym7zqtYlFbvrIc=",
+        "ref": "refs/heads/master",
+        "rev": "4a894e2fbb8f0bd0fd9f0e1a85967ca934cccb0a",
+        "revCount": 145,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canduril-manager"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canduril-manager"
+      }
+    },
+    "can-hal-usb-8502": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776806639,
+        "narHash": "sha256-oFzLOnH5EO3JTWqARD4NDmAoeWZ1U5VUWmByqtNsitI=",
+        "ref": "refs/heads/master",
+        "rev": "512d48a6062caaad011a9545ba535c9ea2dd0f5f",
+        "revCount": 3,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/can-hal-usb-8502"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/can-hal-usb-8502"
+      }
+    },
+    "cancli": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1624647252,
+        "narHash": "sha256-kw1c0J/PTztHAzoAGJxFSWXTft1JLRTyKugoAsD9E+w=",
+        "ref": "master",
+        "rev": "fb937f409dd89724468f72e7326862f3bbb1aa8e",
+        "revCount": 7,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cancli"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cancli"
+      }
+    },
+    "canclient": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1731469104,
+        "narHash": "sha256-IT7sedkG0MNST0jEFWzobDJAE40WVNFOrMhzSgSe2Jo=",
+        "ref": "refs/heads/master",
+        "rev": "ee3223892cc570af4e396bf38e85bdf65f9c1f8b",
+        "revCount": 232,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canclient"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canclient"
+      }
+    },
+    "candll": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1551234086,
+        "narHash": "sha256-rMzrBFNtqfqrs/8cGGqShCSfTz438EqtRd+gRf2nlWI=",
+        "ref": "master",
+        "rev": "286f135e7068296a1d5fabfd4558ab0a2b96354d",
+        "revCount": 30,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/candll"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/candll"
+      }
+    },
+    "canduril-manager": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779917080,
+        "narHash": "sha256-CTx5eSYdd+62txoBPaqWqlKlDsKoYYYdYR2SCqIv9TA=",
+        "ref": "refs/heads/master",
+        "rev": "e3743f5c609521ada31cd725d6f7690da74a63a1",
+        "revCount": 155,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canduril-manager"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canduril-manager"
+      }
+    },
+    "canduril-tui": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1653585313,
+        "narHash": "sha256-bkgSffjLW0keFc6R16fyQmOoxjMZa2wtEcETzp3+1t0=",
+        "ref": "rdw/new-nix",
+        "rev": "0ef5da320ac74a0b282e784a3063925354b8db03",
+        "revCount": 60,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canduril-tui"
+      },
+      "original": {
+        "ref": "rdw/new-nix",
+        "rev": "0ef5da320ac74a0b282e784a3063925354b8db03",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canduril-tui"
+      }
+    },
+    "candurilapis": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1773181226,
+        "narHash": "sha256-/C0lM1DXle1pn4v+MiWmxdrNZuu3/4D0RxBYEz41nmU=",
+        "ref": "refs/heads/master",
+        "rev": "0fd5156beca5097acef3a07e35aedd979f5b853f",
+        "revCount": 86,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/candurilapis"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/candurilapis"
+      }
+    },
+    "canlogdump": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774902433,
+        "narHash": "sha256-gRi734qRw3VQcKYUurgDXHK2BruT6DXsdj52AIFJDMI=",
+        "ref": "master",
+        "rev": "87744a90e64085f5f8e92538acc9497cfba4496e",
+        "revCount": 63,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canlogdump"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "87744a90e64085f5f8e92538acc9497cfba4496e",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canlogdump"
+      }
+    },
+    "canopen-stack": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1559170140,
+        "narHash": "sha256-TD5DWNJJTkHCHAe06TxJyAa4pGgav2SKyvMpLC4+g20=",
+        "ref": "master",
+        "rev": "372702cc90adc24daeecc7a3c9c3e0928db0fc14",
+        "revCount": 72,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canopen-stack"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canopen-stack"
+      }
+    },
+    "canopenctl": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759963977,
+        "narHash": "sha256-TrIh2hgC2eKz7dg9mA77iubJha9AgyBfnoZtt20c5Do=",
+        "ref": "refs/heads/main",
+        "rev": "3a9a436340fb5bcf054e7afcbab242b9bbed26ae",
+        "revCount": 24,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canopenctl"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canopenctl"
+      }
+    },
+    "canopy": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1721175922,
+        "narHash": "sha256-UMCQv70xMYbFYcvEr1cTmCHJa9Si4cl1+J+pclsF390=",
+        "ref": "dev",
+        "rev": "11e29ea6f871d08405c0091c03406ecf71d77588",
+        "revCount": 135,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canopy"
+      },
+      "original": {
+        "ref": "dev",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canopy"
+      }
+    },
+    "canui": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780960201,
+        "narHash": "sha256-H2eLXvdhbKaER5iwJ32JczBR+1RmBJ9BO5WR3xDbZiQ=",
+        "ref": "master",
+        "rev": "85732abc7fd4e1196ea8bcaad8d39e4db5820813",
+        "revCount": 56,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canui"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/canui"
+      }
+    },
+    "cap-job-ghost4-xform": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1768344739,
+        "narHash": "sha256-m8Y2nxTsky1iSgaCBrYH8u4UpjX0wG6AyC9XaNBfGic=",
+        "ref": "master",
+        "rev": "08613c427e1de45ed25ed1f9203b8d533942ecac",
+        "revCount": 226,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cap-job-ghost4-xform"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "08613c427e1de45ed25ed1f9203b8d533942ecac",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cap-job-ghost4-xform"
+      }
+    },
+    "capacitor": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1766010575,
+        "narHash": "sha256-NOe3U9hX22R7VeXqM+jBJdq0O6s6NIx6PyJksl84B4w=",
+        "ref": "rburns/remove-pyrate",
+        "rev": "6c8a031e4686875e1f71e8928a3a778040c9d525",
+        "revCount": 427,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/capacitor"
+      },
+      "original": {
+        "ref": "rburns/remove-pyrate",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/capacitor"
+      }
+    },
+    "capacitor-proxy": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776209183,
+        "narHash": "sha256-gOLiIX0OFL4QbUJ5fdLDvHe8gGXjs9IaxHmj3w4oowE=",
+        "ref": "refs/tags/v1.6.0",
+        "rev": "ac6a3dbee402e6022d264b782ea02948ef5c5e26",
+        "revCount": 370,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/data-catalog"
+      },
+      "original": {
+        "ref": "refs/tags/v1.6.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/data-catalog"
+      }
+    },
+    "capacitor-repo": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776209183,
+        "narHash": "sha256-gOLiIX0OFL4QbUJ5fdLDvHe8gGXjs9IaxHmj3w4oowE=",
+        "ref": "refs/tags/v1.6.0",
+        "rev": "ac6a3dbee402e6022d264b782ea02948ef5c5e26",
+        "revCount": 370,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/data-catalog"
+      },
+      "original": {
+        "ref": "refs/tags/v1.6.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/data-catalog"
+      }
+    },
+    "carbon-libcurl-linux": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1753829411,
+        "narHash": "sha256-vQylVGKYcJpKmXca2IevKB3aVUKbkYaSglXt8xiqwos=",
+        "ref": "master",
+        "rev": "5f9df316c1ddc7afdbdaf8dce93f05e684e8df0e",
+        "revCount": 13,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/baywatch/libcurl-linux"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/baywatch/libcurl-linux"
+      }
+    },
+    "carbon-libgrpc": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1765833770,
+        "narHash": "sha256-MfzilS4nRcE69wYY4IEfeJkBSmuMMInqWq6jHRTO0os=",
+        "ref": "refs/tags/v1.44.0",
+        "rev": "1511f8052b9e2a8732a2488dc76f57c22a449101",
+        "revCount": 36119,
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/baywatch/grpc"
+      },
+      "original": {
+        "ref": "refs/tags/v1.44.0",
+        "submodules": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/baywatch/grpc"
+      }
+    },
+    "cargo-publisher": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786999482,
+        "narHash": "sha256-6cVcTTK5Za9YwAvFWlI1u+WFHWLAyeAP7I1JCZm2dmA=",
+        "ref": "master",
+        "rev": "fbaa42ba6113f5ba8dc774aeeb5cd6debf952d85",
+        "revCount": 68,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cargo-publisher"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cargo-publisher"
+      }
+    },
+    "cartographer-go": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786742617,
+        "narHash": "sha256-2/aOH1xw/a51306i9ruUkhArbh1gwmJAggBZEQPcAR8=",
+        "ref": "refs/tags/v1.30.2",
+        "rev": "c0b41a83235bebe778e2c0077839be5580570eec",
+        "revCount": 352,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/cartographer-go"
+      },
+      "original": {
+        "ref": "refs/tags/v1.30.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/cartographer-go"
+      }
+    },
+    "cdn": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787126948,
+        "narHash": "sha256-aDWfDDiCPBskvESfBFOUKYNpYKgyUrouVDHXVhe//3w=",
+        "ref": "refs/tags/v3.33.8",
+        "rev": "83fea5c6fcef605e7eb4c56c4bdd2a90f8984b35",
+        "revCount": 783,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/cdn"
+      },
+      "original": {
+        "ref": "refs/tags/v3.33.8",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/cdn"
+      }
+    },
+    "cerebrum": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780593547,
+        "narHash": "sha256-LcwcPYfnVLMdYf5CFcLxVBo+zwOtT9zB2DZwyqYgjSQ=",
+        "ref": "refs/tags/1.13.0",
+        "rev": "26c1b77fa210e5f4a8ebc72b775b44f96208797a",
+        "revCount": 111,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cerebrum"
+      },
+      "original": {
+        "ref": "refs/tags/1.13.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cerebrum"
+      }
+    },
+    "chargeboxd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1760477999,
+        "narHash": "sha256-z+8ISpdf97iq0KVnQTS/TNTM413ZIZ9NcVLvWQws10M=",
+        "ref": "master",
+        "rev": "bd87781b3edd44f01ab919dec28bb8299c4d674a",
+        "revCount": 4,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/chargeboxd"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "bd87781b3edd44f01ab919dec28bb8299c4d674a",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/chargeboxd"
+      }
+    },
+    "chat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759521897,
+        "narHash": "sha256-u68FsT/w2rGf4BIDU6frKpXsewAe3O+KHXZQy65dS2k=",
+        "ref": "refs/heads/master",
+        "rev": "bb1fd17961d6c0fc5ffbe907f4d16b16eb850f3e",
+        "revCount": 317,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/chat"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/chat"
+      }
+    },
+    "chell": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786476034,
+        "narHash": "sha256-2bjlJl74W6xBQKGnrbMKnJzSY8f08DTSdlzu5mSgY5s=",
+        "ref": "master",
+        "rev": "dc06aa222ad06ed09ca67d18112cadbd0968f4c0",
+        "revCount": 13,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/chell"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/chell"
+      }
+    },
+    "cinder": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1772572611,
+        "narHash": "sha256-RxPYkAvVDRhFCzqi5fqPEP93nPwj9nrAVrj/SKBOidM=",
+        "ref": "master",
+        "rev": "fc51d74453928a1475e4b10b8c8db61b47ba1d82",
+        "revCount": 9001,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cinder"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cinder"
+      }
+    },
+    "cli-downtime": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1629302716,
+        "narHash": "sha256-tdMOnV/zWO1bJ8xTMGhTeexhCENpZgz2eKbXCidl0P8=",
+        "ref": "master",
+        "rev": "acb3fa4cd09f282f21631dc6550589ac47d65ceb",
+        "revCount": 13,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cli-downtime"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cli-downtime"
+      }
+    },
+    "coca": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1764601097,
+        "narHash": "sha256-QiBQddHw2n1uOiFao2E8RBht8Y7m31R+WM3u7swcj0s=",
+        "ref": "refs/heads/master",
+        "rev": "edcc822ee200b99b9e95961cbdea0e2b90566c87",
+        "revCount": 141,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/coca.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/coca.git"
+      }
+    },
+    "collectd-statsd-bridge": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1642271887,
+        "narHash": "sha256-7yXncDJwvfFyJVZU3/sCZ61quh5W+hLoEUS/An3SfPo=",
+        "ref": "master",
+        "rev": "c929270fef5e3313da6bff12877486bdd7a447ab",
+        "revCount": 36,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/collectd-statsd-bridge"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/collectd-statsd-bridge"
+      }
+    },
+    "colosseum": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787109955,
+        "narHash": "sha256-zMILzQLUJRwStnbtrIFieZFK+xQu7R2RRq11fQ5AAjg=",
+        "ref": "refs/tags/v1.19.1",
+        "rev": "f87afab51107efccff647f02cf28b3c0df358e0e",
+        "revCount": 123,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/colosseum"
+      },
+      "original": {
+        "ref": "refs/tags/v1.19.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/colosseum"
+      }
+    },
+    "common-services-cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1752002410,
+        "narHash": "sha256-NSpje1pjkIcc9ltfdb0UP10nHtD/3uWR9LGUG1CDEGg=",
+        "ref": "refs/heads/master",
+        "rev": "75411efeb394929f845c7ebbb3e09b74c834a77f",
+        "revCount": 82,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/common-services-cpp"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/common-services-cpp"
+      }
+    },
+    "communications-manager": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786697800,
+        "narHash": "sha256-r50MHk1M6xIOsyJdQRWtBTqj+PioJHt2VBy7Gkr1T/A=",
+        "ref": "refs/tags/v38.10.11",
+        "rev": "65ce89d5c3b0f3e9a877255a4c392f4316a6a229",
+        "revCount": 828,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/communications-manager"
+      },
+      "original": {
+        "ref": "refs/tags/v38.10.11",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/communications-manager"
+      }
+    },
+    "complete-hota": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786550436,
+        "narHash": "sha256-r8BDkPN3yTUXIgOV6y6J2X5jMuqRgbtbVOmNuCeHHxs=",
+        "ref": "refs/tags/2.1.2",
+        "rev": "dc25c27191d672901554192ac35d9500737a0b1f",
+        "revCount": 59,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/complete-hota"
+      },
+      "original": {
+        "ref": "refs/tags/2.1.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/complete-hota"
+      }
+    },
+    "condor": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776124184,
+        "narHash": "sha256-AM/HpXzDpYoJbmRaRfzazjKFAp57J2+okitSAbr8o8Q=",
+        "ref": "refs/tags/v1.2.0",
+        "rev": "df9161545e64d7dfd8b70ed112c6db311168856e",
+        "revCount": 193,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/condor"
+      },
+      "original": {
+        "ref": "refs/tags/v1.2.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/condor"
+      }
+    },
+    "config-management-service": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784067996,
+        "narHash": "sha256-NLn5pGokne9JVHaEo+vQ9JvtW1KKa+PLvMbLbu+k0CI=",
+        "ref": "refs/tags/4.5.2",
+        "rev": "005f7de425694a903a624ee1ae766e1409823da4",
+        "revCount": 217,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/config-management-service"
+      },
+      "original": {
+        "ref": "refs/tags/4.5.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/config-management-service"
+      }
+    },
+    "configd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786128782,
+        "narHash": "sha256-RtwiC1R9ZOPUSn26sqKDpWa9PT+v8au0S/DaTwHo8Ak=",
+        "ref": "refs/tags/v2.49.0",
+        "rev": "3edea75305708cdba8b1f3f54f080cffef7b9f20",
+        "revCount": 674,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/configd"
+      },
+      "original": {
+        "ref": "refs/tags/v2.49.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/configd"
+      }
+    },
+    "configpak": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1741096472,
+        "narHash": "sha256-lBk+mqItGkJNDurusIN5avAhiqqSo/W59/KAEABGRu8=",
+        "ref": "refs/heads/master",
+        "rev": "5243b83cc9bc9c0ad91ec8b1d9dec6092578eab8",
+        "revCount": 1090,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/configpak"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "5243b83cc9bc9c0ad91ec8b1d9dec6092578eab8",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/configpak"
+      }
+    },
+    "configurator": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785437089,
+        "narHash": "sha256-KHJ0+Wzxrv6/fpF3Z1GrBUh++OSWz0A1NTDYypf8XX4=",
+        "ref": "refs/tags/1.2.5",
+        "rev": "d1d834caab43f7690ace6394a97bf0caba270379",
+        "revCount": 47,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/configurator"
+      },
+      "original": {
+        "ref": "refs/tags/1.2.5",
+        "rev": "d1d834caab43f7690ace6394a97bf0caba270379",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/configurator"
+      }
+    },
+    "configure-ips": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761612805,
+        "narHash": "sha256-svAA35TU908LUAgoHmpsoquQWgz7Gfg0b5mrhpRzwVU=",
+        "ref": "master",
+        "rev": "d23cbd0f3d577c9cafc8dd169e21ca80244c1284",
+        "revCount": 8,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/configure-ips"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "d23cbd0f3d577c9cafc8dd169e21ca80244c1284",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/configure-ips"
+      }
+    },
+    "container-registryd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1775682457,
+        "narHash": "sha256-Ki9y7UqMjTWOeKo0PGKQxepFwGIi76JqezXVjZZ9YqY=",
+        "ref": "master",
+        "rev": "78072e9971067096b5620cf23432ae7b25c72ea1",
+        "revCount": 11,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/container-registryd"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/container-registryd"
+      }
+    },
+    "core-cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777507412,
+        "narHash": "sha256-GKVqH5lpddI/5v6ehVD/6fosBw/aXrobhoY0eIk+584=",
+        "ref": "refs/heads/master",
+        "rev": "a3ffdfdb40b33d4b9dbe7f25111c79513f71b458",
+        "revCount": 311,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/core-cpp"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "a3ffdfdb40b33d4b9dbe7f25111c79513f71b458",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/core-cpp"
+      }
+    },
+    "core-py": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782347820,
+        "narHash": "sha256-rjr/eMZJ3wQd9LG7cVj6CR7fk/89vYGmwJiu86/fMJM=",
+        "ref": "refs/heads/master",
+        "rev": "b15f8fd52de85431c2118ed2b37e9488a9514de3",
+        "revCount": 98,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/core-py"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "b15f8fd52de85431c2118ed2b37e9488a9514de3",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/core-py"
+      }
+    },
+    "cornelius": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1768931290,
+        "narHash": "sha256-btVs7qnsNnFV/eEidKm3+0LSwhGc9CZG8zfpHi+YfHk=",
+        "ref": "master",
+        "rev": "78088d0dc99c8f048e1cc28b05fc8b22be96eb68",
+        "revCount": 155,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cornelius"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cornelius"
+      }
+    },
+    "cortex": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787100070,
+        "narHash": "sha256-1mkaPUUkddtyFrTkmmU3Nk2l7o95iUGgRJCCEmTLKzM=",
+        "ref": "refs/heads/master",
+        "rev": "af59c810b1dfe5d83dea856bf378c43500e9c91a",
+        "revCount": 6919,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/cortex"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "af59c810b1dfe5d83dea856bf378c43500e9c91a",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/cortex"
+      }
+    },
+    "cot-edge-keyringd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777657888,
+        "narHash": "sha256-H+61woN2KSxpFXK6mkpJ6FwjMiad/FKEXRAIRLoR6yY=",
+        "ref": "refs/tags/v0.4.0",
+        "rev": "567d57a0d6c0a4d893e604a3e8c60dc354420dcb",
+        "revCount": 42,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cot-edge-keyringd"
+      },
+      "original": {
+        "ref": "refs/tags/v0.4.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cot-edge-keyringd"
+      }
+    },
+    "counter-intr-cloud-utilities": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785902658,
+        "narHash": "sha256-Qm2o0+a183sH1XTndFM2oe+ID2QMYgk14eYzNvQyB+s=",
+        "ref": "refs/tags/2.1.3",
+        "rev": "75c858f727fe98a27e62c86b184263eba3ba3909",
+        "revCount": 115,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/counter-intr-cloud-utilities"
+      },
+      "original": {
+        "ref": "refs/tags/2.1.3",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/counter-intr-cloud-utilities"
+      }
+    },
+    "cpj100_sim_cfg": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1724707746,
+        "narHash": "sha256-DtCNtY6xvZV6E92K6jA3oNkozxtABaiJ8nVsor4lQwY=",
+        "ref": "master",
+        "rev": "dd5548198aa7d4930c1ac127ffd140543d06a9fe",
+        "revCount": 70,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cpj100_sim_cfg"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "dd5548198aa7d4930c1ac127ffd140543d06a9fe",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cpj100_sim_cfg"
+      }
+    },
+    "cpj100_step_cfg": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1744308543,
+        "narHash": "sha256-1awRz8zNd6KD5cO6LB0xxEZGPyfWZQQQbjtoknxAuyg=",
+        "ref": "master",
+        "rev": "b8e54a819b9113691aaf44d3072bcc15c212dddd",
+        "revCount": 11,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cpj100_step_cfg"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "b8e54a819b9113691aaf44d3072bcc15c212dddd",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cpj100_step_cfg"
+      }
+    },
+    "cpp-starter-project": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1756499828,
+        "narHash": "sha256-jatKvmqlgGzGS4poqJomCRCxm7HjgpuZ0cxMC2XJ8j8=",
+        "ref": "refs/heads/master",
+        "rev": "2d4fccfa3787f8a02a0a7d0582d142f853b2dff3",
+        "revCount": 24,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cpp-starter-project"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cpp-starter-project"
+      }
+    },
+    "cradlepoint-go": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784000179,
+        "narHash": "sha256-igHoujacxNTaEvFZV+yEHwHZpil527trSp8DaZt83as=",
+        "ref": "refs/tags/v2.3.2",
+        "rev": "cbcf0d50f197df2f077893fffb1faa9a95609f2e",
+        "revCount": 190,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cradlepoint-go"
+      },
+      "original": {
+        "ref": "refs/tags/v2.3.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cradlepoint-go"
+      }
+    },
+    "crane": {
+      "locked": {
+        "lastModified": 1745454774,
+        "narHash": "sha256-oLvmxOnsEKGtwczxp/CwhrfmQUG2ym24OMWowcoRhH8=",
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "efd36682371678e2b6da3f108fdb5c613b3ec598",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ipetkov",
+        "repo": "crane",
+        "type": "github"
+      }
+    },
+    "cross-domain": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785894954,
+        "narHash": "sha256-LNnWbkfEKa2Wthxd+Y1ougssSk7ZyI/lOc7k4sg/opg=",
+        "ref": "refs/tags/v2.17.2",
+        "rev": "61997660bc48a8885e7f32986e2a960bc3ca0fec",
+        "revCount": 281,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/cross-domain"
+      },
+      "original": {
+        "ref": "refs/tags/v2.17.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/cross-domain"
+      }
+    },
+    "crossmissiond": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1690318441,
+        "narHash": "sha256-HLDjOcKMhbIJWOrMRziJp4GjO/ZaKmOzBhl7JjGSx0c=",
+        "ref": "master",
+        "rev": "53476f92bca8dd8de8abaf0bb4b87705e45ce0b8",
+        "revCount": 67,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/crossmissiond"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/crossmissiond"
+      }
+    },
+    "cspice": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1746114936,
+        "narHash": "sha256-zBSBEaas7/+LdLejyu1I0PDp4kAYX8y3es8c5mRY3lo=",
+        "ref": "refs/heads/master",
+        "rev": "c20aea8f3c59058b06c62ec8c081d2878d5c5bbd",
+        "revCount": 10,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/space/cspice"
+      },
+      "original": {
+        "rev": "c20aea8f3c59058b06c62ec8c081d2878d5c5bbd",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/space/cspice"
+      }
+    },
+    "cubed": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785788418,
+        "narHash": "sha256-oOYPzVXbXE0R/SGtL715IgTQMKbb3HztZ+vzLweEa7M=",
+        "ref": "refs/heads/master",
+        "rev": "36ec83f3ca06d823ca40a043f053c59653dfed75",
+        "revCount": 924,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cubed"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "36ec83f3ca06d823ca40a043f053c59653dfed75",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cubed"
+      }
+    },
+    "cuda-legacy": {
+      "inputs": {
+        "flake-parts": [
+          "cuda-legacy"
+        ],
+        "nixpkgs": [
+          "cuda-legacy"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780001040,
+        "narHash": "sha256-9ficLv+Uvu+1hlrAyqXi/+ifrrvmrqqVN+D9lPNew9o=",
+        "owner": "r-burns",
+        "repo": "cuda-legacy",
+        "rev": "1e61c800d01006858b90648f3c685ca76ff14da7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "r-burns",
+        "ref": "26.05-pre",
+        "repo": "cuda-legacy",
+        "type": "github"
+      }
+    },
+    "cursor-on-target": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1746636779,
+        "narHash": "sha256-GUQqvDIp6ARB74MBgtEcqujSn+KrLmeUbVgsbUKTCAU=",
+        "rev": "35ba8da390316f92301c622d33ae4d7a96f03b8d",
+        "revCount": 311,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform-integrations/cursor-on-target"
+      },
+      "original": {
+        "rev": "35ba8da390316f92301c622d33ae4d7a96f03b8d",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform-integrations/cursor-on-target"
+      }
+    },
+    "cursor-on-target-v2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787108148,
+        "narHash": "sha256-bS8JUASgDtGf9psieyoQx5KchUK63+TBD1VNlFEqeTU=",
+        "ref": "refs/tags/v1.92.1",
+        "rev": "718feb5052274b056ab0b7df9faf9ea9093e29bb",
+        "revCount": 525,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform-integrations/cursor-on-target-v2"
+      },
+      "original": {
+        "ref": "refs/tags/v1.92.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform-integrations/cursor-on-target-v2"
+      }
+    },
+    "custody-manager": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780599731,
+        "narHash": "sha256-5WEP1lqQXCIAAtUXYrj70jbTCc1kPnifHGuDk9qaLZk=",
+        "ref": "refs/tags/3.3.0",
+        "rev": "96daabcc3eb145bf2ae1ab25015ace6d1b5967f6",
+        "revCount": 198,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/custody-manager"
+      },
+      "original": {
+        "ref": "refs/tags/3.3.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/custody-manager"
+      }
+    },
+    "cv-data-api": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1724793432,
+        "narHash": "sha256-KZDRyozljYukt6sje4bW2xj8L8rBnz+sYW6d9YEzWlg=",
+        "ref": "master",
+        "rev": "542607fe546ff8d4cbdd52159808acb8c57e25af",
+        "revCount": 37,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cv-data-api"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "542607fe546ff8d4cbdd52159808acb8c57e25af",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cv-data-api"
+      }
+    },
+    "cyber-entity-bridge": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785167065,
+        "narHash": "sha256-qyJUyYLkyZCo0z+KK8JINZAeyRTy+6fCnt+gtz/93cM=",
+        "ref": "master",
+        "rev": "2e051f1e7c714e6902efc6b1aa57527099f00187",
+        "revCount": 4,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cyber-entity-bridge"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cyber-entity-bridge"
+      }
+    },
+    "cyber-vmm": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778191476,
+        "narHash": "sha256-wcz9xJ+0mar5g3EDd8HvQrvmxhsJQXDyo9G8QsZdYLo=",
+        "ref": "master",
+        "rev": "b4805d65b0878399bf0fae459b7839bdfb6676b1",
+        "revCount": 24,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cyber-vmm"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/cyber-vmm"
+      }
+    },
+    "data-channels": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1708537299,
+        "narHash": "sha256-QR7Kj0z0aznZj+MtwMhAZENxXk2oimBxLF1oMGvVb2Y=",
+        "rev": "b89ac2364c4a5685a113bd86ab2dec02666f1eb9",
+        "revCount": 27,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-channels"
+      },
+      "original": {
+        "rev": "b89ac2364c4a5685a113bd86ab2dec02666f1eb9",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-channels"
+      }
+    },
+    "data-collector": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781813271,
+        "narHash": "sha256-3OAc+OeRm9Xc+5kwmHYxFevKFgPHBYIkey0PGOt88W8=",
+        "ref": "refs/heads/master",
+        "rev": "35f08f79f7f75c32b245de89c4a624aff36c6d42",
+        "revCount": 98,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-collector-rs"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-collector-rs"
+      }
+    },
+    "data-depot": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786735951,
+        "narHash": "sha256-39Ub9qin672ALIzJRWo9MsXyuYWP6l49sehjTQkZkUs=",
+        "ref": "refs/heads/master",
+        "rev": "a24b9afa415e9a5ab0dcc2d41d8306e1ca172237",
+        "revCount": 59,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-depot"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-depot"
+      }
+    },
+    "data-extractor": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786121557,
+        "narHash": "sha256-Zpt6JQibr6USBOBZY/8T1ylyfGKFzDDyZhpTLHQz/DU=",
+        "ref": "refs/tags/9.14.1",
+        "rev": "320959050ed3681bf984e777c69c734069d565a5",
+        "revCount": 404,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-extractor"
+      },
+      "original": {
+        "ref": "refs/tags/9.14.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-extractor"
+      }
+    },
+    "data-extractor2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786049851,
+        "narHash": "sha256-fbEp2Gour6FBlPP2KcocqZCFRqu9/a1KgEHhhRTYu80=",
+        "ref": "refs/tags/v1.58.0",
+        "rev": "7d925dd0dde368dd21f30109d86de6d4079cadd6",
+        "revCount": 158,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-extractor2"
+      },
+      "original": {
+        "ref": "refs/tags/v1.58.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/data-extractor2"
+      }
+    },
+    "data-sync": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786630900,
+        "narHash": "sha256-ujyIwz3BVQAIt1nKNjl7a4iOicgQUWDFjStUDFX9ArY=",
+        "ref": "refs/tags/v6.0.0",
+        "rev": "def53b4d1a38aac982f4dd84530c4315bbcd210c",
+        "revCount": 227,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/data-sync"
+      },
+      "original": {
+        "ref": "refs/tags/v6.0.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/data-sync"
+      }
+    },
+    "deadcenter-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1756243259,
+        "narHash": "sha256-OlBW33kdf2JFgvL+di548/YLNM7AjLlY4Eq4ZpXWN/w=",
+        "ref": "refs/tags/5.1.1",
+        "rev": "18fb4646f6614b46b9d93948e512eeef25d25eed",
+        "revCount": 108,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/deadcenter-rs"
+      },
+      "original": {
+        "ref": "refs/tags/5.1.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/deadcenter-rs"
+      }
+    },
+    "debrief-manager": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1771525925,
+        "narHash": "sha256-G9Qcqn5maeE1OZ3+dSVWuvZAEVJ87fEmiHUTB9pd+l4=",
+        "ref": "refs/tags/v0.28.0",
+        "rev": "dd630018136a6fa234f262f2c84afc38e13cefae",
+        "revCount": 44,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/debrief-manager"
+      },
+      "original": {
+        "ref": "refs/tags/v0.28.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/debrief-manager"
+      }
+    },
+    "deepthree": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787012952,
+        "narHash": "sha256-f3uFAGppA3XOdzoCpDn4NtLDIGfMBu5xtU7j6ngRfNo=",
+        "ref": "refs/heads/master",
+        "rev": "9e607346442d6d49709639f3f847a82bcbc92b0d",
+        "revCount": 395,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/deepthree"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "9e607346442d6d49709639f3f847a82bcbc92b0d",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/deepthree"
+      }
+    },
+    "deepview": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786629659,
+        "narHash": "sha256-Q8SqNh/HhC6LOxm7ceRiJvieURFMt+CaDpQcecU81C0=",
+        "ref": "refs/heads/master",
+        "rev": "816abb08d697fd005c914fef2503456d6ec9e067",
+        "revCount": 1658,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/deepview"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "816abb08d697fd005c914fef2503456d6ec9e067",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/deepview"
+      }
+    },
+    "defuse": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787141722,
+        "narHash": "sha256-qj73YVzlASqKWDkPKOjjzV+bsF+D1RJvkmuvt6Z3jn8=",
+        "ref": "refs/heads/master",
+        "rev": "4f9d8f49a87e7d2d4cf7926c0fc0cbb21e168ed1",
+        "revCount": 631,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/defuse"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "4f9d8f49a87e7d2d4cf7926c0fc0cbb21e168ed1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/defuse"
+      }
+    },
+    "degrader-sim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1669860064,
+        "narHash": "sha256-g9eR/rp52zOU/5lKbP+cmshGXvBi64y2aw0LWSfJV4U=",
+        "ref": "refs/heads/master",
+        "rev": "8a095bd7926a2ceece2909c5f29e5efd523f8f5a",
+        "revCount": 3,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/degrader-sim"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/degrader-sim"
+      }
+    },
+    "deployments-distributor": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786732634,
+        "narHash": "sha256-ZkXdhncnK2S3Z7JaEGMQ8k/KU1aHoc9VvvU4vMMVrXA=",
+        "ref": "refs/tags/v0.8.2",
+        "rev": "50b3eadf340edb5516e0792de560bcd14d645a68",
+        "revCount": 36,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/deployments-distributor"
+      },
+      "original": {
+        "ref": "refs/tags/v0.8.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/deployments-distributor"
+      }
+    },
+    "devshell": {
+      "inputs": {
+        "nixpkgs": [
+          "queued-build-hook",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1768818222,
+        "narHash": "sha256-460jc0+CZfyaO8+w8JNtlClB2n4ui1RbHfPTLkpwhU8=",
+        "owner": "numtide",
+        "repo": "devshell",
+        "rev": "255a2b1725a20d060f566e4755dbf571bbbb5f76",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "devshell",
+        "type": "github"
+      }
+    },
+    "dgps": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1752094050,
+        "narHash": "sha256-r5rpCWatIgqFcgwLcHLFp/egOFL0iu3zsQk+05u5I+4=",
+        "ref": "refs/heads/master",
+        "rev": "3ae3518b7e030c7e462755d36154601946ebc8b2",
+        "revCount": 56,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dgps"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dgps"
+      }
+    },
+    "dhcp-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1634432548,
+        "narHash": "sha256-aF1rq4PmGZM7ywHwBo07wweBOBgrKadUA7+wa/3G52A=",
+        "ref": "master",
+        "rev": "3434ef71774f16b5f6277eca200918795ac25ec4",
+        "revCount": 29,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dhcp-rs"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dhcp-rs"
+      }
+    },
+    "diagnostic-runner": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787100485,
+        "narHash": "sha256-T+YXG4KZ/S3YXhGfUgQvR5JleNzef8qkvJk4kDHj3lg=",
+        "ref": "refs/tags/v1.151.0",
+        "rev": "f188d3abea8babf595600f38348e654e2ca85a61",
+        "revCount": 439,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/diagnostic-runner"
+      },
+      "original": {
+        "ref": "refs/tags/v1.151.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/diagnostic-runner"
+      }
+    },
+    "discovaird": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1683739500,
+        "narHash": "sha256-59caYK+Fkfjes576DXmF8/msfKdEivdABwOemeEFC1k=",
+        "ref": "refs/heads/master",
+        "rev": "a75a33ceba77f5be4cf1905ca00d6d48bc7405e9",
+        "revCount": 63,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/discovaird"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/discovaird"
+      }
+    },
+    "disko": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781152676,
+        "narHash": "sha256-RxWs5ND31KzTG7wvMM+PMfUjyNpmIEr999lqNARaM5o=",
+        "owner": "nix-community",
+        "repo": "disko",
+        "rev": "ff8702b4de27f72b4c78573dfb89ec74e36abdf1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "disko",
+        "type": "github"
+      }
+    },
+    "diskspaced": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1718398147,
+        "narHash": "sha256-fP7citOWlSo2tLqcwlsRAmiwExQVvybDHYmRgXin+Pw=",
+        "ref": "refs/heads/master",
+        "rev": "5ca294a9e0830464814645075ddef27626c338f8",
+        "revCount": 7,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/diskspaced"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/diskspaced"
+      }
+    },
+    "dive-ld-plugin": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755827579,
+        "narHash": "sha256-IrGeM+xlNHajSKeledIz6BkXFVZiMvRFGvnP58WoKzI=",
+        "ref": "refs/heads/master",
+        "rev": "386ceb2a32ee9f4c1a0e328871dec22157bd4e10",
+        "revCount": 55,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/dive/dive-ld-plugin"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/dive/dive-ld-plugin"
+      }
+    },
+    "dive_core": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783014339,
+        "narHash": "sha256-fYKbwgJcGnNsCYKN1yQMuiqy5ZqO4VlOIg9wxToh4bQ=",
+        "ref": "refs/heads/main",
+        "rev": "f55807105f1fd35792a0a2f2b10db54796203633",
+        "revCount": 1856,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/dive/dive_core"
+      },
+      "original": {
+        "ref": "refs/heads/main",
+        "rev": "f55807105f1fd35792a0a2f2b10db54796203633",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/dive/dive_core"
+      }
+    },
+    "dive_sim_cfg": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759355014,
+        "narHash": "sha256-bYL8BnqLpwqWOhO8yUOKzSA+Iot4XVHqe+2SR628TE4=",
+        "ref": "refs/heads/master",
+        "rev": "242be52a5aa20cebc259a62a33dc6e5a90181b0a",
+        "revCount": 164,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dive_sim_cfg"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dive_sim_cfg"
+      }
+    },
+    "doodle-labs-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1709243646,
+        "narHash": "sha256-JPHQ/0GA0TYEH9m2Z52o63AFaK/q02UGG4qvkMIHC6A=",
+        "ref": "refs/heads/master",
+        "rev": "b9a84839011ad55a12f74bb508ee81aad440f393",
+        "revCount": 12,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/doodle-labs-rs"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/doodle-labs-rs"
+      }
+    },
+    "draft": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1707762498,
+        "narHash": "sha256-rg+ovOVOk6B7H4T6IC0XzkyoCwbMjHsitjJo9L5+Lk0=",
+        "ref": "refs/heads/master",
+        "rev": "cab53190b1305f1cc9fa5cd8a1ea5613cb4d96cf",
+        "revCount": 24,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/jpauletti/draft"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/jpauletti/draft"
+      }
+    },
+    "dsb": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786837899,
+        "narHash": "sha256-FoUCtpgNpGud0R6MD347pIXwOaLJ/3ap0Ksd52/Omq0=",
+        "ref": "refs/tags/1.81.0",
+        "rev": "56b006cf808a65bc390a3cb2ea6b1fc77b1cd4c3",
+        "revCount": 1524,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dsb"
+      },
+      "original": {
+        "ref": "refs/tags/1.81.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dsb"
+      }
+    },
+    "dsb-client-cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786728920,
+        "narHash": "sha256-gaigMQqQbWUA1xgLFfsy7/3ASG1OXTFIz0k0B1rxm0E=",
+        "ref": "refs/heads/master",
+        "rev": "49c54384d09e050d83b5561b68ef5f7ad3d38efa",
+        "revCount": 103,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dsb-client-cpp"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "49c54384d09e050d83b5561b68ef5f7ad3d38efa",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dsb-client-cpp"
+      }
+    },
+    "dsb-flux-adapter": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786047261,
+        "narHash": "sha256-Aw4oFfIJN6w4g92XD93hhjivm0ESxa2OJCbLvLhJbEM=",
+        "ref": "refs/tags/1.17.13",
+        "rev": "5e14df7e944cd8add45af713c12ef96d814f30a6",
+        "revCount": 313,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dsb-flux-adapter"
+      },
+      "original": {
+        "ref": "refs/tags/1.17.13",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dsb-flux-adapter"
+      }
+    },
+    "dsb-nexus": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782234459,
+        "narHash": "sha256-B2YJy9+LcRi3DYJuPZz73igzhD+imxT6vh3gby5vJZ0=",
+        "ref": "refs/heads/master",
+        "rev": "567068986093af4a986864714cbeab9508bd9c3a",
+        "revCount": 34,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dsb-nexus"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "567068986093af4a986864714cbeab9508bd9c3a",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dsb-nexus"
+      }
+    },
+    "dunkaroo": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787069462,
+        "narHash": "sha256-jf43NL5KnkMuCeMvQd86T30RhjaD8NLKJKVP8IozFwk=",
+        "ref": "refs/heads/master",
+        "rev": "c2e66dfd088e231bc9b01d4f007fa21550fd9f5b",
+        "revCount": 25,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dunkaroo"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "c2e66dfd088e231bc9b01d4f007fa21550fd9f5b",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dunkaroo"
+      }
+    },
+    "dvr": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777854742,
+        "narHash": "sha256-dGTgBfGG0vsqblTrD8MHvqZ3Qzr53RmYdO4CJY0B0QY=",
+        "ref": "refs/heads/master",
+        "rev": "06e4a23077dec3440fa9b50b83b4de019014bbde",
+        "revCount": 744,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dvr"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dvr"
+      }
+    },
+    "dynmem-analyzer": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786634534,
+        "narHash": "sha256-rAWAlZ/qGCtQSql+aC92szx6fGLTinOa9KgllqFtdmQ=",
+        "ref": "refs/heads/master",
+        "rev": "b7d7afb3278ce643188d4982e8b8051632d19038",
+        "revCount": 22,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dynmem-analyzer"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/dynmem-analyzer"
+      }
+    },
+    "echelon-planner": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1710876133,
+        "narHash": "sha256-sE6j1HJCn/mgmpDaieftuw0JqwpXvrN1zVNJOBbdYdA=",
+        "ref": "refs/heads/master",
+        "rev": "39cfc4285c6efd5e57f93f5a6c36d973899e9129",
+        "revCount": 3,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echelon-planner"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echelon-planner"
+      }
+    },
+    "echodyned": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782329538,
+        "narHash": "sha256-0VYW4wbm+8h2dIm6Nn8DmAyUHnfi9s+rzLGqgIXCSp0=",
+        "ref": "refs/tags/1.6.1",
+        "rev": "6b71c15466a82ea6595e61fad769ca8eaf316b20",
+        "revCount": 6079,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echodyned"
+      },
+      "original": {
+        "ref": "refs/tags/1.6.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echodyned"
+      }
+    },
+    "echoguard": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1624866336,
+        "narHash": "sha256-2rLFDiGWATnkyDFWvGb/NLkfmgUENZYntKeiSueYDrM=",
+        "ref": "refs/heads/master",
+        "rev": "f6e34dc0978ec98f5df05bd1e248e7b8f39cdd30",
+        "revCount": 12,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echoguard"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echoguard"
+      }
+    },
+    "echomavd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774900931,
+        "narHash": "sha256-1btuTjzgz/x7fy9jFtKlwn8V8HEFTF5EI+A8EwZ06E0=",
+        "ref": "refs/heads/master",
+        "rev": "8e3c7e575fb44fc5b5c3dcf0d9cda448340c2041",
+        "revCount": 33,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echomavd"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echomavd"
+      }
+    },
+    "echomavd-c-library": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1697073029,
+        "narHash": "sha256-6CUdl3mVRxzLiYpO+F2ihPx5PeqLzWN5ZPmzl1SOPj4=",
+        "owner": "mavlink",
+        "repo": "c_library_v2",
+        "rev": "a792c5208055337d69efff769a14847620355f83",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mavlink",
+        "repo": "c_library_v2",
+        "type": "github"
+      }
+    },
+    "echoshield": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786477891,
+        "narHash": "sha256-ukpGV0xNFUWE4HPRU10MsWBSXzz++KAuZI3+hyViEj0=",
+        "ref": "refs/tags/6.0.0",
+        "rev": "e5d066faf079d8e0d1f47d7344b9ea7b02e6dd14",
+        "revCount": 256,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echoshield"
+      },
+      "original": {
+        "ref": "refs/tags/6.0.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/echoshield"
+      }
+    },
+    "edge-asset-entity-aggregator": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786392922,
+        "narHash": "sha256-kz578ROcfVEtIzM56hoWp1LzGnIP+/n0568XjC3Ev8k=",
+        "ref": "refs/tags/v2.4.2",
+        "rev": "b04ef9b8653a28946ba971778a26f4e6a5afb7ee",
+        "revCount": 21,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/edge-asset-entity-aggregator"
+      },
+      "original": {
+        "ref": "refs/tags/v2.4.2",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/edge-asset-entity-aggregator"
+      }
+    },
+    "edge-connection-shell": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1769452547,
+        "narHash": "sha256-NxaFxW8jMNpY5cC7seU/2xhpDXjbJ2IXuUjyWUI9xn4=",
+        "ref": "refs/heads/master",
+        "rev": "ddcdfc63663f2787a170887df1336c87755e380b",
+        "revCount": 18,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/edge-connection-shell"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/edge-connection-shell"
+      }
+    },
+    "egond": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785266121,
+        "narHash": "sha256-Px9WZ+sWY4zdUheCNuP+VJe3Y1S2YRTCodH2ngjp8xc=",
+        "ref": "refs/heads/master",
+        "rev": "da7c477afb0c0f64aa9095befbfaf63296f60c8b",
+        "revCount": 379,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/egond"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "da7c477afb0c0f64aa9095befbfaf63296f60c8b",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/egond"
+      }
+    },
+    "elevation": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784565261,
+        "narHash": "sha256-K7Aas3nsJd1NVp7uRmZHXF6VBg94tOFcD/TPbqkTld0=",
+        "ref": "refs/tags/0.6.4",
+        "rev": "06172e30dc7c380ed8b0deb06e07e16bc0c941d7",
+        "revCount": 40,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/elevation"
+      },
+      "original": {
+        "ref": "refs/tags/0.6.4",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/elevation"
+      }
+    },
+    "elmer": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783018112,
+        "narHash": "sha256-5fYqX1yLyqJtLJSGNF3XdJ4w8eiR6CXqu0L2QwQkJ9k=",
+        "ref": "refs/heads/master",
+        "rev": "0ac7f6d9a15f2f0a3d49ec9918b0512283ad4a6a",
+        "revCount": 237,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/elmer"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/elmer"
+      }
+    },
+    "entity-filter-shim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1756004213,
+        "narHash": "sha256-SDe6Lo9eVLd20B7wKkFMOSkpJLlB0IofElEHqhfqEuw=",
+        "ref": "master",
+        "rev": "c2a56386d21435f8d106066cc072aac8273c3fe7",
+        "revCount": 7,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/entity-filter-shim"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/entity-filter-shim"
+      }
+    },
+    "entity-history": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786998297,
+        "narHash": "sha256-Y2Ig71KY7n6wheldyx/GsKiudZodQLjdlrIQu6tXn10=",
+        "ref": "refs/tags/v19.79.8",
+        "rev": "224dde36b264f2f03dd1c1dac1e9577271a6a76d",
+        "revCount": 978,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-history"
+      },
+      "original": {
+        "ref": "refs/tags/v19.79.8",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-history"
+      }
+    },
+    "entity-manager": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786932997,
+        "narHash": "sha256-7AtAZRB3IgV14UmngbqgDlT/LBup1YR+ZI6bu8t0Dds=",
+        "ref": "refs/tags/v90.300.6",
+        "rev": "c948e5af00297ca4e28cd11cc53e4380522ee0e1",
+        "revCount": 2741,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-manager"
+      },
+      "original": {
+        "ref": "refs/tags/v90.300.6",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-manager"
+      }
+    },
+    "entity-manager-asim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787107394,
+        "narHash": "sha256-WYifYTui+laDdvR5Dx1qjW3CvMMhXBe+olfLvILWEqc=",
+        "ref": "refs/heads/master",
+        "rev": "152343bbe69bcde1da854e04680b2a29f142fa65",
+        "revCount": 134,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-manager-asim"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "152343bbe69bcde1da854e04680b2a29f142fa65",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-manager-asim"
+      }
+    },
+    "entity-metrics": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1770135067,
+        "narHash": "sha256-pqhNpTkGIeDvus/JZnZgi+NgQ3A7s3BpnlfVhmxQGO0=",
+        "ref": "refs/heads/master",
+        "rev": "7bd11554486dab0da9a757e7eea656e1cf9bdc18",
+        "revCount": 123,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-metrics"
+      },
+      "original": {
+        "rev": "7bd11554486dab0da9a757e7eea656e1cf9bdc18",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-metrics"
+      }
+    },
+    "entity-simulator": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781810665,
+        "narHash": "sha256-bqAAlkOkATNSNBnjVn7VxyTtYuwgZnJDBhoR59B3c0I=",
+        "ref": "refs/heads/master",
+        "rev": "46ee04233dc4eb8d2199a1e2f88e061822e4c2a3",
+        "revCount": 507,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-simulator"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "46ee04233dc4eb8d2199a1e2f88e061822e4c2a3",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-simulator"
+      }
+    },
+    "entity-templates": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786327145,
+        "narHash": "sha256-1hFBl2IGyGQuzxZLapMySeXemoIJzv1Eco8Nr3m9CZU=",
+        "ref": "refs/tags/v9.8.5",
+        "rev": "df6f1523b86a5c24a6f3ed0fee80ba43b14854d7",
+        "revCount": 183,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-templates"
+      },
+      "original": {
+        "ref": "refs/tags/v9.8.5",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/entity-templates"
+      }
+    },
+    "ephemerald": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1769537147,
+        "narHash": "sha256-Qtu13TCopcJvr4GXfU+ActDcD+op1GMj6lkV6XAGIdk=",
+        "ref": "refs/heads/master",
+        "rev": "21403b9797f98e1f60535fce738946781b2efbdd",
+        "revCount": 6,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ephemerald"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/ephemerald"
+      }
+    },
+    "es-utils": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780954871,
+        "narHash": "sha256-MSUMjHlPmWHpnx7ua4BzzJIFk/3U3vqeOI04/ez0F34=",
+        "ref": "master",
+        "rev": "aeebd8545dee0cbed42a1551ca16f37612e6371e",
+        "revCount": 261,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/es-utils"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "aeebd8545dee0cbed42a1551ca16f37612e6371e",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/es-utils"
+      }
+    },
+    "esm-fusion": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1742597137,
+        "narHash": "sha256-NkMELskqfFP0hQVcWdM7rRImlfY63tkhYiwvVsdQqq0=",
+        "ref": "refs/heads/master",
+        "rev": "f46c0f4483310858337282831b0f673ec92364dd",
+        "revCount": 65,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/esm-fusion"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/esm-fusion"
+      }
+    },
+    "euclid": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774565692,
+        "narHash": "sha256-Q85rkKG9tM7ll8ALQIn82MfFWPKZshxt+qdEzRSkvzE=",
+        "ref": "master",
+        "rev": "0031b6024f5a5cee6bfde8528adcd4586c24a6a8",
+        "revCount": 53,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/euclid"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "0031b6024f5a5cee6bfde8528adcd4586c24a6a8",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/euclid"
+      }
+    },
+    "evaluation-engine": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1692743204,
+        "narHash": "sha256-LzoRrb3/ZksmJl+ihiiOFulB1snBeKan6Zjd3dxuG2U=",
+        "ref": "refs/heads/master",
+        "rev": "b564c92fece42d26a46bc502a6a0d1b031541ba8",
+        "revCount": 176,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/evaluation-engine"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/evaluation-engine"
+      }
+    },
+    "event-store": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1692648997,
+        "narHash": "sha256-+H0F+5HJ+3XRPo8vi/43xmnfgt8miWLndk7tHvg7Ipg=",
+        "ref": "refs/tags/1.5",
+        "rev": "ad3a2b85fbc3af922c96dc3438168074830a4b3e",
+        "revCount": 47,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/event-store"
+      },
+      "original": {
+        "ref": "refs/tags/1.5",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/event-store"
+      }
+    },
+    "exclusion-zone-cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784677252,
+        "narHash": "sha256-IoXYtgdKaFNr01NpD7jPa0k/XmboZFdv7A0y3xjyy7E=",
+        "ref": "master",
+        "rev": "c56b03ae19946bb736c0c6b3ffd470a387b28007",
+        "revCount": 103,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/exclusion-zone-cpp"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/exclusion-zone-cpp"
+      }
+    },
+    "external-grpc-gateway": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782499615,
+        "narHash": "sha256-U3M8ci3FF8kHTp3szvAiXcpVjQ7Of9E9ymbDSNjghf8=",
+        "ref": "refs/tags/v3.4.0",
+        "rev": "f7f082bccfcbd745e8fac63c70556c1b8156df94",
+        "revCount": 113,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/external-grpc-gateway"
+      },
+      "original": {
+        "ref": "refs/tags/v3.4.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/external-grpc-gateway"
+      }
+    },
+    "fde-manager": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1655159692,
+        "narHash": "sha256-MEZs7mRv32sZoreuQacgKRPX1cjoCDNPrb45mKn6hyI=",
+        "ref": "master",
+        "rev": "7c649341dd0569ed4b93be03f70f7532e75ca7a2",
+        "revCount": 89,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/fde-manager"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/fde-manager"
+      }
+    },
+    "fds-service": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787126281,
+        "narHash": "sha256-ZIT0VSS9+vXYFjzHT7nODnhjrjjfbtn92cKZ2dDyjCo=",
+        "ref": "refs/tags/v16.53.55",
+        "rev": "dbc041407318d7d75c09cc5dd4521b99301189e5",
+        "revCount": 1603,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/fds-service"
+      },
+      "original": {
+        "ref": "refs/tags/v16.53.55",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/fds-service"
+      }
+    },
+    "fdsutils-py": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1717402288,
+        "narHash": "sha256-vyMAGypmr2urnpmgSB01YKdUtceb+xHEVwT8xyIfxvc=",
+        "ref": "master",
+        "rev": "b3317e0714e2083355641ef6e20b6b7770d7d5d1",
+        "revCount": 13,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fdsutils-py"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "b3317e0714e2083355641ef6e20b6b7770d7d5d1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fdsutils-py"
+      }
+    },
+    "file-retention-service": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1747668781,
+        "narHash": "sha256-/VpaBBiqcst/IOXK8wdsDRvacuBxkK65i36o/ANesFU=",
+        "ref": "refs/tags/v1.4.0",
+        "rev": "5386dbf8dd76446a6b4e6206994a4ae012b25a45",
+        "revCount": 110,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/file-retention-service"
+      },
+      "original": {
+        "ref": "refs/tags/v1.4.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/file-retention-service"
+      }
+    },
+    "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1747046372,
+        "narHash": "sha256-CIVLLkVgvHYbgI2UpXvIIBJ12HWgX+fjA8Xf8PUmqCY=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "9100a0f413b0c601e0533d1d94ffd501ce2e7885",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
+    "flake-compat_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1696426674,
+        "narHash": "sha256-kvjfFW7WAETZlt09AgDn1MrtKzP7t90Vf7vypd3OL1U=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "0f9255e01c2351cc7d116c072cb317785dd33b33",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
+    "flake-parts": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "nix",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1748821116,
+        "narHash": "sha256-F82+gS044J1APL0n4hH50GYdPRv/5JWm34oCJYmVKdE=",
+        "rev": "49f0870db23e8c1ca0b5259734a02cd9e1e371a1",
+        "revCount": 377,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/hercules-ci/flake-parts/0.1.377%2Brev-49f0870db23e8c1ca0b5259734a02cd9e1e371a1/01972f28-554a-73f8-91f4-d488cc502f08/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/hercules-ci/flake-parts/0.1"
+      }
+    },
+    "flake-parts_2": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "nix-eval-jobs",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1782949081,
+        "narHash": "sha256-vp6Y/Grm98ESt6ceOkWiHWyZRDV3J1RID4w+6NWK9yA=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "17c9d6cdfc60c64f4ee8d306f9bc0b4ccb51481e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-utils": {
+      "inputs": {
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "fleet-manager": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787103028,
+        "narHash": "sha256-IgNmpprcQVN1FrOqnVlfn6WCMqNt6LQ2yVfMV7owyNI=",
+        "ref": "refs/tags/v6.47.3",
+        "rev": "77bf021f00a747bb8b5056159a0226a3224ed757",
+        "revCount": 297,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fleet-manager"
+      },
+      "original": {
+        "ref": "refs/tags/v6.47.3",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fleet-manager"
+      }
+    },
+    "flightlogd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1758302023,
+        "narHash": "sha256-IJFeHy8E3rvBePI/XGplL1v2Cw7WGtp6NRPoEhxZGYU=",
+        "ref": "refs/tags/v0.0.1",
+        "rev": "650a15d908a75d853a9705c1cbfea84215b047e4",
+        "revCount": 9,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flightlogd"
+      },
+      "original": {
+        "ref": "refs/tags/v0.0.1",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flightlogd"
+      }
+    },
+    "flir-boson-rs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784820461,
+        "narHash": "sha256-ukjvvCurJL7pPueDjykyh/INSvpuavUbRbu/qIM1xgE=",
+        "ref": "refs/heads/master",
+        "rev": "0243fe3fe607d0b61d69191dd3a1a9cb551d920f",
+        "revCount": 26,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flir-boson-rs"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flir-boson-rs"
+      }
+    },
+    "flir-camerad": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759883686,
+        "narHash": "sha256-IqEImd9C0dca6J/HLKM7rbpKUWuA6NTSRtQ5hOzzRvU=",
+        "ref": "refs/heads/master",
+        "rev": "0cb5dcff41d6ca261656fd96981f29c42c3ae8c1",
+        "revCount": 57,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flir-camerad"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flir-camerad"
+      }
+    },
+    "flows": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1737065878,
+        "narHash": "sha256-U/zjG2ltE0Q4WYVyG9XdEgwfv1PruvxrxjF85bIDhZg=",
+        "ref": "refs/heads/master",
+        "rev": "c13d5f923e1730e0c889c346d15c2751f9eb8313",
+        "revCount": 191,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flows"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flows"
+      }
+    },
+    "flux": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785981736,
+        "narHash": "sha256-dKQdLLw4lsKORDxtkL3DkdbCAA9erv7HYdBBozr8Sok=",
+        "ref": "refs/tags/v6.42.3",
+        "rev": "1469ab878b8a6c3edbe4a1d0e79009ff89e9bc16",
+        "revCount": 2478,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux"
+      },
+      "original": {
+        "ref": "refs/tags/v6.42.3",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux"
+      }
+    },
+    "flux-cdn": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1696963915,
+        "narHash": "sha256-qa0e0m93cRIzEX9sIcMGtalJfvUam4v32HOL8Igs5ks=",
+        "ref": "refs/tags/1.2.0",
+        "rev": "29d5c1718ddec08ac54e8da12c438cdd81e3df2e",
+        "revCount": 110,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-cdn"
+      },
+      "original": {
+        "ref": "refs/tags/1.2.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-cdn"
+      }
+    },
+    "flux-client-cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1749075414,
+        "narHash": "sha256-pAvbXhPmk1kn5n9pz6MThc23rquuKNH6ycvMfYbrQKs=",
+        "ref": "refs/heads/master",
+        "rev": "89262b37206c131b121e0749a31763b10bf63ec7",
+        "revCount": 306,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux-client-cpp"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux-client-cpp"
+      }
+    },
+    "flux-file-server": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1696968869,
+        "narHash": "sha256-H9a1f/cmWVMto1EzjSo94yoNoRAIKYnGx3DNig3nbTA=",
+        "ref": "master",
+        "rev": "357144596f94e4b34b4d2530e1ee16aaabc8c6aa",
+        "revCount": 41,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-file-server"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "357144596f94e4b34b4d2530e1ee16aaabc8c6aa",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-file-server"
+      }
+    },
+    "flux-hs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778638482,
+        "narHash": "sha256-jF5DMBEJTHIyKWH8vP4Lh369rdYY1NTtd0VVQG80yyY=",
+        "ref": "refs/heads/master",
+        "rev": "4dab2ca08008b5ea86caac89e59229751666226c",
+        "shallow": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux-hs"
+      },
+      "original": {
+        "shallow": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux-hs"
+      }
+    },
+    "flux-kv": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1696968263,
+        "narHash": "sha256-TxRueHc5Uv6MfvVAx7AB8Wj2pk70vtX8RF/RyT6BCf8=",
+        "ref": "master",
+        "rev": "adeb27452492b0fd77f45052504826d3b1087387",
+        "revCount": 382,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-kv"
+      },
+      "original": {
+        "ref": "master",
+        "rev": "adeb27452492b0fd77f45052504826d3b1087387",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-kv"
+      }
+    },
+    "flux-monitor": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1697131001,
+        "narHash": "sha256-k9SJ6Y7OXKOTnqA4FJQPNHqLA/FK4yR0SISwuQ9GqTg=",
+        "ref": "refs/tags/1.1.0",
+        "rev": "1f9cf5507a22dad00d7a102b274efc16df1a3464",
+        "revCount": 48,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-monitor"
+      },
+      "original": {
+        "ref": "refs/tags/1.1.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-monitor"
+      }
+    },
+    "flux-proxy": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786412124,
+        "narHash": "sha256-QeW6d7EpPhq3hEw7WpAjFUAbNOSTNCeiTsejjsEzmUI=",
+        "ref": "refs/tags/v1.17.0",
+        "rev": "bf54dd53ded70921b21f9d773afd83edc6e0bc19",
+        "revCount": 390,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-proxy"
+      },
+      "original": {
+        "ref": "refs/tags/v1.17.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/flux-proxy"
+      }
+    },
+    "flux-quick-registration": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1748455298,
+        "narHash": "sha256-UOEgQckwsTV8NRwZpnbh9THgN9OGgqHMiwVOwMsADvU=",
+        "ref": "refs/heads/master",
+        "rev": "0d409d7c156c1f870c2845d632159e1690b0708f",
+        "revCount": 9,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux-quick-registration"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux-quick-registration"
+      }
+    },
+    "flux-vpn": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780162888,
+        "narHash": "sha256-R7g53od3gvAXZdGvHh8El44Pmc7YTYuVk3reWFk4w4A=",
+        "ref": "refs/tags/v3.7.4",
+        "rev": "53a03ff3550c6dd72c59499af6359186ecd160b1",
+        "revCount": 433,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux-vpn"
+      },
+      "original": {
+        "ref": "refs/tags/v3.7.4",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux-vpn"
+      }
+    },
+    "flux_topic_registry_cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1773862377,
+        "narHash": "sha256-ajMg+XMPL/xwh6vsdQ7Q+QwqjXWByps27uZZDXPfywI=",
+        "ref": "refs/heads/master",
+        "rev": "aa43871fa34a6e7e9be3dd4ebb3c9dd392efc1f7",
+        "revCount": 30,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux_topic_registry_cpp"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "aa43871fa34a6e7e9be3dd4ebb3c9dd392efc1f7",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/flux_topic_registry_cpp"
+      }
+    },
+    "fluxcat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786645564,
+        "narHash": "sha256-N5cEqOMar9w4gW3/xImO/WZ02abENOZcYBS5Hut4QyQ=",
+        "ref": "refs/heads/master",
+        "rev": "bd0cf989c158a1a62096ff6d87f35b1d146f7710",
+        "revCount": 39,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fluxcat"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "bd0cf989c158a1a62096ff6d87f35b1d146f7710",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fluxcat"
+      }
+    },
+    "fovd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780591744,
+        "narHash": "sha256-BF8zq6mEIoJwL+Qv93UhEwPugyP4PnQsi3twAXkQlnw=",
+        "ref": "refs/heads/master",
+        "rev": "7099937774ccce1d99ab4430f6240e1153bc0820",
+        "revCount": 23,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fovd"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fovd"
+      }
+    },
+    "foxglove-bridge": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1675734576,
+        "narHash": "sha256-5FnupE1pEkw2vg8ydyRZ6z7Aoal/r8dsOlTIdKkYJXE=",
+        "ref": "master",
+        "rev": "3f137359545602537f9a9172001690f8c08eae74",
+        "revCount": 7,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/areynolds/foxglove-bridge"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/areynolds/foxglove-bridge"
+      }
+    },
+    "foxglove-ipps": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759901744,
+        "narHash": "sha256-e6a7+U594ftxctV2Akhyt/G6eA/7k3yK+aHpjiNyeZI=",
+        "ref": "refs/heads/master",
+        "rev": "0f94c8b4636c9452060630df2d879b402aded8ef",
+        "revCount": 14,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/foxglove-ipps"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/foxglove-ipps"
+      }
+    },
+    "foxglove-py": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1752275465,
+        "narHash": "sha256-7o37E9ontncivVWiiyDLHsru0llMGYBZ4kelhTBeBTw=",
+        "ref": "refs/heads/master",
+        "rev": "fbf383aa671ee914d55cc345ffbb3cf385c2392e",
+        "revCount": 478,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/foxglove-py"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/perception/foxglove-py"
+      }
+    },
+    "foxglove-schemas-protobuf-cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1748799446,
+        "narHash": "sha256-oK+JKaB07/3nQaTN+HgKl+nklWdMwLm+dQO9itVquKQ=",
+        "ref": "master",
+        "rev": "21879b3feb1fbd4fc8586056d2b47a4bec2db490",
+        "revCount": 8,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/foxglove-schemas-protobuf"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/foxglove-schemas-protobuf"
+      }
+    },
+    "foxglove-sdk": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1748642550,
+        "narHash": "sha256-MTsNDYUQGQtkc15aGrAwZr/6A3eQIoSTiL8Zrp12I/Q=",
+        "owner": "foxglove",
+        "repo": "foxglove-sdk",
+        "rev": "52babfe5e82f3bf024d1315c482481c0d0d7dae4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "foxglove",
+        "repo": "foxglove-sdk",
+        "rev": "52babfe5e82f3bf024d1315c482481c0d0d7dae4",
+        "type": "github"
+      }
+    },
+    "frontend-proxy": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786131443,
+        "narHash": "sha256-A9+DdXDvQjV/CA5Qcl7dj5eyA52hzh7hvfs47B0/9Fo=",
+        "ref": "refs/tags/v1.8.29",
+        "rev": "1ccf65fa2d71d9e113f771b86ee348801a1736e5",
+        "revCount": 126,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/frontend-proxy"
+      },
+      "original": {
+        "ref": "refs/tags/v1.8.29",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/platform/frontend-proxy"
+      }
+    },
+    "fusion-filter": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1741112926,
+        "narHash": "sha256-59iIijnGFadMeL8S9k6vCnJo3YOY3eSHbbeWEfNCiHI=",
+        "ref": "refs/heads/master",
+        "rev": "524fdb17a5692caab2a12218d81d08e26dc6a8e4",
+        "revCount": 26,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fusion-filter"
+      },
+      "original": {
+        "rev": "524fdb17a5692caab2a12218d81d08e26dc6a8e4",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fusion-filter"
+      }
+    },
+    "fusionator": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783970918,
+        "narHash": "sha256-oqZ8B4yLqkB1Ck0lum277T47oi1XuMYyGwmgKq2vxuI=",
+        "ref": "refs/heads/air-defense/release",
+        "rev": "de670d693fdf42d154e79808cd97617d720794cb",
+        "shallow": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fusionator"
+      },
+      "original": {
+        "ref": "refs/heads/air-defense/release",
+        "shallow": true,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fusionator"
+      }
+    },
+    "fusionator-cint": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1771455436,
+        "narHash": "sha256-CN1EcppzDRPf7nXVQLOEgSc3CAjIA6OICinGNblcgtY=",
+        "ref": "sentry/release/v1.0",
+        "rev": "0fddc39b66b709ed8d466fe2f2ca4a67999ce773",
+        "revCount": 221,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fusionator"
+      },
+      "original": {
+        "ref": "sentry/release/v1.0",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fusionator"
+      }
+    },
+    "fwd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759028772,
+        "narHash": "sha256-wFQ50suggeZP+xJzZnlFTZ+jiINIp1rp3yoRd/FZYuA=",
+        "ref": "9103",
+        "rev": "97d531c7e2bc0b7fc10b34ff752e37a85849ae6d",
+        "revCount": 22,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fwd"
+      },
+      "original": {
+        "ref": "9103",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/fwd"
+      }
+    },
+    "gbossd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780344106,
+        "narHash": "sha256-zopHmjZuCOgsjg4uBuMC5fCy97q3TbJZUcKHikBoHJ0=",
+        "ref": "refs/heads/master",
+        "rev": "e8778d37730517d109eebb5fbb8d4b92c0589f5b",
+        "revCount": 94,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/gbossd"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/gbossd"
+      }
+    },
+    "gcs-asset-repeater": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1772639490,
+        "narHash": "sha256-rTQMY9/N3qbzdLREgje+aIQYf5Qoa0qlx4hgJlsCicw=",
+        "ref": "refs/heads/master",
+        "rev": "b52d3ffcfad2823e79ddb45cebee9bee00e1e122",
+        "revCount": 3,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/gcs-asset-repeater"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/gcs-asset-repeater"
+      }
+    },
+    "gcs-pose-publisher": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780037941,
+        "narHash": "sha256-RCUw3WnHPklEDEQuWZspIWcBqBWnP5x47zICkuuo77w=",
+        "ref": "refs/heads/tbereknyei/fix-boost-1.89-system",
+        "rev": "bad513927bbeb4005c72d2df2c1bb659a42f8275",
+        "revCount": 13,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/gcs-pose-publisher"
+      },
+      "original": {
+        "ref": "refs/heads/tbereknyei/fix-boost-1.89-system",
+        "rev": "bad513927bbeb4005c72d2df2c1bb659a42f8275",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/gcs-pose-publisher"
+      }
+    },
+    "genetec-isg": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1764887718,
+        "narHash": "sha256-dglwp+9NwfALlHtb7+E8aXXEjrK5i6o/qg28IioH++A=",
+        "ref": "refs/heads/master",
+        "rev": "121209dbb00de31d70f7699797d026064cfe62df",
+        "revCount": 14,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/genetec-isg"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/genetec-isg"
+      }
+    },
+    "geoid-query": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786045495,
+        "narHash": "sha256-Lq3PaBvaYPXdasZGfNFfBtGz8nmXUEpB1V11rvY26go=",
+        "ref": "refs/heads/master",
+        "rev": "99c11e6ffeaffc9365e1f360266c4dc303bc499f",
+        "revCount": 13,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/geoid-query"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "99c11e6ffeaffc9365e1f360266c4dc303bc499f",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/geoid-query"
+      }
+    },
+    "geometry-cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783344052,
+        "narHash": "sha256-o9NtvnF1As97JzTvRe/VTD33mzuNDVSG661UDYLR4G0=",
+        "ref": "refs/heads/master",
+        "rev": "22dcf3b959d16aa4ad2c978be745a50d9ac724b5",
+        "revCount": 236,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/geometry-cpp"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "22dcf3b959d16aa4ad2c978be745a50d9ac724b5",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/geometry-cpp"
+      }
+    },
+    "geometry-py": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783361798,
+        "narHash": "sha256-RXRilkmxK5hSvVHdpEo/RyWRQp+eB11yZN+UHM5KJBM=",
+        "ref": "refs/heads/master",
+        "rev": "e86759b6bf2f6b23bb6a7da322b7bd50289bb501",
+        "revCount": 83,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/geometry-py"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "e86759b6bf2f6b23bb6a7da322b7bd50289bb501",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/autonomy/geometry-py"
+      }
+    },
+    "gigev": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780422919,
+        "narHash": "sha256-YpwBJvQRq83soKUeaY+UR0mB8pcVjIDPLFHflHs26K8=",
+        "ref": "master",
+        "rev": "e8af98dc9d11072140bc88a010b4ceff983d6c39",
+        "revCount": 214,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/imaging/gigev"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/imaging/gigev"
+      }
+    },
+    "gimbal-agent": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1756414555,
+        "narHash": "sha256-91bzHQ6yOKlMGxEroVIH78CeJryi8H7iGraKC1ogS9w=",
+        "ref": "refs/heads/master",
+        "rev": "eff8285982cd3b85210d6b83a59ba7b5b2bc3e6c",
+        "revCount": 46,
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/gimbal-agent"
+      },
+      "original": {
+        "ref": "refs/heads/master",
+        "rev": "eff8285982cd3b85210d6b83a59ba7b5b2bc3e6c",
+        "type": "git",
+        "url": "ssh://git@ghe.anduril.dev/anduril/gimbal-agent"
+      }
+    },
+    "gimbal-plugin": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782356070,
+        "narHash": "sha25
