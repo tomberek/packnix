@@ -1,22 +1,27 @@
-# The JSON-with-comments grammar, ported from the original default.nix's
-# embedded grammar, using the new star/opt/cutSeq combinators from
-# lib/packrat.nix instead of hand-rolled right-recursive `choice` chains.
-#
-# Exposes both a `grammarNoCut` variant (Phase 1: top-level `X` is a plain
-# ordered choice) and a `grammar` variant (Phase 2: top-level `X` applies
-# the cut operator to each alternative, since SET/LIST/STRING/NUMBER/
-# BOOL/NULL are first-token-disjoint -- see default.nix / final report for
-# why this is semantically safe here, mirroring the cut paper's AC-FIRST
-# motivating example in §4.2).
+# The JSON grammar, using the star/opt/cutSeq combinators from
+# lib/packrat.nix. Exposes both `grammarNoCut` (top-level `X` is a
+# plain ordered choice) and `grammar` (each `X` alternative wrapped in
+# cutSeq, since SET/LIST/STRING/NUMBER/BOOL/NULL are first-token-disjoint --
+# mirrors the cut paper's AC-FIRST motivating example, PASTE'10 §4.2). Both
+# variants are kept for A/B benchmarking (see bench/measure.sh); default.nix
+# picks one via `useCut`.
 let
   # Rules shared verbatim between the cut and no-cut variants.
   common = {
-    WHITESPACE = { star = { regex = "([[:space:]]+)"; }; };
+    # `opt`, not `star`: `[[:space:]]+` already greedily consumes the WHOLE
+    # contiguous run in one evalRegex call (confirmed: builtins.match is
+    # greedy), so `star`'s iterate-and-recheck loop here only ever runs 0
+    # or 1 times -- pure overhead. `opt` gets the same "zero or more"
+    # acceptance (a bare `regex` atom requires >=1 match, which would
+    # reject e.g. the "[]" in this repo's own lock-large.json) without a
+    # star's per-call setup or its list-of-matches result shape.
+    WHITESPACE = { opt = { regex = "([[:space:]]+)"; }; };
     NULL = { lit = "null"; };
+    # "false" tried first: outnumbers "true" ~14:1 in this repo's fixtures.
     BOOL = {
       choice = [
-        { lit = "true"; }
         { lit = "false"; }
+        { lit = "true"; }
       ];
     };
     NUMBER = { regex = "([0-9]+)"; };
@@ -26,25 +31,9 @@ let
       "STRING_RAW"
       { lit = "\""; }
     ];
-    # STRING_FRAG was previously a standalone nonterminal referenced only
-    # from here; inlined directly into STRING_RAW's star body. Each
-    # nonterminal is a separate field on EVERY Derivs node (one node per
-    # input position, ~392000 of them for a 391947-byte file) regardless
-    # of whether that position ever uses it, so a single-use wrapper
-    # nonterminal like this one was pure per-node thunk-allocation
-    # overhead with no benefit -- confirmed by profiling (see the research
-    # notes that led to this change): unused grammar fields cost real,
-    # measurable memory (each unforced thunk still gets allocated at every
-    # node) and a modest amount of time (the extra nonterminal-reference
-    # indirection hop), and there is no engine-level fix for that -- Nix's
-    # mapAttrs-based lazy field construction can't skip allocating a thunk
-    # just because it happens to go unused at a given position, and the
-    # engine's memoization design depends on every field being a real,
-    # shared attrset field (not something built through a dynamic-dispatch
-    # cache). The only real lever is trimming the grammar's own rule
-    # count, which is what this change does for STRING_FRAG/COMMENT_CHAR
-    # (both single-use, both had no other purpose besides being one
-    # `star`'s body).
+    # Fragment alternatives inlined rather than a separate STRING_FRAG
+    # rule: every nonterminal is a field on every Derivs node, so a
+    # single-use wrapper costs real per-node allocation for nothing.
     STRING_RAW = {
       star = {
         choice = [
@@ -55,30 +44,7 @@ let
       };
     };
 
-    COMMENT = [
-      "WHITESPACE"
-      { lit = "#"; }
-      "COMMENT_BODY"
-      "WHITESPACE"
-    ];
-    # Self-chunking, matching STRING_RAW/WHITESPACE's pattern: a `star` over
-    # single-character regex matches, rather than one greedy `([^\n]+)`
-    # match over the whole line. This makes COMMENT robust to a comment
-    # line of ANY length regardless of evalRegex's bounded lookahead
-    # window at the grammar level, as a second line of defense alongside
-    # (not instead of) the engine-level growing-window retry in
-    # lib/packrat.nix's evalRegex -- other grammars/rules can still write a
-    # plain non-star regex atom and rely on the engine to handle a match
-    # longer than the window correctly, but this rule no longer needs to.
-    # COMMENT_CHAR was previously a standalone nonterminal referenced only
-    # from here; inlined into COMMENT_BODY's star body for the same
-    # per-node thunk-allocation reason as STRING_FRAG above.
-    COMMENT_BODY = { star = { regex = "([^\n])"; }; };
-
-    # e? lets LIST/SET accept an empty body ("[]"/"{}"), which the original
-    # grammar could not parse at all (its LIST_ITEMS/ITEMS required >= 1
-    # item). This can only add acceptance, never regress anything that
-    # already parsed under the old grammar.
+    # `opt` lets LIST/SET accept an empty body ("[]"/"{}").
     LIST = [
       { lit = "["; }
       "WHITESPACE"
@@ -86,13 +52,25 @@ let
       "WHITESPACE"
       { lit = "]"; }
     ];
+    # Cut here changes WHY a trailing comma is rejected (the whole star
+    # fails outright, vs. plain (e1 e2)* stopping early and letting the
+    # outer "]"/"}" reject the leftover ","), but not WHETHER it's
+    # rejected: "," is never a valid start of "]"/"}", so both encodings
+    # accept/reject identically here (verified directly against
+    # trailing-comma, empty, and valid inputs). Also faster/lighter than
+    # plain on long runs: measured ~9% less RSS at 50000 items (compileStarCut
+    # goes straight to genericClosure once, vs. plain's cheap-path/
+    # genericClosure-escalation splicing every 500 items) and statistically
+    # tied at this repo's realistic sizes (<=20 items).
     LIST_ITEMS = [
       "X"
       {
-        star = [
-          { lit = ","; }
-          "X"
-        ];
+        star = {
+          cutSeq = [
+            { lit = ","; }
+            "X"
+          ];
+        };
       }
     ];
 
@@ -106,42 +84,27 @@ let
     ITEMS = [
       "ITEM"
       {
-        star = [
-          { lit = ","; }
-          "ITEM"
-        ];
+        star = {
+          cutSeq = [
+            { lit = ","; }
+            "ITEM"
+          ];
+        };
       }
     ];
-    ITEM = {
-      choice = [
-        [
-          "WHITESPACE"
-          "STRING"
-          "WHITESPACE"
-          { lit = ":"; }
-          "X"
-        ]
-        [
-          "COMMENT"
-          "STRING"
-          "WHITESPACE"
-          { lit = ":"; }
-          "X"
-        ]
-      ];
-    };
+    ITEM = [
+      "WHITESPACE"
+      "STRING"
+      "WHITESPACE"
+      { lit = ":"; }
+      "X"
+    ];
   };
 
-  # Order matters for a plain (non-cut) ordered choice: PEG tries branches
-  # left-to-right and stops at the first success, so branches matching
-  # MORE OFTEN in real input should come first to minimize wasted failed
-  # attempts. Measured the actual value-type distribution of a real,
-  # large flake.lock (14.2MB, /home/tbereknyei/sources/nix-overlay/
-  # flake.lock): of ~362716 X-values, ~60% were strings, ~20% were
-  # sets/dicts, ~13% numbers, ~6% bools, and LISTS were under 1% (2074) --
-  # the previous order (SET, LIST, STRING, ...) tried the rarest type
-  # (LIST) second and the most common type (STRING) third. Reordered to
-  # STRING, SET, NUMBER, BOOL, LIST, NULL to match observed frequency.
+  # Ordered by observed real-world value-type frequency (strings/sets most
+  # common, lists rarest) to minimize failed-branch attempts in this
+  # non-cut ordered choice -- PEG tries branches left-to-right and stops at
+  # the first success.
   xBranches = [
     "STRING"
     "SET"
@@ -159,13 +122,9 @@ let
     ];
   };
 
-  # Phase 2: cut applied to every branch of the top-level choice. Each
-  # branch becomes `{ cutSeq = [ "<NAME>" ""]; }` -- e1 is the real
-  # sub-parse, e2 is epsilon purely to give the cut something to commit
-  # after. Since the branches are first-token-disjoint ("{", "[", "\"",
-  # digit, "t"/"f", "n"), committing right after e1 succeeds changes no
-  # accept/reject outcome for this grammar; it's here for fidelity to the
-  # task/paper, and Phase 3 measures whether it has any actual effect.
+  # Each branch becomes `{ cutSeq = [ "<NAME>" ""]; }` (e2 = epsilon, just
+  # to give the cut something to commit after). Branches are
+  # first-token-disjoint, so committing changes no accept/reject outcome.
   grammar = common // {
     X = [
       "WHITESPACE"
@@ -176,31 +135,28 @@ let
     ];
   };
 
-  # Handlers shared between both variants; only X's differs (see below),
-  # since the cut variant's inner choice value is wrapped one level deeper
-  # ([branchVal ""] per matched cutSeq branch) than the plain-choice
-  # variant's (branchVal directly).
+  # Shared between both variants; only X differs, since the cut variant's
+  # inner choice value is wrapped one level deeper ([branchVal ""]) than
+  # the plain-choice variant's (branchVal directly).
   handlersCommon = {
-    WHITESPACE = v: builtins.concatStringsSep "" v;
+    # `opt`'s raw value is the matched string directly, or `null` if there
+    # was no whitespace to match (unlike `star`'s list-of-matches shape).
+    WHITESPACE = v: if v == null then "" else v;
     STRING_RAW = v: builtins.concatStringsSep "" v;
-    # Return a plain Nix string rather than the old `{ string = ...; }`
-    # wrapper -- that wrapper is what made every JSON string leaf come back
-    # out as an object like `{"string": "..."}` instead of a plain JSON
-    # string, breaking round-tripping. A real JSON string decodes to a
-    # plain string and must re-encode the same way.
+    # Plain Nix string, not `{ string = ...; }` -- JSON strings decode to
+    # (and must re-encode as) plain strings.
     STRING = v: builtins.elemAt v 1;
     ITEM = v: {
       name = builtins.elemAt v 1;
       value = builtins.elemAt v 4;
     };
     NUMBER = builtins.fromJSON;
-    # Likewise for BOOL/NULL: without a handler these pass through as the
-    # literally-matched text ("true"/"false"/"null", i.e. Nix strings), not
-    # actual Nix `true`/`false`/`null` -- which `builtins.toJSON`/`--json`
-    # would then render as quoted strings, also breaking round-tripping.
+    # Real Nix true/false/null, not the literally matched text.
     BOOL = v: v == "true";
     NULL = v: null;
 
+    # Unwraps `opt`-wrapped-leading-item-plus-star-of-pairs into a flat
+    # list ([] if the opt didn't match).
     LIST =
       v:
       let
@@ -212,13 +168,10 @@ let
       v:
       let
         opt = builtins.elemAt v 2;
-        items =
-          if opt == null then
-            [ ]
-          else
-            [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1);
       in
-      builtins.listToAttrs items;
+      builtins.listToAttrs (
+        if opt == null then [ ] else [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1)
+      );
   };
 
   handlersNoCut = handlersCommon // {
@@ -226,9 +179,6 @@ let
   };
 
   handlers = handlersCommon // {
-    # Inner choice value for the cut variant is [branchVal ""] (from the
-    # matched cutSeq's [e1val e2val]); unwrap one more level than the
-    # no-cut variant.
     X = v: builtins.elemAt (builtins.elemAt v 1) 0;
   };
 in
