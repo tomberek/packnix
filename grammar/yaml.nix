@@ -117,8 +117,7 @@ let
         go (n - 1);
 
       leadingBlankCount = firstContentIdx;
-      trailingBlankCount =
-        if firstContentIdx > lastContentIdx then n else n - 1 - lastContentIdx;
+      trailingBlankCount = if firstContentIdx > lastContentIdx then n else n - 1 - lastContentIdx;
 
       # Walks lines[firstContentIdx..lastContentIdx] (guaranteed to start
       # and end on real content whenever this range is non-empty),
@@ -160,11 +159,16 @@ let
       body
     else if chomp == "keep" then
       body
-      + builtins.concatStringsSep "" (builtins.genList (_: "\n") (trailingBlankCount + (if body == "" then 0 else 1)))
+      + builtins.concatStringsSep "" (
+        builtins.genList (_: "\n") (trailingBlankCount + (if body == "" then 0 else 1))
+      )
     else
-      # "clip": exactly one trailing newline, UNLESS the body is entirely
-      # empty (all-blank content -- verified: "a: |\n\n\nb: 2\n" -> "").
-      if body == "" then "" else body + "\n";
+    # "clip": exactly one trailing newline, UNLESS the body is entirely
+    # empty (all-blank content -- verified: "a: |\n\n\nb: 2\n" -> "").
+    if body == "" then
+      ""
+    else
+      body + "\n";
 
   # --- shared (depth-independent) rules ---------------------------------
 
@@ -174,8 +178,16 @@ let
   # everything. Flow collections use FLOW_WS instead, which does skip
   # newlines (flow content is indentation-independent in real YAML too).
   sharedGrammar = {
-    WS = { opt = { regex = "([ \t]+)"; }; };
-    FLOW_WS = { opt = { regex = "([ \t\r\n]+)"; }; };
+    WS = {
+      opt = {
+        regex = "([ \t]+)";
+      };
+    };
+    FLOW_WS = {
+      opt = {
+        regex = "([ \t\r\n]+)";
+      };
+    };
 
     # Rejects when the upcoming line is actually a sequence marker ("-"
     # followed by whitespace or end-of-line). Without this, MAPPING_ENTRY
@@ -190,7 +202,11 @@ let
         {
           choice = [
             { regex = "([ \t])"; }
-            { not = { regex = "(.)"; }; }
+            {
+              not = {
+                regex = "(.)";
+              };
+            }
           ];
         }
       ];
@@ -213,7 +229,11 @@ let
           choice = [
             { regex = "([ \t])"; }
             { regex = "(\r?\n)"; }
-            { not = { regex = "(.)"; }; }
+            {
+              not = {
+                regex = "(.)";
+              };
+            }
           ];
         };
       }
@@ -222,7 +242,11 @@ let
     COMMENT = {
       opt = [
         { lit = "#"; }
-        { opt = { regex = "([^\r\n]*)"; }; }
+        {
+          opt = {
+            regex = "([^\r\n]*)";
+          };
+        }
       ];
     };
 
@@ -235,7 +259,11 @@ let
     LINE_END = {
       choice = [
         { regex = "(\r?\n)"; }
-        { not = { regex = "(.)"; }; }
+        {
+          not = {
+            regex = "(.)";
+          };
+        }
       ];
     };
 
@@ -272,7 +300,9 @@ let
           }
           { lit = "'"; }
         ];
-        f = v: builtins.concatStringsSep "" (map (frag: if frag == "''" then "'" else frag) (builtins.elemAt v 1));
+        f =
+          v:
+          builtins.concatStringsSep "" (map (frag: if frag == "''" then "'" else frag) (builtins.elemAt v 1));
       };
     };
 
@@ -318,7 +348,9 @@ let
 
     NUMBER = {
       action = {
-        e = { regex = "(-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?)"; };
+        e = {
+          regex = "(-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?)";
+        };
         f = builtins.fromJSON;
       };
     };
@@ -358,7 +390,11 @@ let
     PLAIN_KEY = {
       action = {
         e = [
-          { not = { regex = "([ \t])"; }; }
+          {
+            not = {
+              regex = "([ \t])";
+            };
+          }
           { regex = "([^:\r\n#]+)"; }
         ];
         f = v: trimTrailing (builtins.elemAt v 1);
@@ -395,7 +431,9 @@ let
     # flow scalar needs quoting -- see file header).
     PLAIN_SCALAR_FLOW = {
       action = {
-        e = { regex = "([^]},:\r\n#]+)"; };
+        e = {
+          regex = "([^]},:\r\n#]+)";
+        };
         f = trimTrailing;
       };
     };
@@ -542,7 +580,10 @@ let
             opt = builtins.elemAt v 2;
           in
           builtins.listToAttrs (
-            if opt == null then [ ] else [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 3) (builtins.elemAt opt 1)
+            if opt == null then
+              [ ]
+            else
+              [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 3) (builtins.elemAt opt 1)
           );
       };
     };
@@ -561,12 +602,14 @@ let
           { regex = "([ \t]+)"; }
           "INLINE_VALUE"
         ];
-        f = v: builtins.listToAttrs [
-          {
-            name = builtins.elemAt v 0;
-            value = builtins.elemAt v 3;
-          }
-        ];
+        f =
+          v:
+          builtins.listToAttrs [
+            {
+              name = builtins.elemAt v 0;
+              value = builtins.elemAt v 3;
+            }
+          ];
       };
     };
     INLINE_ENTRY = {
@@ -605,7 +648,11 @@ let
           { star = "BLANK_LINE"; }
           "BODY"
           { star = "BLANK_LINE"; }
-          { not = { regex = "(.)"; }; }
+          {
+            not = {
+              regex = "(.)";
+            };
+          }
         ];
         f = v: builtins.elemAt v 1;
       };
@@ -628,7 +675,9 @@ let
         let
           n = suffix: "${suffix}_${toString d}";
           nAt = suffix: dd: "${suffix}_${toString dd}";
-          indentLit = { lit = spaces (indentStep * d); };
+          indentLit = {
+            lit = spaces (indentStep * d);
+          };
           hasNested = d < maxDepth;
 
           # A block scalar's content lines are indented at least one level
@@ -644,7 +693,9 @@ let
           # (kept verbatim, since a block scalar's content is never
           # further interpreted -- no escapes, no plain/quoted-scalar
           # rules apply inside it).
-          blockIndentNext = { lit = spaces (indentStep * (d + 1)); };
+          blockIndentNext = {
+            lit = spaces (indentStep * (d + 1));
+          };
           blockLineBlank = {
             action = {
               e = [
@@ -661,12 +712,24 @@ let
             action = {
               e = [
                 blockIndentNext
-                { opt = { regex = "([ \t]+)"; }; } # extra indent beyond the base, if any
-                { opt = { regex = "([^\r\n]+)"; }; } # rest of the line (can be empty: e.g. "  \n" is extra-indent-only)
+                {
+                  opt = {
+                    regex = "([ \t]+)";
+                  };
+                } # extra indent beyond the base, if any
+                {
+                  opt = {
+                    regex = "([^\r\n]+)";
+                  };
+                } # rest of the line (can be empty: e.g. "  \n" is extra-indent-only)
                 {
                   choice = [
                     { regex = "(\r?\n)"; }
-                    { not = { regex = "(.)"; }; } # EOF: last line, no trailing newline
+                    {
+                      not = {
+                        regex = "(.)";
+                      };
+                    } # EOF: last line, no trailing newline
                   ];
                 }
               ];
@@ -698,7 +761,9 @@ let
               blockLineContent
             ];
           };
-          blockScalarBody = { star = blockLine; };
+          blockScalarBody = {
+            star = blockLine;
+          };
 
           mappingValueBranchA = [
             "WS"
@@ -747,7 +812,12 @@ let
           # block genuinely isn't there (ordered choice handles this
           # naturally -- branchB is tried first and wins whenever a nested
           # block IS present).
-          mappingValueBranchC = { action = { e = "EOL"; f = v: null; }; };
+          mappingValueBranchC = {
+            action = {
+              e = "EOL";
+              f = v: null;
+            };
+          };
           mappingValueExpr =
             if hasNested then
               {
@@ -817,7 +887,12 @@ let
           # Tried last for the same reason: it's a prefix-shape of
           # branchB's "EOL <nested block>", so ordered choice already
           # prefers branchB whenever a nested block actually follows.
-          sequenceValueBranchD = { action = { e = "EOL"; f = v: null; }; };
+          sequenceValueBranchD = {
+            action = {
+              e = "EOL";
+              f = v: null;
+            };
+          };
           # "- |" / "- >" -- same BLOCK_HEADER/blockScalarBody machinery
           # as mappingValueBranchBlockScalar, just after "- " instead of
           # "key: " (confirmed via PyYAML: "items:\n  - |\n    x\n    y\n
@@ -882,7 +957,9 @@ let
               "COLON_SEP"
               (n "MAPPING_VALUE")
             ];
-            "${n "BLOCK_MAPPING"}" = { plus = n "MAPPING_ENTRY"; };
+            "${n "BLOCK_MAPPING"}" = {
+              plus = n "MAPPING_ENTRY";
+            };
 
             "${n "SEQUENCE_VALUE"}" = sequenceValueExpr;
             "${n "SEQUENCE_ENTRY"}" = [
@@ -891,7 +968,9 @@ let
               { lit = "-"; }
               (n "SEQUENCE_VALUE")
             ];
-            "${n "BLOCK_SEQUENCE"}" = { plus = n "SEQUENCE_ENTRY"; };
+            "${n "BLOCK_SEQUENCE"}" = {
+              plus = n "SEQUENCE_ENTRY";
+            };
           };
           handlers = {
             "${n "MAPPING_VALUE"}" =
