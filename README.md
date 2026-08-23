@@ -25,7 +25,7 @@ other Nix parsing libraries.
 | `lib/packrat.nix` | The engine: `mkCompile`, `buildDerivs`, `run`. Everything else is built on this. |
 | `grammar/json.nix` | A generic, from-scratch JSON grammar (`grammar`/`grammarNoCut` + cut and non-cut variants). |
 | `grammar/flakelock.nix` | A grammar specialized to `nix flake lock`'s exact schema — see below. |
-| `grammar/yaml.nix` | A real YAML subset: block mappings/sequences nested by indentation, plain/quoted scalars, flow collections, comments. `mkYamlGrammar { indentStep; maxDepth; }` generates the grammar; see its header for scope limits (no anchors/tags/multi-doc/block-scalars, fixed indent step, bounded depth). |
+| `grammar/yaml.nix` | A real YAML subset: block mappings/sequences nested by indentation, plain/quoted scalars, flow collections, comments, literal/folded block scalars (`\|`/`>`, with chomping). `mkYamlGrammar { indentStep; maxDepth; }` generates the grammar; see its header for scope limits (no anchors/tags/multi-doc, fixed indent step, bounded depth). |
 | `examples/json-simple.nix` | A plain, unoptimized JSON grammar — every construct gets its own named rule, no attention paid to allocation. Good starting point for reading/writing your own grammar. |
 | `examples/json-optimized.nix` | Re-exports `grammar/json.nix`, annotated with what changed vs. `json-simple.nix` and why (rule inlining via the `action` combinator, fewer redundant whitespace scans, etc). |
 | `examples/flakelock-specialized.nix` | Re-exports `grammar/flakelock.nix`, annotated with the schema-specialization technique and measured wins. |
