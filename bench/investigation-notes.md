@@ -234,3 +234,63 @@ finding, since the engine keeps changing.
   the original ~10.3% ablation estimate, likely because the engine
   changed further via #2/#3 since that estimate was made).
 
+## Derivs node representation: list instead of attrset (implemented)
+
+Prompted by "can we make a lazy attrset" — real Nix attrsets can't defer
+spine construction (the Bindings/Attr-slot array is always built eagerly,
+only field *values* stay lazy), so no true "lazy attrset" exists. Two
+alternatives were prototyped instead, entirely in `/tmp` scratch copies,
+each verified byte-identical + `tests.nix` 17/17 before trusting any number:
+
+**Rejected: struct-of-arrays.** Replace the one shared `at` array (of
+per-position nodes) with one full-length array *per rule name*, indexed by
+position directly; a nonterminal reference becomes `elemAt ruleArrays.NAME
+pos` instead of `derivs.NAME`, and lit/range/regex jumps become pure
+arithmetic (`pos + n`) with no lookup. On this grammar's already-inlined
+3-rule shape: ~1.7% RSS win (small but real, confirmed n=17, high z-score),
+wall time inconclusive (noisy, borderline-to-not-significant). But tested
+against `examples/json-simple.nix` (13 rules, i.e. a grammar written the
+normal way, not pre-inlined) it reverses badly: **+43.6% RSS, +22.5% wall**
+(n=17, byte-identical output confirmed both times). Root cause: this design
+pays for N full-length `genList` spines instead of 1 shared spine, so its
+fixed cost scales with rule count × string length — wins only on a grammar
+already inlined down to a handful of rules, loses on anything written the
+way a person would normally write a grammar. **Not implemented.**
+
+**Implemented: list-node.** Keep the shared-spine architecture (one `at`
+array, each element built lazily on first access, same as today) but make
+each node a LIST — `[count field_1 ... field_N]` — instead of an attrset,
+with nonterminal references baked to a fixed slot index (`nameToIndex`) at
+COMPILE time rather than looked up by name per call. A list element costs
+~24 bytes vs. an attrset Attr slot's ~56 bytes for the same "eager spine,
+lazy values" behavior. Unlike struct-of-arrays this *improves* as rule
+count grows (single shared spine, not N of them): −2.1%/−4.2% RSS
+(unoptimized first attempt) → **−6.2%/−11.1% RSS** after fixing a
+correctness-preserving perf bug (see below), on the 3-rule and 13-rule
+grammars respectively (n=17, z-scores −111/−236, clearly real), with wall
+time now *also* slightly improved (−1.4%/−4.3%, though still within noise
+— not a regression either way).
+
+Perf bug caught before shipping: the first list-node prototype's `mkNode`
+used an index-driven `genList (i: ... (elemAt at count) ...)`, re-deriving
+`elemAt at count` (the position's own node — always the same value) once
+per rule slot inside that lambda, plus paying `elemAt compiledFieldsInOrder
+(i-1)` index arithmetic that the old attrset `mapAttrs` never needed
+(`nrPrimOpCalls` +24-30%, no offsetting savings). Fix: hoist `derivsNode =
+elemAt at count` into a single `let`, and build the field list via `[count]
+++ map (field: field derivsNode) compiledFieldsInOrder` (`map` walks the
+list, no per-element index math) — this alone cut wall time ~18-20% vs. the
+unfixed version and improved RSS further too.
+
+Ported into `lib/packrat.nix`: `mkCompile` gains a `nameToIndex` parameter
+(nonterminal refs resolve to `elemAt derivs idx` instead of `derivs.${expr}`
+— baked once per reference site, not looked up per call); `evalLit`/
+`evalRange`/`evalRegex` read `count` via `elemAt derivs 0` instead of
+`derivs.count`; `buildDerivs` computes `names`/`nameToIndex` once and
+returns `{ at; nameToIndex; }`; `run` looks up a rule's slot via
+`built.nameToIndex.${name}`. Every combinator that only threads `derivs`
+opaquely (`compileSeq`/`seq3`-`seq5`, `compileChoice`, `compileStar*`,
+`compileOpt`/`And`/`Not`, `compileAction`) is untouched. Confirmed on this
+machine post-port: `lock-large.json` RSS 175.9MB → 165.0MB (5-run means),
+consistent with the ~6% figure measured in the scratch prototype.
+

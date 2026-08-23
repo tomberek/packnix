@@ -43,8 +43,12 @@ rec {
   # ~4% total removing two such helpers). There's no single choke point
   # for this shape anymore; changing it means touching every site by hand.
 
+  # `nameToIndex.<Name>` gives the fixed list-slot index of rule `<Name>`
+  # within a node (see buildDerivs's `mkNode`); slot 0 is always `count`.
+  # A nonterminal reference `expr` is baked to that integer ONCE, at
+  # compile time (not looked up by name on every call).
   mkCompile =
-    string: at:
+    string: at: nameToIndex:
     let
       len = builtins.stringLength string;
 
@@ -53,7 +57,12 @@ rec {
         if expr == "" then
           (derivs: [ "" derivs ]) # epsilon: always succeeds, consumes nothing
         else if builtins.isString expr then
-          (derivs: derivs.${expr}) # nonterminal ref: already-memoized field
+          (
+            let
+              idx = nameToIndex.${expr};
+            in
+            derivs: builtins.elemAt derivs idx # nonterminal ref: already-memoized list slot
+          )
         else if builtins.isList expr then
           compileSeq expr
         else if expr ? lit then
@@ -89,18 +98,22 @@ rec {
       # A known-length jump (the match's length is already known once
       # evalLit/evalRegex succeed) is a single `elemAt`, not a walk of `n`
       # `.next` hops -- measured far fewer allocations/calls than walking.
+      # `count` lives at fixed slot 0 of the node (see mkNode).
       evalLit =
         lit:
         let
           n = builtins.stringLength lit;
         in
         derivs:
-        if derivs.count + n > len then
+        let
+          count = builtins.elemAt derivs 0;
+        in
+        if count + n > len then
           false
-        else if builtins.substring derivs.count n string == lit then
+        else if builtins.substring count n string == lit then
           [
             lit
-            (builtins.elemAt at (derivs.count + n))
+            (builtins.elemAt at (count + n))
           ]
         else
           false;
@@ -113,12 +126,13 @@ rec {
         in
         derivs:
         let
-          c = if derivs.count >= len then "" else builtins.substring derivs.count 1 string;
+          count = builtins.elemAt derivs 0;
+          c = if count >= len then "" else builtins.substring count 1 string;
         in
         if c != "" && c >= start && c <= end then
           [
             c
-            (builtins.elemAt at (derivs.count + 1))
+            (builtins.elemAt at (count + 1))
           ]
         else
           false;
@@ -139,10 +153,11 @@ rec {
         in
         derivs:
         let
+          count = builtins.elemAt derivs 0;
           tryWindow =
             windowSize:
             let
-              rest = builtins.substring derivs.count windowSize string;
+              rest = builtins.substring count windowSize string;
               m = builtins.match pattern rest;
               restLen = builtins.stringLength rest;
             in
@@ -151,10 +166,10 @@ rec {
                 matched = builtins.head m;
                 matchedLen = builtins.stringLength matched;
               in
-              if matchedLen < restLen || derivs.count + restLen >= len then
+              if matchedLen < restLen || count + restLen >= len then
                 [
                   matched
-                  (builtins.elemAt at (derivs.count + matchedLen))
+                  (builtins.elemAt at (count + matchedLen))
                 ]
               else
                 tryWindow (windowSize * 2) # filled the window -- might be truncated
@@ -623,14 +638,40 @@ rec {
   # Build the position-indexed Derivs array for `string` under `grammar`,
   # passing each nonterminal's raw value through `handlers.<Name>` (default
   # identity). `at` is a single `genList`, built lazily per-element, so
-  # `mkNode count` only runs for positions the parse actually reaches; a
-  # node's fields are `elemAt at i` jumps, never a fresh recursive call, so
-  # any two callers reaching the same position land on the same thunk.
+  # `mkNode count` only runs for positions the parse actually reaches.
+  #
+  # Each node is a LIST, not an attrset: slot 0 is `count`, slots 1..N are
+  # the grammar's rules in a fixed order (`names`/`nameToIndex`, baked once
+  # here and threaded into `mkCompile` so nonterminal references resolve
+  # to a slot index at compile time, not a name lookup at run time). A
+  # list element costs ~24 bytes vs. an attrset Attr slot's ~56 bytes
+  # (measured, see the top-of-file comment on the `[value derivs]` result
+  # shape) for the exact same "spine eager, values lazy" behavior -- so
+  # this keeps the one-shared-spine memoization design (unlike the
+  # struct-of-arrays alternative, which traded one shared spine for N
+  # separate full-length ones and lost on any grammar with more than a
+  # couple of rules) while shrinking the per-node allocation.
+  #
+  # `mkNode` hoists `builtins.elemAt at count` ONCE per node (into
+  # `derivsNode`) rather than re-deriving it inside a per-slot callback
+  # invoked N times -- an index-driven `genList (i: ... elemAt at count)`
+  # measured ~24-30% more `nrPrimOpCalls` than this, entirely from that
+  # redundant re-lookup plus the `elemAt compiledFieldsInOrder (i - 1)`
+  # index arithmetic `map` doesn't need (it walks the list directly).
   buildDerivs =
     grammar: handlers: string:
     let
       len = builtins.stringLength string;
-      compile = mkCompile string at;
+      names = builtins.attrNames grammar;
+      numRules = builtins.length names;
+      # 1-based: slot 0 is reserved for `count`.
+      nameToIndex = builtins.listToAttrs (
+        builtins.genList (i: {
+          name = builtins.elemAt names i;
+          value = i + 1;
+        }) numRules
+      );
+      compile = mkCompile string at nameToIndex;
 
       # Resolved once per rule name, not once per node.
       resolvedHandlers = builtins.mapAttrs (name: _: handlers.${name} or (v: v)) grammar;
@@ -640,10 +681,13 @@ rec {
 
       # One `node -> result` function per rule, with that rule's handler
       # already captured -- avoids re-looking-up `resolvedHandlers.${name}`
-      # by name on every node.
-      compiledFields = builtins.mapAttrs (
-        name: compiled:
+      # by name on every node. Ordered to match `names`/`nameToIndex`, so
+      # slot i+1 of a node is `(elemAt compiledFieldsInOrder i) node`.
+      compiledFieldsInOrder = builtins.genList (
+        i:
         let
+          name = builtins.elemAt names i;
+          compiled = compiledRules.${name};
           handler = resolvedHandlers.${name};
         in
         node:
@@ -657,30 +701,27 @@ rec {
           ]
         else
           r
-      ) compiledRules;
+      ) numRules;
 
-      # `count` as a regular entry alongside every rule's compiled field,
-      # so mkNode's mapAttrs builds each node's whole field set in one
-      # pass instead of a rule-fields-only attrset merged into a
-      # `{count;}` base via `//` -- `//` copies a fresh Bindings array on
-      # every merge, so that would be two full attrset allocations per
-      # node where one suffices (measured roughly halves per-node set
-      # bytes). `next` isn't a field at all anymore: every jump goes
-      # through `elemAt at pos` directly.
-      compiledFieldsAndBase = compiledFields // {
-        count = null;
-      };
-
+      # One list per position: `[ count field_1 field_2 ... field_numRules ]`.
+      # `derivsNode` is `elemAt at count` hoisted to a single `let` binding
+      # (every field function is called with the SAME node -- itself,
+      # tied together by `at`'s laziness -- so there is exactly one value
+      # to fetch here, not one per slot). `map` over the already-ordered
+      # `compiledFieldsInOrder` needs no per-element index arithmetic on
+      # the Nix side (the primop walks the list internally).
       mkNode =
         count:
-        builtins.mapAttrs (
-          name: field:
-          if name == "count" then count else field (builtins.elemAt at count)
-        ) compiledFieldsAndBase;
+        let
+          derivsNode = builtins.elemAt at count;
+        in
+        [ count ] ++ builtins.map (field: field derivsNode) compiledFieldsInOrder;
 
       at = builtins.genList mkNode (len + 1);
     in
-    at;
+    {
+      inherit at nameToIndex;
+    };
 
   # Public entry point: parse `string` from `count`, returning
   # `{ <NonterminalName> = value; ... }` with `false` for any nonterminal
@@ -692,9 +733,15 @@ rec {
     }:
     count: string:
     let
-      at = buildDerivs grammar handlers string;
-      atCount = builtins.elemAt at count;
+      built = buildDerivs grammar handlers string;
+      atCount = builtins.elemAt built.at count;
     in
-    builtins.mapAttrs (name: _: if atCount.${name} != false then builtins.elemAt atCount.${name} 0 else false) grammar;
+    builtins.mapAttrs (
+      name: _:
+      let
+        r = builtins.elemAt atCount built.nameToIndex.${name};
+      in
+      if r != false then builtins.elemAt r 0 else false
+    ) grammar;
 }
 
