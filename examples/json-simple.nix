@@ -1,8 +1,8 @@
 # A plain, unoptimized JSON grammar for lib/packrat.nix -- every construct
-# gets its own named rule, exactly the way you'd write it reading a
-# grammar spec off a page, with no attention paid to how many Derivs-node
-# fields that produces. Contrast with ./json-optimized.nix, which is the
-# SAME language but restructured for fewer fields per node.
+# gets its own named rule, the way you'd write it reading a grammar spec
+# off a page, with no attention to how many Derivs-node fields that
+# produces. Contrast with ./json-optimized.nix (same language, fewer
+# fields per node).
 #
 # Run with:
 #   nix eval --impure --expr '
@@ -26,9 +26,8 @@ let
     };
     NUMBER = { regex = "([0-9]+)"; };
 
-    # A string is a quote, some fragments, a quote. Escapes are their own
-    # nonterminal, referenced from STRING_RAW's star -- the "obvious" way
-    # to write it, one named rule per grammar-book box.
+    # A string is a quote, some fragments, a quote -- escapes get their
+    # own nonterminal.
     STRING = [
       { lit = "\""; }
       "STRING_RAW"
@@ -44,8 +43,7 @@ let
     STRING_RAW = { star = "STRING_FRAG"; };
 
     # A list is "[", optional items, "]"; items are one value followed by
-    # zero or more ", value" pairs -- again, LIST_ITEMS gets its own name
-    # because that's what the items-of-a-list concept is called.
+    # zero or more ", value" pairs.
     LIST = [
       { lit = "["; }
       "WHITESPACE"

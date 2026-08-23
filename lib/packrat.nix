@@ -1,12 +1,10 @@
 # A packrat/PEG parsing engine: one lazy `Derivs` node per input position,
 # held in a single position-indexed array (`buildDerivs`'s `at`), following
 # Ford's "Packrat Parsing: Simple, Powerful, Lazy, Linear Time" (arXiv
-# cs/0603077). Each node is built exactly once, from `builtins.genList`'s
-# per-element laziness (confirmed directly: genList's generator only runs
-# for elements actually accessed, never eagerly for the whole list) --
-# accessing a given position via `elemAt at pos`, from any caller, always
-# lands on the identical shared thunk, so Nix's ordinary thunk-sharing
-# gives memoization for free.
+# cs/0603077). `genList`'s per-element laziness means a node is only built
+# when actually accessed, and `elemAt at pos` from any caller lands on the
+# same shared thunk -- so Nix's ordinary thunk-sharing gives memoization
+# for free.
 #
 # Grammar DSL (attrset-as-data):
 #   "Name"                -> nonterminal reference (bare "" = epsilon)
@@ -24,42 +22,26 @@
 #                             valid only as a choice branch or star body --
 #                             see compileChoice / compileStarCut.
 #   { action = { e; f; }; } -> e, with f applied to its VALUE on success --
-#                              lets a value-transform (what would otherwise
-#                              be a named rule's handler) travel with an
+#                              lets a value-transform travel with an
 #                              inlined sub-expression instead of requiring
-#                              a standalone Derivs-node field for it. See
-#                              compileAction's comment for the memoization
-#                              trade-off this implies.
+#                              a named Derivs-node field. See compileAction.
 #
 # `mkCompile string at` returns `compile : expr -> (derivs -> result)`,
-# which decides once which combinator an `expr` denotes (recursing into
-# sub-expressions) instead of re-testing its shape on every call. `at` is
-# the position-indexed node array (built by buildDerivs, passed in here so
-# evalLit/evalRegex can jump directly to a known target position via
-# `elemAt at pos` instead of walking there one `.next` hop at a time).
+# deciding once which combinator an `expr` denotes instead of re-testing
+# its shape on every call. `at` is the position-indexed node array, passed
+# in so evalLit/evalRegex can jump straight to a known target position via
+# `elemAt at pos` instead of walking there one `.next` hop at a time.
 rec {
   # result = [ value derivs ]  (success)  |  false  (failure)
-  # A 2-element list rather than `{ value = ...; derivs = ...; }`: Nix
-  # attrsets carry real per-field overhead (a Bindings header plus one Attr
-  # slot per field), so `{value;derivs;}` costs ~56 bytes per allocation
-  # vs. ~24 for the equivalent list (measured directly, 500k allocations
-  # each way) -- and this is by far the highest-volume allocation site in
-  # the engine (one per successful match/sequence/choice/star step). A list
-  # is just as safe a success wrapper as an attrset was: `[a b] == false`
-  # is `false` too, so the failure sentinel logic is unaffected.
-  #
-  # Every combinator builds `[value derivs]` as a literal directly, and
-  # reads it back via `builtins.elemAt r 0`/`1` directly, rather than
-  # through named `ok`/`rv`/`rd` helpers: a Nix function call allocates its
-  # own Env per curried argument, so wrapping this shape behind helpers
-  # measurably cost real RSS at this call volume (confirmed directly, both
-  # ways, on this engine's own real workload -- not just in isolation):
-  # removing a 2-arg `ok value derivs` constructor dropped ~700k Env
-  # allocations and ~2% RSS; further removing the 1-arg `rv`/`rd` readers
-  # dropped another ~2%. The raw `elemAt r 0`/`elemAt r 1` repetition below
-  # is the deliberate result, not an oversight -- there is no single choke
-  # point for this encoding anymore, so changing result shape again means
-  # updating every site below by hand.
+  # A 2-element list, not `{ value = ...; derivs = ...; }`: an attrset
+  # carries a Bindings header plus one Attr slot per field (~56 bytes vs.
+  # ~24 for the list, measured), and this is the highest-volume allocation
+  # site in the engine. `[a b] == false` is `false` too, so `false` is
+  # safe as the failure sentinel. Every combinator builds/reads this list
+  # directly via `elemAt r 0`/`1` rather than through named helpers --
+  # wrapping it in a function cost real RSS at this call volume (measured
+  # ~4% total removing two such helpers). There's no single choke point
+  # for this shape anymore; changing it means touching every site by hand.
 
   mkCompile =
     string: at:
@@ -104,16 +86,9 @@ rec {
         else
           throw "packrat: unrecognized expression: ${builtins.toJSON expr}";
 
-      # `at` is the position-indexed node array (see file header): jumping
-      # to a KNOWN target position is a single `elemAt`, not a walk of `n`
-      # `.next` hops. Measured directly (400k-node microbenchmark with a
-      # realistic jump-size distribution): the previous hop-walking
-      # `advanceN` (foldl' + seq over a throwaway n-element list) cost
-      # ~44% more `values` and ~14x more function calls than `elemAt`
-      # for the same jumps, because a multi-character match's length is
-      # already known at the point evalLit/evalRegex succeed -- there is
-      # no reason to re-derive the target position one character at a
-      # time when `pos + n` says exactly where it is.
+      # A known-length jump (the match's length is already known once
+      # evalLit/evalRegex succeed) is a single `elemAt`, not a walk of `n`
+      # `.next` hops -- measured far fewer allocations/calls than walking.
       evalLit =
         lit:
         let
@@ -149,17 +124,12 @@ rec {
           false;
 
       # A fixed lookahead window, not the whole remaining input -- copying
-      # the full remainder on every attempt makes the parse O(n^2). This
-      # is a speed/memory tuning knob, not a correctness bound: `tryWindow`
-      # doubles whenever a match exactly fills the window (otherwise
-      # indistinguishable from truncation), so longer matches still parse
-      # correctly, especially wherever the regex is looped via `star`.
-      # 32 measured best on this repo's fixtures (real end-to-end runs,
-      # not microbenchmark): smaller values start paying more in doubling
-      # retries than they save in per-attempt substring size (8 measured
-      # worse than 16/24/32, which were statistically tied) for this
-      # grammar's actual match-length distribution (longest single match
-      # observed: a 163-char string body).
+      # the full remainder on every attempt makes the parse O(n^2). Not a
+      # correctness bound: `tryWindow` doubles whenever a match exactly
+      # fills the window (otherwise indistinguishable from truncation), so
+      # longer matches still parse correctly. 32 measured best for this
+      # grammar's match-length distribution; smaller starts paying more in
+      # doubling retries than it saves per attempt.
       regexWindow = 32;
 
       evalRegex =
@@ -193,27 +163,15 @@ rec {
         in
         tryWindow regexWindow;
 
-      # compileSeq's generic `foldl'` step builds the accumulated value list
-      # via `elemAt acc 0 ++ [(elemAt r 0)]` -- an O(current length) copy on
-      # every step, so O(k^2) total for a k-element sequence. This
-      # grammar's real sequence lengths (3-5) are small, but the gap is
-      # already clearly visible there, not swamped by `++`'s constant
-      # factor for tiny lists: measured directly (400k-call microbenchmark,
-      # forced via foldl'), at k=3 the generic foldl' costs ~299MB/0.90s
-      # vs. ~205MB/0.58s for a hand-unrolled builder that constructs the
-      # final value list as one literal with zero `++` calls; k=4:
-      # ~367MB/1.35s vs ~238MB/0.75s; k=5: ~434MB/1.36s vs ~273MB/0.92s.
-      # (A generic non-hardcoded O(k) alternative via a self-referential
-      # `genList` was tried too and came out WORSE than the original --
-      # the self-reference machinery costs more than the copy it avoids --
-      # so there is no free generic fix; specialization is the only path
-      # that wins.) `seq3`/`seq4`/`seq5` below cover this grammar's actual
-      # lengths (STRING/X=3, LIST/SET=4, SET's comma-separated ITEM
-      # body=5); any other length falls back to the original generic
-      # `foldl'` -- still correct, just without the speedup. Confirmed on
-      # the real engine: ~213MB/~0.60s -> ~200MB/~0.50s on lock-large.json
-      # (~6% RSS, ~15% wall time), byte-identical output, tests.nix
-      # unaffected.
+      # compileSeq's generic path builds the result via `foldl'` +
+      # `elemAt acc 0 ++ [...]`, an O(current length) copy per step, so
+      # O(k^2) for a k-element sequence -- measurably worse than a
+      # hand-unrolled builder even at this grammar's small lengths (3-5).
+      # `seq3`/`seq4`/`seq5` build the result as one list literal instead;
+      # any other length falls back to `seqGeneric`, still correct, just
+      # without the speedup. (A generic non-hardcoded O(k) fix via
+      # self-referential `genList` was tried and came out worse than the
+      # original -- there's no free generic fix, only specialization.)
       seqGeneric =
         compiledSubs: derivs:
         builtins.foldl'
@@ -248,14 +206,12 @@ rec {
         in
         derivs:
         let
+          # `||` short-circuits, so laying every rN out flat and checking
+          # them in one chain is equivalent to nesting `if rN == false
+          # then false else let r{N+1} = ...` one level deeper per stage
+          # (forcing r{N+1} while an earlier stage is `false` would throw,
+          # but that never happens once an earlier disjunct is `true`).
           r0 = c0 derivs;
-          # `||` short-circuits (confirmed directly: forcing r1/r2 while an
-          # earlier stage is `false` would throw, since `elemAt false 1` is
-          # an error -- but that thunk is never forced once an earlier
-          # disjunct is already `true`), so laying every rN out flat here
-          # and checking them in one `||` chain below is exactly equivalent
-          # to nesting `if rN == false then false else let r{N+1} = ...`
-          # one level deeper per stage.
           r1 = c1 (builtins.elemAt r0 1);
           r2 = c2 (builtins.elemAt r1 1);
         in
@@ -351,14 +307,11 @@ rec {
       # `{ cutSeq = [e1 e2]; }` evaluates e1 first; if e1 fails, the next
       # branch is tried as usual. If e1 succeeds, e2's result becomes the
       # WHOLE CHOICE'S result even if e2 fails -- remaining branches are
-      # never tried.
-      #
-      # Each branch compiles to `derivs -> result`, where `null` means
-      # "didn't match, try the next branch" -- a third state alongside
-      # `false` (stop: overall failure) and a success attrset (stop:
-      # overall success), since success/failure alone can't distinguish
-      # "this branch didn't match" from "cut committed, then failed".
-      # `go` just returns the first non-null branch result.
+      # never tried. Each compiled branch returns `null` for "didn't
+      # match, try the next branch", a third state alongside `false`
+      # (stop: failure) and success, needed to distinguish "branch didn't
+      # match" from "cut committed, then failed". `go` returns the first
+      # non-null branch result.
       compileChoice =
         branches:
         let
@@ -395,9 +348,8 @@ rec {
               in
               derivs: let r = c derivs; in if r == false then null else r;
           compiledBranches = map compileBranch branches;
-          # Hoisted above `derivs:` by taking it as an explicit parameter
-          # instead of closing over it -- same reasoning as compileSeq's
-          # `step` above.
+          # `derivs` is an explicit parameter, not closed over, so `go`
+          # doesn't get rebuilt every time the outer closure is called.
           go =
             derivs: bs:
             if bs == [ ] then
@@ -432,15 +384,12 @@ rec {
       # plain `(e1 e2)*`, which would just stop and keep prior matches).
       #
       # Via genericClosure (plain recursion has no TCO in Nix, overflows
-      # past ~10000), forcing each step's Derivs pointer with `seq` (a
-      # lazy `.d` reference left unforced across genericClosure's own
-      # traversal loop would just build an equally deep unforced thunk
-      # chain, reintroducing the same overflow one level up) and
-      # collecting values via `harvest` afterward rather than an
-      # accumulator, since `acc ++ [x]` every
-      # iteration is quadratic. `status` exists because genericClosure can
-      # only signal "stop", not "stop because e2 failed" vs. "stop because
-      # e1 failed".
+      # past ~10000), forcing each step's Derivs pointer with `seq` (an
+      # unforced `.d` would just build an equally deep unforced thunk
+      # chain, reintroducing the overflow one level up), collecting
+      # values via `harvest` afterward rather than an accumulator (`acc ++
+      # [x]` every iteration is quadratic). `status` exists because
+      # genericClosure can only signal "stop", not why.
       compileStarCut =
         body:
         let
@@ -514,31 +463,21 @@ rec {
             lastItem.d
           ];
 
-      # Plain (non-cut) star `e*` -- the hottest path (WHITESPACE/
-      # STRING_RAW run this at every token boundary). A cheap bounded
-      # recursive loop handles the common 0-5-iteration case directly
-      # (measured ~2.4x faster than always paying genericClosure's setup
-      # cost); if still matching after `starChunkSize`, escalate to the
-      # same genericClosure approach as compileStarCut, splicing the two
-      # partial results together.
+      # Plain (non-cut) star `e*` -- the hottest path (WHITESPACE/STRING
+      # run this at every token boundary). A cheap bounded recursive loop
+      # handles the common 0-5-iteration case directly (faster than always
+      # paying genericClosure's setup cost); if still matching after
+      # `starChunkSize`, escalate to the same genericClosure approach as
+      # compileStarCut, splicing the two partial results together.
       compileStarPlain =
         body:
         let
           compiledBody = compile body;
-          # Both hoisted above `derivs:` -- `cheapChunk` takes its Derivs
-          # node as an explicit parameter (`d`, threaded through the
-          # recursion, not the outer `derivs`); `operator` only touches
-          # `item`/`compiledBody`. Neither depends on the specific
-          # `derivs` a given call receives.
-          # `cheapChunk` returns `[values d hitLimit]` rather than
-          # `{hitLimit;values;d;}` -- same "list cheaper than attrset"
-          # reasoning already applied to this engine's `[value derivs]`
-          # result shape (an attrset carries a Bindings header plus one
-          # Attr slot per field; a list doesn't), and this is STRING's
-          # fragment star, the hottest star call site (once per STRING,
-          # ~15919 occurrences in this repo's lock-large.json). Measured
-          # directly: ~0.4% RSS reduction on the real engine, pure
-          # representation change, byte-identical output.
+          # `cheapChunk` takes its Derivs node as an explicit parameter
+          # (threaded through the recursion, not the outer `derivs`), so
+          # it doesn't get rebuilt per call. Returns `[values d hitLimit]`
+          # rather than an attrset -- same "list cheaper than attrset"
+          # reasoning as the engine's `[value derivs]` result shape.
           cheapChunk =
             i: acc: d:
             if i >= starChunkSize then
@@ -647,32 +586,21 @@ rec {
         in
         derivs: if compiledBody derivs != false then false else epsilonAt derivs;
 
-      # `{ action = { e; f; }; }` applies value-transform `f` on success --
-      # lets a former named rule's HANDLER travel with an inlined
-      # sub-expression `e`, so a single-use rule that carried a real value
-      # transform (unlike the purely structural single-use rules inlined
-      # earlier this session -- STRING_RAW/LIST_ITEMS/ITEMS/ITEM had no
-      # separate handler at all) can still be folded into its one caller
-      # without losing that transform. Used by grammar/json.nix to inline
-      # NUMBER/BOOL/NULL/LIST/SET directly into X's branch list.
+      # `{ action = { e; f; }; }` applies `f` to `e`'s value on success --
+      # lets a value transform (a former named rule's handler) travel with
+      # an inlined sub-expression instead of needing a Derivs-node field.
       #
-      # Trade-off a future user of this combinator must understand: a
-      # named rule's field is a Derivs-node THUNK, computed once per
-      # position and shared by every caller that reaches that position.
-      # An `action`-wrapped (or any other inlined) expression is NOT a
-      # named field -- it recompiles independently at every call site that
-      # embeds it. Still CORRECT (PEG recognition doesn't depend on
-      # memoization for correctness, only for the O(n) time bound), but if
-      # two call sites of the same inlined expression were ever evaluated
-      # at the IDENTICAL input position within one parse, the work would
-      # silently duplicate instead of being shared -- reopening exactly the
-      # exponential-blowup risk packrat memoization exists to prevent.
-      # Safe to inline an expression referenced from exactly ONE place in
-      # the grammar (structurally impossible for two call sites to
-      # collide, since there is only one); referenced from more than one
-      # place requires actually checking that no two reference sites can
-      # be reached at the same position in a single parse -- not just
-      # eyeballing it.
+      # Trade-off: a named rule's field is computed once per position and
+      # shared by every caller reaching that position; an inlined
+      # expression is NOT a field, so it recompiles independently at each
+      # call site. Still correct (a PEG's accept/reject behavior doesn't
+      # depend on memoization, only its O(n) time bound does), but if two
+      # call sites of the SAME inlined expression were ever active at the
+      # identical position in one parse, the work would silently
+      # duplicate instead of share. Safe when the expression is referenced
+      # from exactly one place (structurally impossible to collide with
+      # itself); referenced from 2+ places needs an actual
+      # position-disjointness check, not just a reference count.
       compileAction =
         e: f:
         let
@@ -693,17 +621,11 @@ rec {
     compile;
 
   # Build the position-indexed Derivs array for `string` under `grammar`,
-  # passing each nonterminal's raw parse value through `handlers.<Name>`
-  # (default identity). `at` is built via a single `genList`, whose
-  # per-element generator is lazy (confirmed directly: forcing one element
-  # of a large genList result never forces the others) -- `mkNode count`
-  # only actually runs for positions something along the parse actually
-  # reaches, exactly like the previous self-recursive-`mkNode` design, but
-  # now every node's `next` field (and any known-length jump, see
-  # evalLit/evalRegex above) is a direct `elemAt at i` instead of a fresh
-  # recursive call, and `at` itself is the shared array every position
-  # ultimately resolves through -- so two different callers reaching the
-  # same position still land on the identical thunk (confirmed directly).
+  # passing each nonterminal's raw value through `handlers.<Name>` (default
+  # identity). `at` is a single `genList`, built lazily per-element, so
+  # `mkNode count` only runs for positions the parse actually reaches; a
+  # node's fields are `elemAt at i` jumps, never a fresh recursive call, so
+  # any two callers reaching the same position land on the same thunk.
   buildDerivs =
     grammar: handlers: string:
     let
@@ -717,13 +639,8 @@ rec {
       compiledRules = builtins.mapAttrs (name: rule: compile rule) grammar;
 
       # One `node -> result` function per rule, with that rule's handler
-      # already baked in via closure capture -- computed once per rule
-      # here, not once per rule PER NODE. This replaces a generic
-      # `applyHandler name r` that took `name` as an argument and did
-      # `resolvedHandlers.${name}` afresh at every node despite
-      # `resolvedHandlers` itself already being hoisted: passing `name`
-      # through and looking it up again at call time still cost a curried
-      # call plus an attrset lookup on every node, for every rule.
+      # already captured -- avoids re-looking-up `resolvedHandlers.${name}`
+      # by name on every node.
       compiledFields = builtins.mapAttrs (
         name: compiled:
         let
@@ -743,21 +660,13 @@ rec {
       ) compiledRules;
 
       # `count` as a regular entry alongside every rule's compiled field,
-      # so mkNode's mapAttrs below builds each node's ENTIRE field set in
-      # one pass instead of building a rule-fields-only attrset via
-      # mapAttrs and then copying it into a base `{count;}` via `//`.
-      # `//` isn't a lazy structural merge -- it allocates a fresh
-      # Bindings array and copies every binding from both sides into it,
-      # so stacking it on an already-built mapAttrs result was two full
-      # attrset allocations per node where one suffices. Confirmed
-      # directly (400k-node microbenchmark matching this engine's actual
-      # per-node shape): ~195MB set bytes two-pass vs. ~99MB one-pass --
-      # roughly half, and it's the highest-volume allocation site in the
-      # whole engine (once per input position, unconditionally). `next`
-      # used to be a base field here too, but nothing reads it anymore
-      # now that every jump (including evalRange's single-char advance)
-      # goes through `elemAt at pos` directly -- one fewer field built
-      # per node, confirmed a further ~2% RSS reduction.
+      # so mkNode's mapAttrs builds each node's whole field set in one
+      # pass instead of a rule-fields-only attrset merged into a
+      # `{count;}` base via `//` -- `//` copies a fresh Bindings array on
+      # every merge, so that would be two full attrset allocations per
+      # node where one suffices (measured roughly halves per-node set
+      # bytes). `next` isn't a field at all anymore: every jump goes
+      # through `elemAt at pos` directly.
       compiledFieldsAndBase = compiledFields // {
         count = null;
       };
