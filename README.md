@@ -176,6 +176,17 @@ dominated by `import <nixpkgs> {}` itself (~155MB / ~0.5s flat, regardless
 of input size from 1.7KB to 636KB) — the actual `check` call is close to
 free by comparison.
 
+Also benchmarked: [`psyclyx/fix`](https://github.com/psyclyx/fix), an
+alternative Nix-language evaluator with a `nix`-alike CLI. Running this
+project's unmodified `grammar/json.nix` against the same fixtures, `fix`
+was consistently slower and used far more memory than `nix`, with the gap
+widening as input grew — 14x more RSS at 50KB, ~38x at 384KB — and it hit
+`error: OutOfMemory` on a `tests.nix` regression case
+(`bigJumpDoesNotOverflow`) that `nix` handles in well under a second. See
+the "`fix` vs `nix`" section of
+[`bench/comparison-report.md`](bench/comparison-report.md) for the full
+numbers and two unrelated CLI-compatibility gaps found along the way.
+
 ## Tests
 
 ```console
