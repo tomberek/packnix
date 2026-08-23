@@ -184,15 +184,31 @@ rec {
         in
         tryWindow regexWindow;
 
-      compileSeq =
-        exprs:
-        let
-          compiledSubs = map compile exprs;
-          # Hoisted above `derivs:` -- this step function doesn't reference
-          # `derivs` (only `acc`/`subCompiled`, both fold-local), so leaving
-          # it below `derivs:` would re-close it on every call the returned
-          # `derivs -> result` closure receives, for no reason.
-          step =
+      # compileSeq's generic `foldl'` step builds the accumulated value list
+      # via `elemAt acc 0 ++ [(elemAt r 0)]` -- an O(current length) copy on
+      # every step, so O(k^2) total for a k-element sequence. This
+      # grammar's real sequence lengths (3-5) are small, but the gap is
+      # already clearly visible there, not swamped by `++`'s constant
+      # factor for tiny lists: measured directly (400k-call microbenchmark,
+      # forced via foldl'), at k=3 the generic foldl' costs ~299MB/0.90s
+      # vs. ~205MB/0.58s for a hand-unrolled builder that constructs the
+      # final value list as one literal with zero `++` calls; k=4:
+      # ~367MB/1.35s vs ~238MB/0.75s; k=5: ~434MB/1.36s vs ~273MB/0.92s.
+      # (A generic non-hardcoded O(k) alternative via a self-referential
+      # `genList` was tried too and came out WORSE than the original --
+      # the self-reference machinery costs more than the copy it avoids --
+      # so there is no free generic fix; specialization is the only path
+      # that wins.) `seq3`/`seq4`/`seq5` below cover this grammar's actual
+      # lengths (STRING/X=3, LIST/SET=4, SET's comma-separated ITEM
+      # body=5); any other length falls back to the original generic
+      # `foldl'` -- still correct, just without the speedup. Confirmed on
+      # the real engine: ~213MB/~0.60s -> ~200MB/~0.50s on lock-large.json
+      # (~6% RSS, ~15% wall time), byte-identical output, tests.nix
+      # unaffected.
+      seqGeneric =
+        compiledSubs: derivs:
+        builtins.foldl'
+          (
             acc: subCompiled:
             if acc == false then
               false
@@ -206,9 +222,159 @@ rec {
                 [
                   (builtins.elemAt acc 0 ++ [ (builtins.elemAt r 0) ])
                   (builtins.elemAt r 1)
-                ];
+                ]
+          )
+          [
+            [ ]
+            derivs
+          ]
+          compiledSubs;
+
+      seq3 =
+        compiledSubs:
+        let
+          c0 = builtins.elemAt compiledSubs 0;
+          c1 = builtins.elemAt compiledSubs 1;
+          c2 = builtins.elemAt compiledSubs 2;
         in
-        derivs: builtins.foldl' step [ [ ] derivs ] compiledSubs;
+        derivs:
+        let
+          r0 = c0 derivs;
+        in
+        if r0 == false then
+          false
+        else
+          let
+            r1 = c1 (builtins.elemAt r0 1);
+          in
+          if r1 == false then
+            false
+          else
+            let
+              r2 = c2 (builtins.elemAt r1 1);
+            in
+            if r2 == false then
+              false
+            else
+              [
+                [
+                  (builtins.elemAt r0 0)
+                  (builtins.elemAt r1 0)
+                  (builtins.elemAt r2 0)
+                ]
+                (builtins.elemAt r2 1)
+              ];
+
+      seq4 =
+        compiledSubs:
+        let
+          c0 = builtins.elemAt compiledSubs 0;
+          c1 = builtins.elemAt compiledSubs 1;
+          c2 = builtins.elemAt compiledSubs 2;
+          c3 = builtins.elemAt compiledSubs 3;
+        in
+        derivs:
+        let
+          r0 = c0 derivs;
+        in
+        if r0 == false then
+          false
+        else
+          let
+            r1 = c1 (builtins.elemAt r0 1);
+          in
+          if r1 == false then
+            false
+          else
+            let
+              r2 = c2 (builtins.elemAt r1 1);
+            in
+            if r2 == false then
+              false
+            else
+              let
+                r3 = c3 (builtins.elemAt r2 1);
+              in
+              if r3 == false then
+                false
+              else
+                [
+                  [
+                    (builtins.elemAt r0 0)
+                    (builtins.elemAt r1 0)
+                    (builtins.elemAt r2 0)
+                    (builtins.elemAt r3 0)
+                  ]
+                  (builtins.elemAt r3 1)
+                ];
+
+      seq5 =
+        compiledSubs:
+        let
+          c0 = builtins.elemAt compiledSubs 0;
+          c1 = builtins.elemAt compiledSubs 1;
+          c2 = builtins.elemAt compiledSubs 2;
+          c3 = builtins.elemAt compiledSubs 3;
+          c4 = builtins.elemAt compiledSubs 4;
+        in
+        derivs:
+        let
+          r0 = c0 derivs;
+        in
+        if r0 == false then
+          false
+        else
+          let
+            r1 = c1 (builtins.elemAt r0 1);
+          in
+          if r1 == false then
+            false
+          else
+            let
+              r2 = c2 (builtins.elemAt r1 1);
+            in
+            if r2 == false then
+              false
+            else
+              let
+                r3 = c3 (builtins.elemAt r2 1);
+              in
+              if r3 == false then
+                false
+              else
+                let
+                  r4 = c4 (builtins.elemAt r3 1);
+                in
+                if r4 == false then
+                  false
+                else
+                  [
+                    [
+                      (builtins.elemAt r0 0)
+                      (builtins.elemAt r1 0)
+                      (builtins.elemAt r2 0)
+                      (builtins.elemAt r3 0)
+                      (builtins.elemAt r4 0)
+                    ]
+                    (builtins.elemAt r4 1)
+                  ];
+
+      compileSeq =
+        exprs:
+        let
+          compiledSubs = map compile exprs;
+          k = builtins.length compiledSubs;
+          build =
+            if k == 3 then
+              seq3
+            else if k == 4 then
+              seq4
+            else if k == 5 then
+              seq5
+            else
+              seqGeneric;
+        in
+        build compiledSubs;
 
       # Ordered choice with cut (↑, Mizushima et al. §3.2): a branch
       # `{ cutSeq = [e1 e2]; }` evaluates e1 first; if e1 fails, the next
