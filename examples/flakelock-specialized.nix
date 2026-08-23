@@ -54,7 +54,7 @@
 #       packrat = import ../lib/packrat.nix;
 #       g = import ./flakelock-specialized.nix;
 #     in packrat.run { grammar = g.grammar; handlers = g.handlers; } 0
-#          (builtins.readFile ../lock-large.json)
+#          (builtins.readFile ../data/lock-large.json)
 #   ' --json
 let
   real = import ../grammar/flakelock.nix;

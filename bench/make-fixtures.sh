@@ -9,7 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p fixtures
-src=../lock-large.json
+src=../data/lock-large.json
 for n in 50000 150000 300000; do
   head -c "$n" "$src" > "fixtures/fixture-${n}.json"
 done

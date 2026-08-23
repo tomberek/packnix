@@ -1,7 +1,7 @@
 # Thin wrapper: wires the generic engine (lib/packrat.nix) to the JSON
 # grammar (grammar/json.nix). run.sh calls this via
-#   nix eval --file default.nix --apply 'x: x ./lock.json' --json
-# (the exported value is a `__functor` attrset, so `x ./lock.json`
+#   nix eval --file default.nix --apply 'x: x ./data/lock.json' --json
+# (the exported value is a `__functor` attrset, so `x ./data/lock.json`
 # dispatches to `pack`).
 #
 # `useCut` picks which grammar variant is wired up; flip it to compare, or
