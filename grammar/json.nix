@@ -52,7 +52,11 @@ let
     # whole run in one match, so `star`'s recheck loop would only ever
     # fire 0 or 1 times. `opt` gives the same "zero or more" acceptance
     # (a bare `regex` requires >=1 match, which would reject e.g. "[]").
-    WHITESPACE = { opt = { regex = "([[:space:]]+)"; }; };
+    WHITESPACE = {
+      opt = {
+        regex = "([[:space:]]+)";
+      };
+    };
 
     STRING = [
       { lit = "\""; }
@@ -75,7 +79,9 @@ let
   # fixtures.
   numberBranch = {
     action = {
-      e = { regex = "([0-9]+)"; };
+      e = {
+        regex = "([0-9]+)";
+      };
       f = builtins.fromJSON;
     };
   };
@@ -92,7 +98,9 @@ let
   };
   nullBranch = {
     action = {
-      e = { lit = "null"; };
+      e = {
+        lit = "null";
+      };
       f = v: null;
     };
   };
@@ -119,7 +127,10 @@ let
         let
           opt = builtins.elemAt v 2;
         in
-        if opt == null then [ ] else [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1);
+        if opt == null then
+          [ ]
+        else
+          [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1);
     };
   };
 
@@ -146,7 +157,8 @@ let
           if opt == null then
             [ ]
           else
-            [ (toPair (builtins.elemAt opt 0)) ] ++ map (p: toPair (builtins.elemAt p 1)) (builtins.elemAt opt 1)
+            [ (toPair (builtins.elemAt opt 0)) ]
+            ++ map (p: toPair (builtins.elemAt p 1)) (builtins.elemAt opt 1)
         );
     };
   };
@@ -178,7 +190,12 @@ let
     X = [
       "WHITESPACE"
       {
-        choice = map (b: { cutSeq = [ b "" ]; }) xBranches;
+        choice = map (b: {
+          cutSeq = [
+            b
+            ""
+          ];
+        }) xBranches;
       }
       "WHITESPACE"
     ];

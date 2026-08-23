@@ -55,7 +55,10 @@ rec {
       compile =
         expr:
         if expr == "" then
-          (derivs: [ "" derivs ]) # epsilon: always succeeds, consumes nothing
+          (derivs: [
+            ""
+            derivs
+          ]) # epsilon: always succeeds, consumes nothing
         else if builtins.isString expr then
           (
             let
@@ -361,7 +364,11 @@ rec {
               let
                 c = compile b;
               in
-              derivs: let r = c derivs; in if r == false then null else r;
+              derivs:
+              let
+                r = c derivs;
+              in
+              if r == false then null else r;
           compiledBranches = map compileBranch branches;
           # `derivs` is an explicit parameter, not closed over, so `go`
           # doesn't get rebuilt every time the outer closure is called.
@@ -382,11 +389,7 @@ rec {
       starChunkSize = 500;
 
       compileStar =
-        body:
-        if builtins.isAttrs body && body ? cutSeq then
-          compileStarCut body
-        else
-          compileStarPlain body;
+        body: if builtins.isAttrs body && body ? cutSeq then compileStarCut body else compileStarPlain body;
 
       # Shared postprocessing for the genericClosure-based star loops
       # below: `closure` ends in a status-only sentinel (`last`); `harvest`
@@ -574,7 +577,10 @@ rec {
       # Succeed at `derivs`, consuming nothing, with no payload -- what
       # compileOpt falls back to when its body doesn't match, and what
       # compileAnd/compileNot both produce for a satisfied lookahead.
-      epsilonAt = derivs: [ null derivs ];
+      epsilonAt = derivs: [
+        null
+        derivs
+      ];
 
       compileOpt =
         body:
@@ -744,4 +750,3 @@ rec {
       if r != false then builtins.elemAt r 0 else false
     ) grammar;
 }
-

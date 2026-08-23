@@ -9,7 +9,9 @@
 let
   packrat = import ./lib/packrat.nix;
 
-  run = grammar: count: string: packrat.run { inherit grammar; } count string;
+  run =
+    grammar: count: string:
+    packrat.run { inherit grammar; } count string;
 
   # --- Paper test case 1 (§3.2 main example) ---------------------------
   # M <- E ";" ;
@@ -80,7 +82,12 @@ let
       star = {
         cutSeq = [
           { lit = "a"; }
-          { range = [ "0" "9" ]; }
+          {
+            range = [
+              "0"
+              "9"
+            ];
+          }
         ];
       };
     };
@@ -89,7 +96,12 @@ let
     S = {
       star = [
         { lit = "a"; }
-        { range = [ "0" "9" ]; }
+        {
+          range = [
+            "0"
+            "9"
+          ];
+        }
       ];
     };
   };
@@ -100,28 +112,62 @@ let
   # --- Basic combinator sanity -----------------------------------------
   basicGrammar = {
     OPT_PRESENT = [
-      { opt = { lit = "x"; }; }
+      {
+        opt = {
+          lit = "x";
+        };
+      }
       { lit = "y"; }
     ];
     OPT_ABSENT = [
-      { opt = { lit = "x"; }; }
+      {
+        opt = {
+          lit = "x";
+        };
+      }
       { lit = "y"; }
     ];
-    PLUS_OK = { plus = { range = [ "0" "9" ]; }; };
-    PLUS_FAIL = { plus = { range = [ "0" "9" ]; }; };
+    PLUS_OK = {
+      plus = {
+        range = [
+          "0"
+          "9"
+        ];
+      };
+    };
+    PLUS_FAIL = {
+      plus = {
+        range = [
+          "0"
+          "9"
+        ];
+      };
+    };
     AND_LOOKAHEAD = [
-      { and = { lit = "ab"; }; }
+      {
+        and = {
+          lit = "ab";
+        };
+      }
       { lit = "a"; }
     ];
     # !e should fail here because e ("x") DOES match at this position.
     NOT_LOOKAHEAD_REJECTS = [
-      { not = { lit = "a"; }; }
+      {
+        not = {
+          lit = "a";
+        };
+      }
       { lit = "a"; }
     ];
     # !e should succeed here (consuming nothing) because e ("x") does NOT
     # match "a...", then the following lit "a" matches normally.
     NOT_LOOKAHEAD_PASSES = [
-      { not = { lit = "x"; }; }
+      {
+        not = {
+          lit = "x";
+        };
+      }
       { lit = "a"; }
     ];
   };
@@ -139,7 +185,9 @@ let
   # doubled window whenever a match exactly fills the current one, so this
   # is a pure speed/memory tuning knob, not a correctness bound.
   longMatchGrammar = {
-    LONG = { regex = "([a-z]+)"; };
+    LONG = {
+      regex = "([a-z]+)";
+    };
   };
   longInput = builtins.concatStringsSep "" (builtins.genList (_: "x") 2000);
   rLongMatch = run longMatchGrammar 0 longInput;
@@ -148,7 +196,11 @@ let
   # not stack-overflow or be quadratic-time (see lib/packrat.nix's
   # compileStarPlain/compileStarCut for the fix).
   manyRepeatsGrammar = {
-    MANY = { star = { lit = "a"; }; };
+    MANY = {
+      star = {
+        lit = "a";
+      };
+    };
   };
   manyRepeatsInput = builtins.concatStringsSep "" (builtins.genList (_: "a") 64000);
   rManyRepeats = run manyRepeatsGrammar 0 manyRepeatsInput;
@@ -156,7 +208,9 @@ let
   # --- Regression: jumping far ahead in the position-indexed Derivs array
   # (one match consuming many characters at once) must not stack-overflow.
   bigJumpGrammar = {
-    A = { regex = "([a-z]+)"; };
+    A = {
+      regex = "([a-z]+)";
+    };
     B = [
       "A"
       { lit = "!"; }
@@ -168,8 +222,7 @@ let
   checks = {
     cutMain_parsesFullString = cutMainResult.M != false;
     cutMain_correctValue =
-      cutMainResult.M
-      == [
+      cutMainResult.M == [
         [
           [
             "a"
