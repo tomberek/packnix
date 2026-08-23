@@ -240,30 +240,27 @@ rec {
         derivs:
         let
           r0 = c0 derivs;
+          # `||` short-circuits (confirmed directly: forcing r1/r2 while an
+          # earlier stage is `false` would throw, since `elemAt false 1` is
+          # an error -- but that thunk is never forced once an earlier
+          # disjunct is already `true`), so laying every rN out flat here
+          # and checking them in one `||` chain below is exactly equivalent
+          # to nesting `if rN == false then false else let r{N+1} = ...`
+          # one level deeper per stage.
+          r1 = c1 (builtins.elemAt r0 1);
+          r2 = c2 (builtins.elemAt r1 1);
         in
-        if r0 == false then
+        if r0 == false || r1 == false || r2 == false then
           false
         else
-          let
-            r1 = c1 (builtins.elemAt r0 1);
-          in
-          if r1 == false then
-            false
-          else
-            let
-              r2 = c2 (builtins.elemAt r1 1);
-            in
-            if r2 == false then
-              false
-            else
-              [
-                [
-                  (builtins.elemAt r0 0)
-                  (builtins.elemAt r1 0)
-                  (builtins.elemAt r2 0)
-                ]
-                (builtins.elemAt r2 1)
-              ];
+          [
+            [
+              (builtins.elemAt r0 0)
+              (builtins.elemAt r1 0)
+              (builtins.elemAt r2 0)
+            ]
+            (builtins.elemAt r2 1)
+          ];
 
       seq4 =
         compiledSubs:
@@ -276,37 +273,22 @@ rec {
         derivs:
         let
           r0 = c0 derivs;
+          r1 = c1 (builtins.elemAt r0 1);
+          r2 = c2 (builtins.elemAt r1 1);
+          r3 = c3 (builtins.elemAt r2 1);
         in
-        if r0 == false then
+        if r0 == false || r1 == false || r2 == false || r3 == false then
           false
         else
-          let
-            r1 = c1 (builtins.elemAt r0 1);
-          in
-          if r1 == false then
-            false
-          else
-            let
-              r2 = c2 (builtins.elemAt r1 1);
-            in
-            if r2 == false then
-              false
-            else
-              let
-                r3 = c3 (builtins.elemAt r2 1);
-              in
-              if r3 == false then
-                false
-              else
-                [
-                  [
-                    (builtins.elemAt r0 0)
-                    (builtins.elemAt r1 0)
-                    (builtins.elemAt r2 0)
-                    (builtins.elemAt r3 0)
-                  ]
-                  (builtins.elemAt r3 1)
-                ];
+          [
+            [
+              (builtins.elemAt r0 0)
+              (builtins.elemAt r1 0)
+              (builtins.elemAt r2 0)
+              (builtins.elemAt r3 0)
+            ]
+            (builtins.elemAt r3 1)
+          ];
 
       seq5 =
         compiledSubs:
@@ -320,44 +302,24 @@ rec {
         derivs:
         let
           r0 = c0 derivs;
+          r1 = c1 (builtins.elemAt r0 1);
+          r2 = c2 (builtins.elemAt r1 1);
+          r3 = c3 (builtins.elemAt r2 1);
+          r4 = c4 (builtins.elemAt r3 1);
         in
-        if r0 == false then
+        if r0 == false || r1 == false || r2 == false || r3 == false || r4 == false then
           false
         else
-          let
-            r1 = c1 (builtins.elemAt r0 1);
-          in
-          if r1 == false then
-            false
-          else
-            let
-              r2 = c2 (builtins.elemAt r1 1);
-            in
-            if r2 == false then
-              false
-            else
-              let
-                r3 = c3 (builtins.elemAt r2 1);
-              in
-              if r3 == false then
-                false
-              else
-                let
-                  r4 = c4 (builtins.elemAt r3 1);
-                in
-                if r4 == false then
-                  false
-                else
-                  [
-                    [
-                      (builtins.elemAt r0 0)
-                      (builtins.elemAt r1 0)
-                      (builtins.elemAt r2 0)
-                      (builtins.elemAt r3 0)
-                      (builtins.elemAt r4 0)
-                    ]
-                    (builtins.elemAt r4 1)
-                  ];
+          [
+            [
+              (builtins.elemAt r0 0)
+              (builtins.elemAt r1 0)
+              (builtins.elemAt r2 0)
+              (builtins.elemAt r3 0)
+              (builtins.elemAt r4 0)
+            ]
+            (builtins.elemAt r4 1)
+          ];
 
       compileSeq =
         exprs:
