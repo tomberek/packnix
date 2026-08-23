@@ -76,3 +76,51 @@ table above). Native `fromJSON` handles it in well under a second.
   14.2MB file's numbers are quoted separately.
 - nix-parsec's grammar was written for this comparison using its real,
   verified combinators, not lifted from an existing example in that repo.
+
+## `fix` vs `nix`
+
+Date: 2026-08-23
+
+[`fix`](https://github.com/psyclyx/fix) is an alternative Nix-language
+evaluator with a CLI deliberately similar to `nix`'s (`fix eval
+--impure --expr '...'`). Same `grammar/json.nix` grammar, same
+`lib/packrat.nix` engine, same fixtures as above (`bench/fixtures/`,
+generic-grammar column) — only the evaluator binary differs (`nix` =
+Determinate Nix 3.20.0 / Nix language 2.34.6; `fix` 0.3.0 / Nix language
+compatibility 2.18.3).
+
+| fixture | nix: wall / peak RSS | fix: wall / peak RSS | RSS ratio |
+|---|---:|---:|---:|
+| 50KB | 0.25s / 52MB | 0.38s / 745MB | ~14x |
+| 150KB | 0.18s / 81MB | 1.19s / 2.22GB | ~27x |
+| 300KB | 0.33s / 122MB | 2.24s / 4.32GB | ~35x |
+| 384KB (full) | 0.62s / 149MB | 2.87s / 5.60GB | ~38x |
+
+`fix` is slower and uses substantially more memory than `nix` on every
+fixture, and both gaps *widen* with input size — RSS is roughly linear in
+input size under `fix` (vs. `nix`'s much shallower growth), so the ratio
+keeps climbing rather than settling to a constant factor. Extrapolating
+that slope to the real 14.2MB flake.lock (nix: ~19.4s/4.71GB, see above)
+would put `fix` at well over 100GB RSS — not attempted, to avoid
+OOMing/hanging the benchmark host.
+
+`fix eval` also crashed with `error: OutOfMemory` on `tests.nix`'s existing
+`bigJumpDoesNotOverflow` regression case (a single ~90KB line, one big
+regex match jumping far ahead in the position-indexed `Derivs` array) — a
+case `nix eval` handles in 0.08s. Bisecting the input size found `fix`
+succeeds up to ~8,000 characters and reliably times out/OOMs from
+~10,000-12,000 characters up, with wall time already at 8-16s in that
+range versus `nix`'s <0.1s at 90,000 characters.
+
+Two CLI-compatibility gaps surfaced while running this comparison, unrelated
+to performance: `fix eval` has no `--apply` flag (`nix eval --apply` errors
+as unrecognized), and relative paths inside `-E`/`--expr` fail with `error:
+RelativePath` where `nix eval --expr` resolves them against the CWD —
+absolute paths were required to get `fix` to run the same expressions at
+all.
+
+Not investigated further: whether this is `fix`'s general evaluator
+overhead vs. something specific to this engine's `genList`-based lazy
+`Derivs` array (`lib/packrat.nix`'s core design, see its top-of-file
+comment) that `fix`'s implementation handles less efficiently than `nix`'s.
+
