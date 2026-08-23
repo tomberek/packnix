@@ -15,16 +15,24 @@
 # (adjust the relative paths to wherever you run this from)
 let
   grammar = {
-    WHITESPACE = { star = { regex = "([[:space:]]+)"; }; };
+    WHITESPACE = {
+      star = {
+        regex = "([[:space:]]+)";
+      };
+    };
 
-    NULL = { lit = "null"; };
+    NULL = {
+      lit = "null";
+    };
     BOOL = {
       choice = [
         { lit = "true"; }
         { lit = "false"; }
       ];
     };
-    NUMBER = { regex = "([0-9]+)"; };
+    NUMBER = {
+      regex = "([0-9]+)";
+    };
 
     # A string is a quote, some fragments, a quote -- escapes get their
     # own nonterminal.
@@ -40,7 +48,9 @@ let
         { lit = ''\''; }
       ];
     };
-    STRING_RAW = { star = "STRING_FRAG"; };
+    STRING_RAW = {
+      star = "STRING_FRAG";
+    };
 
     # A list is "[", optional items, "]"; items are one value followed by
     # zero or more ", value" pairs.
