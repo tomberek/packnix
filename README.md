@@ -64,7 +64,7 @@ input position.
 Parse a file with the built-in JSON grammar:
 
 ```console
-$ ./run.sh                      # nix eval --file default.nix --apply 'x: x ./lock.json' --json | jq
+$ ./run.sh                      # nix eval --file default.nix --apply 'x: x ./data/lock.json' --json | jq
 ```
 
 Or directly:
@@ -75,7 +75,7 @@ let
   json = import ./grammar/json.nix;
 in
 packrat.run { grammar = json.grammar; handlers = json.handlers; } 0
-  (builtins.readFile ./lock.json)
+  (builtins.readFile ./data/lock.json)
 ```
 
 `run` returns `{ <NonterminalName> = value; ... }` for every rule in the
@@ -91,7 +91,7 @@ let
   g = import ./grammar/flakelock.nix;
 in
 (packrat.run { grammar = g.grammar; handlers = g.handlers; } 0
-  (builtins.readFile ./lock-large.json)).DOCUMENT
+  (builtins.readFile ./data/lock-large.json)).DOCUMENT
 ```
 
 Writing your own grammar: start from `examples/json-simple.nix` as a

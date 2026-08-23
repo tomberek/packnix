@@ -26,7 +26,7 @@ fixtures=(
   "500:bench/fixtures/synth-500.json"
   "1000:bench/fixtures/synth-1000.json"
   "2000:bench/fixtures/synth-2000.json"
-  "real(lock-large):lock-large.json"
+  "real(lock-large):data/lock-large.json"
 )
 
 variants=(

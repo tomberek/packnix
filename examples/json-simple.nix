@@ -10,7 +10,7 @@
 #       packrat = import ../lib/packrat.nix;
 #       g = import ./json-simple.nix;
 #     in packrat.run { grammar = g.grammar; handlers = g.handlers; } 0
-#          (builtins.readFile ../lock.json)
+#          (builtins.readFile ../data/lock.json)
 #   ' --json
 # (adjust the relative paths to wherever you run this from)
 let

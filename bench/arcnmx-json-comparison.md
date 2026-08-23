@@ -97,7 +97,7 @@ because the cost is dominated by `import <nixpkgs> {}` itself, not by
 $ /usr/bin/time -v nix eval --impure --expr 'let pkgs = import <nixpkgs> {}; in pkgs.lib.version'
 Elapsed: 0:00.54, Maximum resident set size: 155268 KB
 
-$ /usr/bin/time -v nix eval --impure --expr 'let pkgs = import <nixpkgs> {}; lib = pkgs.lib; in lib.types.json.check (builtins.fromJSON (builtins.readFile ./lock-large.json))'
+$ /usr/bin/time -v nix eval --impure --expr 'let pkgs = import <nixpkgs> {}; lib = pkgs.lib; in lib.types.json.check (builtins.fromJSON (builtins.readFile ./data/lock-large.json))'
 Elapsed: 0:00.56, Maximum resident set size: 155388 KB
 ```
 
