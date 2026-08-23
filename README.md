@@ -2,12 +2,39 @@
 
 A packrat/PEG parsing engine written entirely in the Nix expression
 language, plus a few grammars built on it — generic JSON, JSON specialized
-for `nix flake lock`'s exact output schema, and a real (subset of) YAML.
+for `nix flake lock`'s exact output schema, a real (subset of) YAML, and
+TSV.
 
 Built from Ford's ["Packrat Parsing: Simple, Powerful, Lazy, Linear Time"](https://bford.info/pub/lang/packrat-icfp02/)
 and Mizushima et al.'s ["Packrat Parsers Can Handle Practical Grammars in
 Mostly Constant Space"](https://dl.acm.org/doi/10.1145/1806672.1806679) (the
 source of the `cutSeq`/`↑` operator below).
+
+## Quick example
+
+Parsing TSV (tab-separated values) with `grammar/tsv.nix`:
+
+```nix
+let
+  packrat = import ./lib/packrat.nix;
+  tsv = import ./grammar/tsv.nix;
+in
+(packrat.run { grammar = tsv.grammar; handlers = tsv.handlers; } 0
+  (builtins.readFile ./data/example.tsv)).DOCUMENT
+```
+
+```console
+$ nix eval --impure --expr '
+    let packrat = import ./lib/packrat.nix; tsv = import ./grammar/tsv.nix;
+    in (packrat.run { grammar = tsv.grammar; handlers = tsv.handlers; } 0
+         (builtins.readFile ./data/example.tsv)).DOCUMENT' --json
+[["name","type","ref"],["nixpkgs","github","nixpkgs-unstable"],["flake-utils","github","main"]]
+```
+
+`DOCUMENT` is a list of rows, each row a list of field strings. See
+`grammar/tsv.nix` for the ~30-line grammar itself, and the [Grammar
+DSL](#grammar-dsl) and [Usage](#usage) sections below for how to write your
+own or use the JSON/flake.lock grammars this project also ships.
 
 ## Why
 
@@ -25,6 +52,7 @@ other Nix parsing libraries.
 | `lib/packrat.nix` | The engine: `mkCompile`, `buildDerivs`, `run`. Everything else is built on this. |
 | `grammar/json.nix` | A generic, from-scratch JSON grammar (`grammar`/`grammarNoCut` + cut and non-cut variants). |
 | `grammar/flakelock.nix` | A grammar specialized to `nix flake lock`'s exact schema — see below. |
+| `grammar/tsv.nix` | A small TSV (tab-separated values) grammar — see the quick example above. |
 | `grammar/yaml.nix` | A real YAML subset: block mappings/sequences nested by indentation, plain/quoted scalars, flow collections, comments. `mkYamlGrammar { indentStep; maxDepth; }` generates the grammar; see its header for scope limits (no anchors/tags/multi-doc/block-scalars, fixed indent step, bounded depth). |
 | `examples/json-simple.nix` | A plain, unoptimized JSON grammar — every construct gets its own named rule, no attention paid to allocation. Good starting point for reading/writing your own grammar. |
 | `examples/json-optimized.nix` | Re-exports `grammar/json.nix`, annotated with what changed vs. `json-simple.nix` and why (rule inlining via the `action` combinator, fewer redundant whitespace scans, etc). |

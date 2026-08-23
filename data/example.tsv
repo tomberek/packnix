@@ -1,0 +1,3 @@
+name	type	ref
+nixpkgs	github	nixpkgs-unstable
+flake-utils	github	main
