@@ -2,8 +2,8 @@
 
 A packrat/PEG parsing engine written entirely in the Nix expression
 language, plus a few grammars built on it — generic JSON, JSON specialized
-for `nix flake lock`'s exact output schema, a real (subset of) YAML, and
-TSV.
+for `nix flake lock`'s exact output schema, a real (subset of) YAML, TSV,
+and Ruby's Bundler `Gemfile.lock` format.
 
 Built from Ford's ["Packrat Parsing: Simple, Powerful, Lazy, Linear Time"](https://bford.info/pub/lang/packrat-icfp02/)
 and Mizushima et al.'s ["Packrat Parsers Can Handle Practical Grammars in
@@ -54,9 +54,11 @@ other Nix parsing libraries.
 | `grammar/flakelock.nix` | A grammar specialized to `nix flake lock`'s exact schema — see below. |
 | `grammar/tsv.nix` | A small TSV (tab-separated values) grammar — see the quick example above. |
 | `grammar/yaml.nix` | A real YAML subset: block mappings/sequences nested by indentation, plain/quoted scalars, flow collections, comments. `mkYamlGrammar { indentStep; maxDepth; }` generates the grammar; see its header for scope limits (no anchors/tags/multi-doc/block-scalars, fixed indent step, bounded depth). |
+| `grammar/gemfile-lock.nix` | Ruby Bundler's `Gemfile.lock` format — see below for why this one has a real nixpkgs use case. |
 | `examples/json-simple.nix` | A plain, unoptimized JSON grammar — every construct gets its own named rule, no attention paid to allocation. Good starting point for reading/writing your own grammar. |
 | `examples/json-optimized.nix` | Re-exports `grammar/json.nix`, annotated with what changed vs. `json-simple.nix` and why (rule inlining via the `action` combinator, fewer redundant whitespace scans, etc). |
 | `examples/flakelock-specialized.nix` | Re-exports `grammar/flakelock.nix`, annotated with the schema-specialization technique and measured wins. |
+| `examples/gemfile-lock-checksums.nix` | Extracts `{ <gem name> = <sha256>; }` from a `Gemfile.lock`'s `CHECKSUMS` section — the piece a `bundlerEnv` replacement would need. See below. |
 | `default.nix` | Thin wrapper: `pack ./somefile.json` parses a file with the JSON grammar. |
 | `tests.nix` | Standalone combinator test suite (cut-operator semantics, star/regex edge cases, etc). |
 | `bench/` | Fixture generators, measurement scripts, `comparison-report.md`, `arcnmx-json-comparison.md`. |
@@ -146,6 +148,38 @@ of a generic "parse a key, dispatch on its name, loop until `}`" parser —
 no backtracking over key identity or order. A differently-shaped
 flake.lock, or arbitrary JSON, correctly fails to parse rather than
 silently mis-parsing; that inflexibility is the trade for the speed.
+
+## Gemfile.lock: a real nixpkgs use case
+
+Today, turning a `Gemfile.lock` into the `gemset.nix` that `bundlerEnv`
+needs (see `pkgs/development/ruby-modules/bundled-common` in nixpkgs)
+requires running [`bundix`](https://github.com/nix-community/bundix), an
+external Ruby tool that needs network access (or `nix-prefetch-git`) to
+compute each gem's fetch hash. But Bundler ≥2.7 lockfiles have a
+`CHECKSUMS` section with a hex sha256 per gem — and that hash is *exactly*
+what `bundix` ends up storing, just hex instead of Nix's base32 encoding.
+Verified against a real nixpkgs package's paired `Gemfile.lock`/`gemset.nix`:
+
+```console
+$ nix hash convert --to base32 --hash-algo sha256 \
+    3b9270d8e19f0afb534b11c52f439937dc30028adcbbae2b244f3383ce75de4b
+0jyyfp786csg4hmsxfywi8131p1pk51jzi8i9d9zn2lzw7c714iv
+```
+
+That's the exact string `gemset.nix` stores for that gem (`actionmailer`).
+So for any lockfile with a `CHECKSUMS` section, the dependency graph *and*
+every gem's fetch hash are already sitting in the file — `grammar/gemfile-lock.nix`
+plus a small base32 re-encode (not reimplemented here — see
+`examples/gemfile-lock-checksums.nix`) is enough to skip `bundix` and
+network access entirely for those lockfiles.
+
+Correctness: cross-validated against an independent Python reference
+parser (not derived from this grammar) across 134 real `Gemfile.lock`
+files pulled from a nixpkgs checkout — every field (multiple GEM/GIT/PATH
+blocks, platform-qualified spec versions, `!`-pinned/multi-constraint
+dependencies, CHECKSUMS, RUBY VERSION) byte/value-identical between the
+two. Deliberately out of scope: Bundler `PLUGIN SOURCES` (not seen in the
+corpus at all).
 
 ## Benchmarks
 
