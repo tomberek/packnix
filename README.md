@@ -30,7 +30,7 @@ other Nix parsing libraries.
 | `examples/flakelock-specialized.nix` | Re-exports `grammar/flakelock.nix`, annotated with the schema-specialization technique and measured wins. |
 | `default.nix` | Thin wrapper: `pack ./somefile.json` parses a file with the JSON grammar. |
 | `tests.nix` | Standalone combinator test suite (cut-operator semantics, star/regex edge cases, etc). |
-| `bench/` | Fixture generators, measurement scripts, `comparison-report.md`. |
+| `bench/` | Fixture generators, measurement scripts, `comparison-report.md`, `arcnmx-json-comparison.md`. |
 
 ## Grammar DSL
 
@@ -134,6 +134,18 @@ from 2.4KB to 875KB plus the real 14.2MB `nix-overlay/flake.lock`:
 [`purenix-org/purenix`](https://github.com/purenix-org/purenix) isn't in
 the table — it's a PureScript-to-Nix compiler backend, not a parsing
 library, and ships no JSON parser to compare against.
+
+[`arcnmx/nixexprs`'s `lib/json.nix`](https://github.com/arcnmx/nixexprs/blob/master/lib/json.nix)
+also isn't in the table above — it defines a NixOS-module-system *type* for
+validating that an already-parsed value is JSON-shaped, not a parser, so
+there's no `fromJSON`-equivalent function there to time against this
+project's grammars. See
+[`bench/arcnmx-json-comparison.md`](bench/arcnmx-json-comparison.md) for
+what *is* comparable: nixpkgs' equivalent type, `lib.types.json.check`,
+benchmarked as a post-`fromJSON` validation step. Its cost turns out to be
+dominated by `import <nixpkgs> {}` itself (~155MB / ~0.5s flat, regardless
+of input size from 1.7KB to 636KB) — the actual `check` call is close to
+free by comparison.
 
 ## Tests
 
