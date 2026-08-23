@@ -1,0 +1,54 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    # tests.nix's combinator suite plus verify-fixtures.sh's full sweep is
+    # well under a minute locally; generous headroom for a cold nix-install.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      # tests.nix: standalone combinator suite (cut-operator semantics,
+      # star/opt/and/not/regex edge cases). Every attribute is a bool;
+      # allPassed must be true.
+      - name: Run combinator tests
+        run: |
+          result=$(nix eval --file tests.nix --json)
+          echo "$result" | jq .
+          [[ "$(echo "$result" | jq -r .allPassed)" == "true" ]]
+
+      # verify-fixtures.sh: every JSON fixture in data/ and bench/fixtures/
+      # must parse byte-identical to builtins.fromJSON through both
+      # grammar/json.nix and (where the fixture is flake.lock-shaped)
+      # grammar/flakelock.nix. This is the same check this repo's history
+      # has done by hand before trusting any benchmark number -- running
+      # it in CI means a grammar regression fails the build instead of
+      # silently producing wrong values that only benchmarking would
+      # happen to notice.
+      - name: Verify fixtures parse byte-identical to builtins.fromJSON
+        run: ./verify-fixtures.sh
+
+      # default.nix / run.sh: the documented entry point actually works.
+      - name: Run default.nix against data/lock.json
+        run: ./run.sh
+
+  fmt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      # nixfmt (RFC 166) is the standard formatter; --check exits non-zero
+      # on any unformatted file without touching it.
+      - name: Check nix formatting
+        run: nix run nixpkgs#nixfmt -- --check $(find . -name '*.nix' -not -path './.claude/*')
