@@ -28,7 +28,7 @@
 #       packrat = import ../lib/packrat.nix;
 #       g = import ./json-optimized.nix;
 #     in packrat.run { grammar = g.grammar; handlers = g.handlers; } 0
-#          (builtins.readFile ../lock.json)
+#          (builtins.readFile ../data/lock.json)
 #   ' --json
 let
   real = import ../grammar/json.nix;

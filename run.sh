@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-nix eval --file default.nix --apply 'x: x ./lock.json' --json | jq
+nix eval --file default.nix --apply 'x: x ./data/lock.json' --json | jq
