@@ -74,47 +74,119 @@ let
     # reject e.g. the "[]" in this repo's own lock-large.json) without a
     # star's per-call setup or its list-of-matches result shape.
     WHITESPACE = { opt = { regex = "([[:space:]]+)"; }; };
-    NULL = { lit = "null"; };
-    # "false" tried first: outnumbers "true" ~14:1 in this repo's fixtures.
-    BOOL = {
-      choice = [
-        { lit = "false"; }
-        { lit = "true"; }
-      ];
-    };
-    NUMBER = { regex = "([0-9]+)"; };
 
     STRING = [
       { lit = "\""; }
       { star = stringFragment; }
       { lit = "\""; }
     ];
+  };
 
-    # `opt` lets LIST/SET accept an empty body ("[]"/"{}"). Only ONE
-    # WHITESPACE around the body, not two: X already eats its own leading
-    # and trailing whitespace (X = [WHITESPACE choice WHITESPACE]), and
-    # setItem ends in "X" so it inherits that trailing WHITESPACE too --
-    # so a second WHITESPACE right before "]"/"}" would be redundant
-    # either way: the last item already ate it if the body is non-empty,
-    # or the first WHITESPACE (kept, since there's no item to eat the
-    # space in "[ ]"/"{ }") already did if it's empty. Confirmed
-    # directly: removing the second WHITESPACE produces byte-identical
-    # output on this repo's lock-large.json, and "[]"/"[ ]"/"[1,2,3]"/
-    # "[1,2,3 ]"/"[ 1,2,3]" (and the SET/nested equivalents) all still
-    # parse correctly.
-    LIST = [
-      { lit = "["; }
-      "WHITESPACE"
-      { opt = commaSeparated "X"; }
-      { lit = "]"; }
-    ];
+  # NUMBER/BOOL/NULL/LIST/SET were previously named rules in `common`,
+  # each referenced from exactly ONE place (xBranches below) -- same
+  # single-reference lever as the earlier STRING_RAW/LIST_ITEMS/ITEMS/ITEM
+  # inlinings, just extended to rules that carry a real value-transform
+  # (handler) rather than pure recognition logic. `{ action = { e; f; }; }`
+  # (an EXPERIMENTAL combinator added to lib/packrat.nix for this) lets the
+  # transform travel with the inlined expression instead of needing a
+  # named Derivs-node field to hang off of.
+  #
+  # Referenced-from-exactly-one-place is what makes this safe: it's
+  # structurally impossible for two call sites of the same inlined
+  # expression to collide at the same input position within one parse
+  # (there being only one call site), so there's no risk of silently
+  # duplicating work that packrat memoization would otherwise have
+  # shared. This reasoning does NOT extend to STRING/WHITESPACE/X, which
+  # are referenced from 2+ places each -- inlining those would need an
+  # actual position-disjointness argument, not just a reference count,
+  # so they stay as named rules for now.
+  #
+  # "false" tried first in BOOL: outnumbers "true" ~14:1 in this repo's
+  # fixtures.
+  numberBranch = {
+    action = {
+      e = { regex = "([0-9]+)"; };
+      f = builtins.fromJSON;
+    };
+  };
+  boolBranch = {
+    action = {
+      e = {
+        choice = [
+          { lit = "false"; }
+          { lit = "true"; }
+        ];
+      };
+      f = v: v == "true";
+    };
+  };
+  nullBranch = {
+    action = {
+      e = { lit = "null"; };
+      f = v: null;
+    };
+  };
 
-    SET = [
-      { lit = "{"; }
-      "WHITESPACE"
-      { opt = commaSeparated setItem; }
-      { lit = "}"; }
-    ];
+  # `opt` lets LIST/SET accept an empty body ("[]"/"{}"). Only ONE
+  # WHITESPACE around the body, not two: X already eats its own leading
+  # and trailing whitespace (X = [WHITESPACE choice WHITESPACE]), and
+  # setItem ends in "X" so it inherits that trailing WHITESPACE too --
+  # so a second WHITESPACE right before "]"/"}" would be redundant
+  # either way: the last item already ate it if the body is non-empty,
+  # or the first WHITESPACE (kept, since there's no item to eat the
+  # space in "[ ]"/"{ }") already did if it's empty. Confirmed
+  # directly: removing the second WHITESPACE produces byte-identical
+  # output on this repo's lock-large.json, and "[]"/"[ ]"/"[1,2,3]"/
+  # "[1,2,3 ]"/"[ 1,2,3]" (and the SET/nested equivalents) all still
+  # parse correctly.
+  #
+  # Unwraps `opt`-wrapped-leading-item-plus-star-of-pairs into a flat
+  # list ([] if the opt didn't match).
+  listBranch = {
+    action = {
+      e = [
+        { lit = "["; }
+        "WHITESPACE"
+        { opt = commaSeparated "X"; }
+        { lit = "]"; }
+      ];
+      f =
+        v:
+        let
+          opt = builtins.elemAt v 2;
+        in
+        if opt == null then [ ] else [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1);
+    };
+  };
+
+  # Each raw item is setItem's shape, [WHITESPACE STRING WHITESPACE lit
+  # X] -- no separate ITEM handler runs anymore (it's inlined, not a
+  # nonterminal), so SET pulls name/value out of the raw sequence itself
+  # instead of relying on a pre-transformed {name;value;}.
+  setBranch = {
+    action = {
+      e = [
+        { lit = "{"; }
+        "WHITESPACE"
+        { opt = commaSeparated setItem; }
+        { lit = "}"; }
+      ];
+      f =
+        v:
+        let
+          opt = builtins.elemAt v 2;
+          toPair = item: {
+            name = builtins.elemAt item 1;
+            value = builtins.elemAt item 4;
+          };
+        in
+        builtins.listToAttrs (
+          if opt == null then
+            [ ]
+          else
+            [ (toPair (builtins.elemAt opt 0)) ] ++ map (p: toPair (builtins.elemAt p 1)) (builtins.elemAt opt 1)
+        );
+    };
   };
 
   # Ordered by observed real-world value-type frequency (strings/sets most
@@ -123,11 +195,11 @@ let
   # the first success.
   xBranches = [
     "STRING"
-    "SET"
-    "NUMBER"
-    "BOOL"
-    "LIST"
-    "NULL"
+    setBranch
+    numberBranch
+    boolBranch
+    listBranch
+    nullBranch
   ];
 
   grammarNoCut = common // {
@@ -138,14 +210,14 @@ let
     ];
   };
 
-  # Each branch becomes `{ cutSeq = [ "<NAME>" ""]; }` (e2 = epsilon, just
+  # Each branch becomes `{ cutSeq = [ <branch> ""]; }` (e2 = epsilon, just
   # to give the cut something to commit after). Branches are
   # first-token-disjoint, so committing changes no accept/reject outcome.
   grammar = common // {
     X = [
       "WHITESPACE"
       {
-        choice = map (name: { cutSeq = [ name "" ]; }) xBranches;
+        choice = map (b: { cutSeq = [ b "" ]; }) xBranches;
       }
       "WHITESPACE"
     ];
@@ -153,7 +225,9 @@ let
 
   # Shared between both variants; only X differs, since the cut variant's
   # inner choice value is wrapped one level deeper ([branchVal ""]) than
-  # the plain-choice variant's (branchVal directly).
+  # the plain-choice variant's (branchVal directly). NUMBER/BOOL/NULL/
+  # LIST/SET no longer need entries here -- their transforms now travel
+  # with the inlined `action` expressions in xBranches above.
   handlersCommon = {
     # `opt`'s raw value is the matched string directly, or `null` if there
     # was no whitespace to match (unlike `star`'s list-of-matches shape).
@@ -161,39 +235,6 @@ let
     # [lit fragmentList lit]; concatenate the inlined star's fragments
     # directly (no separate STRING_RAW handler now that it's inlined).
     STRING = v: builtins.concatStringsSep "" (builtins.elemAt v 1);
-    NUMBER = builtins.fromJSON;
-    # Real Nix true/false/null, not the literally matched text.
-    BOOL = v: v == "true";
-    NULL = v: null;
-
-    # Unwraps `opt`-wrapped-leading-item-plus-star-of-pairs into a flat
-    # list ([] if the opt didn't match).
-    LIST =
-      v:
-      let
-        opt = builtins.elemAt v 2;
-      in
-      if opt == null then [ ] else [ (builtins.elemAt opt 0) ] ++ map (p: builtins.elemAt p 1) (builtins.elemAt opt 1);
-
-    # Each raw item is setItem's shape, [WHITESPACE STRING WHITESPACE lit
-    # X] -- no separate ITEM handler runs anymore (it's inlined, not a
-    # nonterminal), so SET pulls name/value out of the raw sequence
-    # itself instead of relying on a pre-transformed {name;value;}.
-    SET =
-      v:
-      let
-        opt = builtins.elemAt v 2;
-        toPair = item: {
-          name = builtins.elemAt item 1;
-          value = builtins.elemAt item 4;
-        };
-      in
-      builtins.listToAttrs (
-        if opt == null then
-          [ ]
-        else
-          [ (toPair (builtins.elemAt opt 0)) ] ++ map (p: toPair (builtins.elemAt p 1)) (builtins.elemAt opt 1)
-      );
   };
 
   handlersNoCut = handlersCommon // {
