@@ -1,49 +1,26 @@
-# This is grammar/json.nix itself, re-exported (via `handlersNoCut`/
-# `grammarNoCut`, the non-cut variant, to keep this example focused on the
-# `action`/inlining technique rather than tangled up with the separate cut
-# operator) -- kept as a thin passthrough rather than a hand-copied
-# lookalike so this file can never silently drift out of sync with the
-# real grammar the way an earlier version of this file did.
+# grammar/json.nix itself, re-exported (via the non-cut variant, to keep
+# this focused on `action`/inlining rather than the separate cut
+# operator) -- a thin passthrough so this file can't drift out of sync
+# with the real grammar the way an earlier hand-copied version of it did.
 #
-# The technique: `{ action = { e; f; }; }` (lib/packrat.nix) lets a rule's
-# value-transform travel with an inlined expression instead of needing a
-# named field on every Derivs node. This engine builds one node per input
-# position, and every named rule in the grammar is a field on EVERY one
-# of those nodes regardless of whether a given position ever uses it --
-# fewer rules means smaller nodes means less allocation. Contrast with
-# ./json-simple.nix, which is the SAME language with every construct
-# written as its own named rule (13 rules) instead of folded down to 3
-# (WHITESPACE/STRING/X) -- diff the two to see exactly what moved.
+# The technique: `{ action = { e; f; }; }` (lib/packrat.nix) lets a
+# rule's value-transform travel with an inlined expression instead of
+# needing a named field on every Derivs node -- fewer rules means smaller
+# nodes means less allocation. Contrast with ./json-simple.nix, the same
+# language with every construct as its own named rule (13, vs. this
+# grammar's 3: WHITESPACE/STRING/X) -- diff the two to see what moved.
 #
-# Where grammar/json.nix's actual rules differ from json-simple.nix's
-# naive versions (separate, unrelated optimizations layered on top of the
-# `action` technique this file is demonstrating):
-#   - WHITESPACE uses `opt`, not `star`: `[[:space:]]+` already greedily
-#     consumes the whole run in one match, so `star`'s recheck loop would
-#     only ever fire 0 or 1 times -- pure overhead `opt` avoids.
-#   - LIST/SET have only ONE WHITESPACE around their body, not two: `X`
-#     (and setItem, via its own trailing `X`) already eats its own
-#     trailing whitespace, so a second WHITESPACE right before the
-#     closing bracket would always be redundant.
-#   - commaSeparated's repetition uses `cutSeq`, not plain `star`:
-#     Mizushima et al.'s commit operator (PASTE'10 §3.2), which measures
-#     faster on long comma-separated runs -- a different technique from
-#     `action`/inlining, included here only because it's part of the
-#     real grammar being re-exported.
-#   - BOOL's branch order is "false" before "true": outnumbers it ~14:1
-#     in this repo's fixtures, and PEG choice tries branches left-to-right.
+# grammar/json.nix layers a few other, unrelated optimizations on top of
+# that (opt instead of star for WHITESPACE; one WHITESPACE around LIST/
+# SET's body instead of two; cutSeq in commaSeparated; BOOL tried
+# false-before-true) -- present here only because this re-exports the
+# real file, not part of the action/inlining technique itself.
 #
-# json-simple.nix's grammar has 13 named rules (13 fields per Derivs
-# node); this one has 3. Measured directly on the repo's lock-large.json
-# fixture (391947 bytes), same input, same accept/reject/value output
-# (confirmed byte-identical) -- json-simple.nix: ~247.6MB RSS; this file
-# (the real grammar/json.nix, WITH its other optimizations, since this
-# is a direct re-export rather than a hand-copied approximation): ~170.2MB
-# RSS, a ~31.2% reduction. That number is larger than `action`/inlining
-# alone would give (a from-scratch inlining-only comparison measured
-# ~22.8%) -- the rest comes from the unrelated optimizations listed
-# above (opt vs star, single WHITESPACE, cut, branch ordering) riding
-# along for free since this file just imports the real grammar.
+# Measured on lock-large.json (391947 bytes), same accept/reject/value
+# output confirmed byte-identical: json-simple.nix ~247.6MB RSS; this
+# file ~170.2MB, a ~31.2% reduction (larger than inlining alone would
+# give, ~22.8% in isolation -- the rest comes from those other
+# optimizations riding along for free).
 #
 # Run with:
 #   nix eval --impure --expr '
