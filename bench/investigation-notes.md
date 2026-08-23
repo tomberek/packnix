@@ -156,9 +156,81 @@ substring/match primop calls.
 
 ## Not yet investigated (agent failures, not rejected ideas)
 
-- `mkNode`'s per-node field-dispatch (string-compare `name == "count"` vs.
-  attrset-lookup dispatch) — failed on a transient API error, not re-run.
-- One additional area from the original six — failed on structured-output
-  retry-cap exhaustion, not re-run.
+The two areas below failed on transient infrastructure errors (server error
+mid-response; structured-output retry-cap exhaustion) in the first
+investigation round and were re-run in a second round. Both came back
+low-value.
 
-Worth re-running either if this line of investigation continues.
+### 5. `mkNode`'s per-node field-dispatch (string-compare vs. attrset-lookup) — LOW, ~0.8% RSS
+
+Re-derived fresh on the engine as it stood *before* the compileSeq/
+compileStarPlain/grammar-inlining changes below (baseline: ~200MB). Pure
+string-comparison cost (`name == "count"`) is not measurable in isolation —
+negligible next to everything else. A pre-baked attrset-lookup dispatch
+(closures built once per `buildDerivs` call, `mkNode` becomes a uniform
+`fn count` call with no branch) gives a small, real, byte-identical
+~0.8% RSS win (`nrPrimOpCalls` drops as the `==` calls disappear). Also
+re-confirmed the two-pass `mapAttrs`+`//` idea (rejected earlier this
+session at a larger field count) is *still* rejected at today's smaller
+field count — the `//` merge's per-node Bindings-array copy cost
+(`nrOpUpdates` 3→93,667) outweighs any dispatch savings by a wide margin
+regardless of field count.
+
+**Recommendation**: not worth implementing on its own — smaller than every
+other finding in this document, and would need re-measuring again after the
+grammar-inlining change below (which further shrinks the field count this
+mechanism operates over, likely shrinking the win further). Revisit only if
+looking for the last few tenths of a percent.
+
+### 6. `compileChoice`'s head/tail traversal + cut vs. no-cut re-check — LOW, ~0.8-1% RSS
+
+Real `X`-invocation count on `lock-large.json`: 9,980 (5,966 str, 2,008
+SET, 1,296 num, 689 bool, 21 list, 0 null) — confirms `xBranches`'
+frequency ordering is correct. Isolated microbenchmark comparing
+head/tail traversal, index-based (`elemAt bs i`), and a fully-unrolled
+seq3/seq4/seq5-style 6-way dispatch: unrolled wins (~1.36M KB vs ~1.63-
+1.75M KB RSS at 4M calls), because it avoids allocating/holding
+intermediate `tail bs` sublists — head/tail and `elemAt`-index cost
+statistically the same as each other, contrary to the initial hypothesis
+that head/tail's extra allocation would show up distinctly.
+
+Real-engine ablation of an unrolled `choice6` (+ `choice3` for BOOL/
+stringFragment's shape): ~0.8% RSS, wall time statistically tied.
+**Recommendation: not worth it** — `X` is this grammar's only high-volume
+choice site (9,980 invocations, an order of magnitude below `compileSeq`'s
+sequence-site volume that made *that* specialization worth ~6%), so the
+return on an implementation+verification cycle here is much smaller than
+`compileSeq`'s was.
+
+Also re-confirmed cut vs. `grammarNoCut` on the engine state at time of
+this investigation (prior checks, done earlier in the session on older
+engine states, had found both neutral): **this flipped** — cut now
+measurably costs ~0.8% *more* RSS than no-cut, not neutral, though wall
+time is still statistically tied/noisy. Small effect, but worth knowing
+if the cut/no-cut question comes up again — re-measure fresh rather than
+trusting either the old "neutral" or this "cut costs slightly more"
+finding, since the engine keeps changing.
+
+## Implemented so far (this document is now a mix of history and open items)
+
+- **#2 (`compileSeq` specialization)**: implemented and committed
+  (`70858c1`, then flattened for readability in `14d2ce5`). ~5.7% RSS,
+  ~15-18% wall time, confirmed on the real engine.
+- **#3 (`compileStarPlain`'s attrset → list)**: implemented and committed
+  (`e508dba`). ~0.4% RSS (small enough to be within whole-process RSS
+  sampling noise, confirmed instead via `NIX_SHOW_STATS`'s deterministic
+  `sets.number`). Explicitly does NOT extend to `compileStarCut` — that
+  mirror was tested and found to be a regression.
+- **#1 (grammar rule inlining), partial**: implemented for the
+  single-reference rules only (`NUMBER`/`BOOL`/`NULL`/`LIST`/`SET`,
+  each referenced from exactly one place — `xBranches` — making it
+  structurally impossible for two call sites to collide at the same
+  input position). Added an `action` combinator to `lib/packrat.nix`
+  (`{ action = { e; f; }; }`) so each rule's value-transform travels
+  with its inlined expression. `WHITESPACE`/`STRING`/`X` remain named
+  rules (multi-reference; would need an actual position-disjointness
+  argument, not just a reference count, to inline safely) — deliberately
+  NOT attempted in this pass. Measured ~12.1% RSS reduction (larger than
+  the original ~10.3% ablation estimate, likely because the engine
+  changed further via #2/#3 since that estimate was made).
+

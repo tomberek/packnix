@@ -23,6 +23,13 @@
 #   { cutSeq = [e1 e2]; }  -> e1 ↑ e2 (Mizushima et al., PASTE'10 §3.2),
 #                             valid only as a choice branch or star body --
 #                             see compileChoice / compileStarCut.
+#   { action = { e; f; }; } -> e, with f applied to its VALUE on success --
+#                              lets a value-transform (what would otherwise
+#                              be a named rule's handler) travel with an
+#                              inlined sub-expression instead of requiring
+#                              a standalone Derivs-node field for it. See
+#                              compileAction's comment for the memoization
+#                              trade-off this implies.
 #
 # `mkCompile string at` returns `compile : expr -> (derivs -> result)`,
 # which decides once which combinator an `expr` denotes (recursing into
@@ -92,6 +99,8 @@ rec {
           # No commit context outside choice/star, so cutSeq degrades to a
           # plain sequence rather than making `compile` partial.
           compileSeq expr.cutSeq
+        else if expr ? action then
+          compileAction expr.action.e expr.action.f
         else
           throw "packrat: unrecognized expression: ${builtins.toJSON expr}";
 
@@ -637,6 +646,49 @@ rec {
           compiledBody = compile body;
         in
         derivs: if compiledBody derivs != false then false else epsilonAt derivs;
+
+      # `{ action = { e; f; }; }` applies value-transform `f` on success --
+      # lets a former named rule's HANDLER travel with an inlined
+      # sub-expression `e`, so a single-use rule that carried a real value
+      # transform (unlike the purely structural single-use rules inlined
+      # earlier this session -- STRING_RAW/LIST_ITEMS/ITEMS/ITEM had no
+      # separate handler at all) can still be folded into its one caller
+      # without losing that transform. Used by grammar/json.nix to inline
+      # NUMBER/BOOL/NULL/LIST/SET directly into X's branch list.
+      #
+      # Trade-off a future user of this combinator must understand: a
+      # named rule's field is a Derivs-node THUNK, computed once per
+      # position and shared by every caller that reaches that position.
+      # An `action`-wrapped (or any other inlined) expression is NOT a
+      # named field -- it recompiles independently at every call site that
+      # embeds it. Still CORRECT (PEG recognition doesn't depend on
+      # memoization for correctness, only for the O(n) time bound), but if
+      # two call sites of the same inlined expression were ever evaluated
+      # at the IDENTICAL input position within one parse, the work would
+      # silently duplicate instead of being shared -- reopening exactly the
+      # exponential-blowup risk packrat memoization exists to prevent.
+      # Safe to inline an expression referenced from exactly ONE place in
+      # the grammar (structurally impossible for two call sites to
+      # collide, since there is only one); referenced from more than one
+      # place requires actually checking that no two reference sites can
+      # be reached at the same position in a single parse -- not just
+      # eyeballing it.
+      compileAction =
+        e: f:
+        let
+          compiledE = compile e;
+        in
+        derivs:
+        let
+          r = compiledE derivs;
+        in
+        if r == false then
+          false
+        else
+          [
+            (f (builtins.elemAt r 0))
+            (builtins.elemAt r 1)
+          ];
     in
     compile;
 
