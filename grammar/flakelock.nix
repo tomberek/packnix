@@ -31,7 +31,11 @@
 # NUMBER/BOOL/NULL/LIST/SET inlining makes -- fine here since nothing in
 # this grammar is recursive or revisits the same position twice.
 let
-  ws = { opt = { regex = "([[:space:]]+)"; }; };
+  ws = {
+    opt = {
+      regex = "([[:space:]]+)";
+    };
+  };
 
   # A bare JSON string body has no escapes in this file (confirmed: 0
   # occurrences of `"` or `\` inside any string value across the whole
@@ -42,7 +46,11 @@ let
     action = {
       e = [
         { lit = "\""; }
-        { opt = { regex = "([^\"]+)"; }; }
+        {
+          opt = {
+            regex = "([^\"]+)";
+          };
+        }
         { lit = "\""; }
       ];
       f = v: (if builtins.elemAt v 1 == null then "" else builtins.elemAt v 1);
@@ -51,7 +59,9 @@ let
 
   jsonNumber = {
     action = {
-      e = { regex = "([0-9]+)"; };
+      e = {
+        regex = "([0-9]+)";
+      };
       f = builtins.fromJSON;
     };
   };
@@ -80,7 +90,11 @@ let
   # previous present field is there and the opt matches it.
   field = key: valueExpr: {
     opt = [
-      { opt = { lit = ","; }; }
+      {
+        opt = {
+          lit = ",";
+        };
+      }
       ws
       { lit = ''"${key}":''; }
       ws

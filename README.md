@@ -156,3 +156,10 @@ $ nix eval --file tests.nix --json
 Every attribute is a boolean; `allPassed` is true iff every check passed.
 Covers cut-operator semantics, star/opt/and/not sanity, and regression
 cases for the array-indexed `Derivs` design.
+
+`./verify-fixtures.sh` checks the other direction: every JSON fixture under
+`data/` and `bench/fixtures/` parses byte-identical to `builtins.fromJSON`
+through both grammars (schema-mismatched fixtures correctly failing
+`grammar/flakelock.nix` count as a pass, not an error). CI
+(`.github/workflows/ci.yml`) runs both of the above plus `nixfmt --check`
+on every push and PR.
