@@ -699,7 +699,14 @@ let
           blockLineBlank = {
             action = {
               e = [
-                { regex = "([ \t]{0,${toString (indentStep * (d + 1))}})"; }
+                {
+                  regex = "([ \t]{0,${toString (indentStep * (d + 1))}})";
+                  # This regex can never match more than indentStep*(d+1)
+                  # characters (its own {0,N} bound) -- passing that as
+                  # maxLen lets lib/packrat.nix's evalRegex skip its
+                  # generic window-doubling entirely.
+                  maxLen = indentStep * (d + 1);
+                }
                 { regex = "(\r?\n)"; }
               ];
               f = v: {
