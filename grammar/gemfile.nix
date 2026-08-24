@@ -1,81 +1,65 @@
 # A real (subset of) Ruby Bundler `Gemfile` grammar for lib/packrat.nix --
-# NOT `Gemfile.lock` (that's grammar/gemfile-lock.nix; a fixed,
+# NOT `Gemfile.lock` (that's grammar/gemfile-lock.nix, a fixed,
 # machine-generated format). A `Gemfile` is technically arbitrary Ruby, so
 # this grammar targets only the confirmed-common subset needed to recover
 # one specific fact `Gemfile.lock` never records: which Bundler *group*
 # each gem belongs to.
 #
-# Why this matters: `packnix-bundler`'s `mkGemset` (see that repo) needs
-# per-gem group membership to make `bundlerEnv`'s `groups` filtering
-# actually work -- without it, every gem is tagged `["default"]`
-# regardless of the real Gemfile, and `groups` filtering becomes a
-# silent no-op (confirmed by reading nixpkgs'
-# `bundled-common/functions.nix`: `groupMatches` always matches when
+# Why this matters: `packnix-bundler`'s `mkGemset` needs per-gem group
+# membership to make `bundlerEnv`'s `groups` filtering actually work --
+# without it, every gem is tagged `["default"]` and `groups` filtering
+# becomes a silent no-op (nixpkgs' `groupMatches` always matches when
 # every gem is tagged `"default"`, since `groups ++ ["default"]` always
 # includes it).
 #
-# Scope confirmed by scanning a nixpkgs checkout's 136-file corpus (the
-# same one grammar/gemfile-lock.nix was built from) for every Gemfile
-# that uses groups at all (6 files) -- these are the ONLY forms observed:
+# Scope confirmed by scanning a nixpkgs checkout's 136-file corpus for
+# every Gemfile that uses groups at all (6 files) -- these are the ONLY
+# forms observed:
 #   - `group :a, :b do ... end` blocks (bare symbols, comma-separated,
-#     may be followed by `, optional: true` -- ignored, this grammar
-#     only cares about group names). May nest.
+#     may be followed by `, optional: true` -- ignored). May nest.
 #   - `gem 'name', group: :x` / `group: [:x, :y]` / `groups: [:x, :y]` --
-#     THREE real spellings of an inline alternative to the block form,
-#     confirmed in gitlab's and sure's real Gemfiles (`groups:` plural is
-#     a real, distinct spelling from `group:` singular -- both accepted
-#     by Bundler).
+#     three real spellings of an inline alternative to the block form.
 #   - `if <cond> ... end`, `unless <cond> ... end`, and
-#     `if <cond> ... else ... end` wrapping either of the above
-#     (confirmed in discourse/sure/redmine's real Gemfiles). The
+#     `if <cond> ... else ... end` wrapping either of the above. The
 #     condition itself (typically `ENV["X"] == "1"`) is captured as raw
-#     text but never interpreted -- there is no way to know its value
-#     without knowing the environment `bundle install` was actually run
-#     under. Both branches' gems are collected (a UNION, not a choice of
-#     one branch) -- this never silently drops a gem, though it may
+#     text but never interpreted -- there's no way to know its value
+#     without knowing the environment `bundle install` was run under.
+#     Both branches' gems are collected (a union, not a choice of one
+#     branch) -- this never silently drops a gem, though it may
 #     over-include relative to one specific real `bundle install` run.
 #
 # Deliberately out of scope (real, but rare -- 1-2 files each in the
-# corpus, and each is a materially bigger feature than group-tracking):
+# corpus):
 #   - `gemspec` (loads a `.gemspec` file, which can itself declare
 #     groups)
 #   - `eval_gemfile` / `Dir.glob ... do |f| eval_gemfile f end` (loads
-#     OTHER Gemfile-like files)
-#   - anything else that's actually arbitrary Ruby (arbitrary method
-#     calls, string interpolation, multi-line expressions, heredocs) --
-#     EXCEPT top-level `def`/`class`/`module`/`begin`/`case` blocks
-#     (confirmed in discourse's real Gemfile: a top-level `def
-#     rails_master? ... end` helper), which ARE recognized structurally
-#     (as "OPAQUE_BLOCK", matching only the opening keyword and the
-#     balanced closing `end` -- their contents are discarded, not
-#     parsed) purely so their `end` doesn't get mistaken for a dangling
-#     GROUP_BLOCK/IF_BLOCK terminator and fail the whole file's parse. A
-#     generic `<arbitrary-expr> do [|args|] ... end` block opener (e.g.
-#     redmine's `Dir.glob(...).each do |file|`) is NOT recognized this
-#     way -- see OPAQUE_OPENER_LINE's comment for why (evalRegex's
-#     bounded lookahead window).
+#     other Gemfile-like files)
+#   - anything else that's actually arbitrary Ruby (method calls, string
+#     interpolation, multi-line expressions, heredocs) -- EXCEPT
+#     top-level `def`/`class`/`module`/`begin`/`case` blocks (a top-level
+#     `def rails_master? ... end` helper is real, found in discourse's
+#     Gemfile), which ARE recognized structurally as "OPAQUE_BLOCK":
+#     matching only the opening keyword and the balanced closing `end`,
+#     contents discarded, purely so their `end` doesn't get mistaken for
+#     a dangling GROUP_BLOCK/IF_BLOCK terminator. A generic
+#     `<arbitrary-expr> do [|args|] ... end` opener (e.g. redmine's
+#     `Dir.glob(...).each do |file|`) is NOT recognized this way -- see
+#     OPAQUE_OPENER_LINE for why.
+#
 # Every line/construct not specifically recognized is matched by a
 # catch-all fallback rule and simply ignored (not a parse failure) --
-# unlike grammar/gemfile-lock.nix's "fail the whole parse on anything
-# unexpected" discipline, a Gemfile genuinely can't be fully modeled
-# short of embedding a Ruby interpreter, so "degrade gracefully, recover
-# what we can" is the correct posture here. A gem declared only inside
-# an out-of-scope mechanism (gemspec/eval_gemfile/Dir.glob, or one whose
-# enclosing `do`-block isn't a recognized OPAQUE_BLOCK opener) simply
-# never appears in this grammar's output at all -- there is no
-# "half-known" gem entry, only "found with real groups" or "not found."
-# If ANY construct in the file can't be matched (most commonly a
+# a Gemfile can't realistically be fully modeled short of embedding a
+# Ruby interpreter, so "degrade gracefully, recover what we can" is the
+# right posture here. A gem declared only inside an out-of-scope
+# mechanism just never appears in this grammar's output. If any
+# construct in the file can't be matched at all (most commonly a
 # `Dir.glob ... do |f| ... end` opener), the whole file fails to parse
-# (`DOCUMENT` returns `false`) -- the caller (`packnix-bundler`'s
-# `mkGemset`) decides how to treat that (its plan: fall back to treating
-# every gem as `["default"]`, exactly like not having Gemfile group
-# information at all).
+# (`DOCUMENT` returns `false`) -- `packnix-bundler`'s `mkGemset` treats
+# that as "no group info, fall back to `["default"]`".
 let
-  # No escape sequences are modeled for quoted gem/group names -- real
-  # Gemfiles occasionally use string interpolation or escapes in other
-  # contexts, but never in a `gem 'name'`/`:symbol` position in the
-  # corpus (names are plain package-name-shaped identifiers). A quoted
-  # string here is deliberately narrow: no `\`, no interpolation.
+  # No escape sequences modeled for quoted gem/group names -- real
+  # Gemfiles never use `\`/interpolation in a `gem 'name'`/`:symbol`
+  # position.
   singleQuoted = {
     action = {
       e = [
@@ -103,9 +87,7 @@ let
     ];
   };
 
-  # A bare `:symbol` -- Ruby identifier rules (letters/digits/underscore,
-  # not starting with a digit), which every real group name in the
-  # corpus satisfies.
+  # A bare `:symbol` -- Ruby identifier rules.
   symbol = {
     action = {
       e = {
@@ -145,8 +127,8 @@ let
     lineEnd
   ];
 
-  # One or more comma-separated symbols: `:a` or `:a, :b, :c`. Used both
-  # for `group :a, :b do` and for the array form `[:a, :b]`'s contents.
+  # One or more comma-separated symbols: `:a` or `:a, :b, :c`. Used for
+  # `group :a, :b do` and for the array form `[:a, :b]`'s contents.
   symbolList = {
     action = {
       e = [
@@ -165,13 +147,11 @@ let
   };
 
   # The value on the right of a `key:` in a `gem` call's keyword
-  # arguments. Scoped to exactly the shapes confirmed in the corpus:
-  # a bare symbol, a quoted string, an array literal of symbols
-  # (`[:a, :b]`), or a bare `true`/`false` -- NOT a general Ruby
-  # expression. `[^]...]`'s bare (unescaped) closing `]` is deliberate:
-  # escaping `]` outside a bracket expression is invalid POSIX ERE in
-  # this engine (confirmed directly; only `\[` needs escaping, `]` must
-  # stay bare) -- same idiom grammar/yaml.nix's PLAIN_SCALAR_FLOW uses.
+  # arguments: a bare symbol, a quoted string, an array literal of
+  # symbols (`[:a, :b]`), or a bare `true`/`false` -- NOT a general Ruby
+  # expression. `[^]...]`'s bare closing `]` is deliberate: escaping `]`
+  # outside a bracket expression is invalid POSIX ERE in this engine
+  # (same idiom grammar/yaml.nix's PLAIN_SCALAR_FLOW uses).
   argValue = {
     choice = [
       symbol
@@ -209,9 +189,9 @@ let
 
   # `key: value` -- the only keys this grammar cares about are
   # `group`/`groups`; every other key (`require:`, `platforms:`,
-  # `github:`, `path:`, `feature_category:`, etc.) is still parsed (so
-  # the line doesn't fall through to the catch-all and lose its gem name)
-  # but its value is discarded.
+  # `github:`, `path:`, etc.) is still parsed, so the line doesn't fall
+  # through to the catch-all and lose its gem name, but its value is
+  # discarded.
   kwarg = {
     action = {
       e = [
@@ -228,10 +208,8 @@ let
     };
   };
 
-  # A positional arg (version constraint string, e.g. `'~> 2.7'`, or a
-  # bare symbol for the rarer `gem :name` form) -- accepted and ignored,
-  # same "parse so we don't lose the rest of the line, discard the
-  # value" reasoning as kwarg's non-group keys.
+  # A positional arg (version constraint string, or a bare symbol for
+  # the rarer `gem :name` form) -- accepted and ignored.
   positionalArg = {
     choice = [
       quotedString
@@ -247,9 +225,8 @@ let
   };
 
   # `gem 'name'[, arg]*` -- collects every `group:`/`groups:` kwarg's
-  # symbol(s) into this gem's own inline group declaration (a gem naming
-  # `group:` more than once is not valid Ruby, but if it somehow
-  # happened, this takes the union rather than picking one).
+  # symbol(s) into this gem's own inline group declaration (takes the
+  # union if `group:` somehow appears more than once).
   GEM_LINE = {
     action = {
       e = [
@@ -290,8 +267,7 @@ let
 
   # Lines this grammar recognizes as structurally significant but
   # doesn't need the content of -- consumed so the catch-all doesn't
-  # have to (and so a `source 'https://...'` line, say, can't be
-  # accidentally swallowed by a later, looser catch-all pattern change).
+  # swallow them instead.
   SOURCE_LINE = [
     { lit = "source"; }
     ws
@@ -311,41 +287,32 @@ let
   ];
 
   # Opens an OPAQUE_BLOCK -- a top-level Ruby construct real Gemfiles do
-  # contain (confirmed: discourse's has a top-level `def rails_master? ...
-  # end` helper method) that this grammar can't interpret, but whose
-  # `end` DOES need balancing -- UNRECOGNIZED_LINE deliberately refuses
-  # to swallow a bare "end" (GROUP_BLOCK/IF_BLOCK need that refusal to
-  # find their OWN terminator), so without this, a dangling `def`'s `end`
-  # has nothing to close against and the whole file fails to parse.
+  # contain (discourse's has `def rails_master? ... end`) that this
+  # grammar can't interpret, but whose `end` DOES need balancing --
+  # UNRECOGNIZED_LINE refuses to swallow a bare "end" (GROUP_BLOCK/
+  # IF_BLOCK need that refusal to find their OWN terminator), so a
+  # dangling `def`'s `end` would otherwise have nothing to close against.
   # Recognizes a `def`/`class`/`module`/`begin`/`case` keyword line only
-  # -- NOT a generic `<arbitrary-expr> do [|args|]` block opener (e.g.
-  # redmine's `Dir.glob(...).each do |file|`): `evalRegex`'s bounded
-  # lookahead window only re-tries with a wider window when a match
-  # fills the window exactly (i.e. might be truncated), not when no match
-  # is found at all in the window -- so a pattern needing to scan past an
-  # arbitrary-length expression before finding " do" can silently fail to
-  # match a longer real line even though a truly unbounded regex would.
-  # `Dir.glob ... do |f| ... end` is already out of scope per this file's
-  # header (falls back to `UNRECOGNIZED_LINE`'s failure -> `mkGemset`'s
-  # whole-file fallback), so this only needs to cover the keyword forms,
-  # which are always short enough to fit the window. Deliberately tried
-  # AFTER GROUP_BLOCK/IF_BLOCK in itemExpr's choice (a real `group :x
-  # do`/`if ...` line must be recognized by ITS OWN rule first; this is
-  # only reached once those have already failed).
+  # -- NOT a generic `<arbitrary-expr> do [|args|]` opener (e.g.
+  # redmine's `Dir.glob(...).each do |file|`): evalRegex's bounded
+  # lookahead window only retries with a wider window when a match fills
+  # the window exactly, not when no match is found at all, so a pattern
+  # needing to scan past an arbitrary-length expression before finding
+  # " do" can silently fail to match a longer real line. That form is
+  # already out of scope (falls back to UNRECOGNIZED_LINE's failure ->
+  # mkGemset's whole-file fallback), so this only needs to cover the
+  # keyword forms, always short enough to fit the window. Tried AFTER
+  # GROUP_BLOCK/IF_BLOCK in itemExpr's choice.
   OPAQUE_OPENER_LINE = [
-    {
-      regex = "((def|class|module|begin|case)([ \t?!(][^\r\n]*)?)";
-    }
+    { regex = "((def|class|module|begin|case)([ \t?!(][^\r\n]*)?)"; }
     lineEnd
   ];
 
   # Catch-all: any line this grammar doesn't otherwise recognize --
-  # matched and discarded, not a parse failure (see file header for why
-  # a Gemfile can't realistically be fully modeled). Must be tried LAST
-  # in every choice it appears in. Explicitly refuses to match a bare
-  # "end", "else", or blank line, since those are structurally
-  # significant to GROUP_BLOCK/IF_BLOCK's own termination/branching and
-  # must never be silently swallowed here.
+  # matched and discarded, not a parse failure. Must be tried LAST in
+  # every choice it appears in. Refuses to match a bare "end", "else",
+  # or blank line, since those are structurally significant to
+  # GROUP_BLOCK/IF_BLOCK's own termination/branching.
   UNRECOGNIZED_LINE = {
     action = {
       e = [
@@ -366,12 +333,10 @@ let
   };
 
   # A single line inside an OPAQUE_BLOCK's body -- anything except a bare
-  # "end" (which must terminate this block, or a nested OPAQUE_BLOCK, and
-  # so must never be swallowed here) or a nested block opener (handled by
-  # "OPAQUE_BLOCK" itself, tried first in OPAQUE_ITEM's choice below). No
-  # attempt is made to recognize `gem`/`group` lines inside an opaque
-  # block -- a call inside a `def`'s body never executes at Gemfile-eval
-  # time, so there is nothing to extract here even in principle.
+  # "end" or a nested block opener (handled by "OPAQUE_BLOCK" itself,
+  # tried first in OPAQUE_ITEM's choice). No attempt is made to recognize
+  # `gem`/`group` lines inside an opaque block -- a call inside a `def`'s
+  # body never executes at Gemfile-eval time.
   OPAQUE_LINE = {
     action = {
       e = [
@@ -406,22 +371,17 @@ let
   };
 
   # A single top-level "thing" inside the document, a GROUP_BLOCK, or an
-  # IF_BLOCK's body -- tries every specifically-recognized form before
-  # the catch-all. `commentLine`/`blankLine` produce no item at all
-  # (filtered out by ITEM_LIST's handler), everything else produces
-  # exactly one `{kind;...}` value (GEM_LINE items carry name/groups;
-  # GROUP_BLOCK/IF_BLOCK items carry their own nested `items` list,
-  # flattened by ITEM_LIST -- see below). Defined as a plain value here
-  # (not a named grammar rule) since it's referenced from ITEM_LIST via
-  # `{ star = itemExpr; }` -- an inlined expression, not a nonterminal
-  # name -- which is fine: ITEM doesn't need to recurse into ITSELF, only
-  # GROUP_BLOCK/IF_BLOCK (which DO need named-rule status, since
-  # ITEM_LIST recurses into them and they recurse back into ITEM_LIST).
-  # Leads with `ws`: `group`/`if`/`gem` bodies are conventionally
-  # indented, and neither `lit`/`regex` atoms nor `blankLine`/
-  # `commentLine` skip leading whitespace on their own, so this strips
-  # it once, up front, rather than teaching every alternative to do it
-  # itself.
+  # IF_BLOCK's body. `commentLine`/`blankLine` produce no item at all
+  # (filtered out by ITEM_LIST's handler); everything else produces one
+  # `{kind;...}` value (GEM_LINE carries name/groups; GROUP_BLOCK/
+  # IF_BLOCK carry their own nested `items`, flattened by ITEM_LIST).
+  # Defined as a plain value here, not a named grammar rule, since
+  # ITEM_LIST references it via `{ star = itemExpr; }` (an inlined
+  # expression) -- fine, since itemExpr doesn't need to recurse into
+  # itself, only GROUP_BLOCK/IF_BLOCK (which DO need named-rule status,
+  # since ITEM_LIST recurses into them and they recurse back). Leads
+  # with `ws`: `group`/`if`/`gem` bodies are conventionally indented, and
+  # no atom here skips leading whitespace on its own.
   itemExpr = {
     action = {
       e = [
@@ -467,14 +427,13 @@ let
   };
 
   # Zero or more items, with GROUP_BLOCK/IF_BLOCK's nested item lists
-  # flattened into the parent's own flat list, and null (comment/blank/
-  # source/gemspec) entries dropped. Every GEM_LINE inside a GROUP_BLOCK
-  # already has that block's groups unioned into it by GROUP_BLOCK's own
-  # handler before it ever reaches this flattening step, so this itself
-  # does no group-tagging -- it only concatenates. `itemListExpr` is a
-  # plain expression (not `{star = "ITEM_LIST";}`, which wouldn't make
-  # sense -- ITEM_LIST itself is the named rule GROUP_BLOCK/IF_BLOCK
-  # reference, defined via this expression down in `grammar` below).
+  # flattened into the parent's own flat list, and null entries dropped.
+  # Every GEM_LINE inside a GROUP_BLOCK already has that block's groups
+  # unioned into it by GROUP_BLOCK's own handler, so this itself does no
+  # group-tagging, only concatenation. `itemListExpr` is a plain
+  # expression, not `{star = "ITEM_LIST";}` -- ITEM_LIST itself is the
+  # named rule GROUP_BLOCK/IF_BLOCK reference, defined via this
+  # expression down in `grammar` below.
   itemListExpr = {
     action = {
       e = {
@@ -500,14 +459,14 @@ in
   grammar = {
     # `group :a, :b[, optional: true] do <items> end` -- recursive via
     # ITEM_LIST -> itemExpr -> "GROUP_BLOCK" (a genuine named-rule
-    # reference, not `action`-inlined, since actual recursion needs a
-    # lazy nonterminal reference, not a compile-time-inlined expression
-    # -- see lib/packrat.nix's `compile`: bare strings resolve through
-    # `derivs.${expr}`, which is how self-reference works at all).
-    # Every gem line found (transitively, through nested blocks) gets
-    # this block's groups UNIONED into its own -- a gem's final groups
-    # is the union of every enclosing GROUP_BLOCK plus any inline
-    # `group:`/`groups:` kwarg on the gem line itself.
+    # reference, since actual recursion needs a lazy nonterminal
+    # reference, not a compile-time-inlined expression -- bare strings
+    # resolve through `derivs.${expr}` in lib/packrat.nix's `compile`,
+    # which is how self-reference works at all). Every gem line found,
+    # transitively through nested blocks, gets this block's groups
+    # UNIONED into its own -- a gem's final groups is the union of every
+    # enclosing GROUP_BLOCK plus any inline `group:`/`groups:` kwarg on
+    # the gem line itself.
     GROUP_BLOCK = {
       action = {
         e = [
@@ -594,14 +553,12 @@ in
     };
 
     # A construct this grammar can't interpret (`def`/`class`/`module`/
-    # `begin`/`case`, or a method-call `do |args| ... end` block) whose
-    # `end` must still balance -- see OPAQUE_OPENER_LINE/OPAQUE_ITEM's
-    # comments for why. Recurses into itself (via "OPAQUE_BLOCK", for
-    # nesting) rather than "ITEM_LIST" -- a `gem`/`group` line inside a
-    # `def`'s body is never actually evaluated when Bundler loads a
-    # Gemfile, so this deliberately does NOT recognize them; everything
-    # inside is discarded, matching this file's stated scope (arbitrary
-    # Ruby method bodies aren't modeled).
+    # `begin`/`case`) whose `end` must still balance -- see
+    # OPAQUE_OPENER_LINE/OPAQUE_ITEM above for why. Recurses into itself
+    # (via "OPAQUE_BLOCK", for nesting) rather than "ITEM_LIST" -- a
+    # `gem`/`group` line inside a `def`'s body is never actually
+    # evaluated when Bundler loads a Gemfile, so this deliberately does
+    # NOT recognize them; everything inside is discarded.
     OPAQUE_BLOCK = {
       action = {
         e = [
@@ -616,18 +573,14 @@ in
     };
 
     # The one named rule GROUP_BLOCK/IF_BLOCK recurse into -- itself
-    # recurses back into them (a genuine mutual-recursion cycle,
-    # resolved lazily the same way every other self-referential rule in
-    # this engine's grammars is -- see lib/packrat.nix's header comment).
+    # recurses back into them, resolved lazily the same way every other
+    # self-referential rule in this engine's grammars is.
     ITEM_LIST = itemListExpr;
 
     # The whole file: a flat ITEM_LIST, requiring the entire input
-    # consumed (not just a parseable prefix) -- same "fail cleanly on a
-    # genuine structural mismatch" discipline as
-    # grammar/gemfile-lock.nix, even though individual UNRECOGNIZED
-    # lines are tolerated; an unbalanced `do`/`end` (a real syntax error
-    # in the Gemfile itself) should still surface as a parse failure,
-    # not silently truncate.
+    # consumed, not just a parseable prefix -- an unbalanced `do`/`end`
+    # (a real syntax error in the Gemfile itself) should surface as a
+    # parse failure, not silently truncate.
     DOCUMENT = [
       "ITEM_LIST"
       {
