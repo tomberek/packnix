@@ -16,10 +16,10 @@ DEPENDENCIES
   haste
 
 CHECKSUMS
-  faraday (0.17.3) sha256=0000000000000000000000000000000000000000000000000000000000000f
-  haste (0.2.3) sha256=00000000000000000000000000000000000000000000000000000000000002
-  json (2.5.1) sha256=00000000000000000000000000000000000000000000000000000000000003
-  multipart-post (2.1.1) sha256=00000000000000000000000000000000000000000000000000000000000004
+  faraday (0.17.3) sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  haste (0.2.3) sha256=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  json (2.5.1) sha256=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  multipart-post (2.1.1) sha256=dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
 
 BUNDLED WITH
    2.1.4
