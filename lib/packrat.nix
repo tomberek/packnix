@@ -144,10 +144,13 @@ rec {
       # the full remainder on every attempt makes the parse O(n^2). Not a
       # correctness bound: `tryWindow` doubles whenever a match exactly
       # fills the window (otherwise indistinguishable from truncation), so
-      # longer matches still parse correctly. 32 measured best for this
-      # grammar's match-length distribution; smaller starts paying more in
-      # doubling retries than it saves per attempt.
-      regexWindow = 32;
+      # longer matches still parse correctly. Re-measured across
+      # grammar/json.nix, grammar/flakelock.nix, and grammar/gemfile-lock.nix
+      # (the last against both a real, long-line Gemfile.lock and a larger
+      # synthetic one): 64 consistently beats 32 (fewer doubling retries on
+      # longer lines/tokens, confirmed via nrPrimOpCalls), with 128 only
+      # marginally better still -- diminishing returns past 64.
+      regexWindow = 64;
 
       evalRegex =
         regex:
@@ -184,12 +187,17 @@ rec {
       # compileSeq's generic path builds the result via `foldl'` +
       # `elemAt acc 0 ++ [...]`, an O(current length) copy per step, so
       # O(k^2) for a k-element sequence -- measurably worse than a
-      # hand-unrolled builder even at this grammar's small lengths (3-5).
-      # `seq3`/`seq4`/`seq5` build the result as one list literal instead;
-      # any other length falls back to `seqGeneric`, still correct, just
-      # without the speedup. (A generic non-hardcoded O(k) fix via
-      # self-referential `genList` was tried and came out worse than the
-      # original -- there's no free generic fix, only specialization.)
+      # hand-unrolled builder even at these grammars' typical lengths.
+      # `seq2`/`seq3`/`seq4`/`seq5`/`seq6`/`seq7` build the result as one
+      # list literal instead; any other length falls back to `seqGeneric`,
+      # still correct, just without the speedup. (A generic non-hardcoded
+      # O(k) fix via self-referential `genList` was tried and came out
+      # worse than the original -- there's no free generic fix, only
+      # specialization.) 2-7 covers every sequence length that appears in
+      # this repo's shipped grammars (confirmed by scanning grammar/*.nix);
+      # a real-world grammar can of course have longer sequences than
+      # that, which still parse correctly via seqGeneric, just without
+      # this speedup.
       seqGeneric =
         compiledSubs: derivs:
         builtins.foldl'
@@ -214,6 +222,28 @@ rec {
             derivs
           ]
           compiledSubs;
+
+      seq2 =
+        compiledSubs:
+        let
+          c0 = builtins.elemAt compiledSubs 0;
+          c1 = builtins.elemAt compiledSubs 1;
+        in
+        derivs:
+        let
+          r0 = c0 derivs;
+          r1 = c1 (builtins.elemAt r0 1);
+        in
+        if r0 == false || r1 == false then
+          false
+        else
+          [
+            [
+              (builtins.elemAt r0 0)
+              (builtins.elemAt r1 0)
+            ]
+            (builtins.elemAt r1 1)
+          ];
 
       seq3 =
         compiledSubs:
@@ -304,18 +334,103 @@ rec {
             (builtins.elemAt r4 1)
           ];
 
+      seq6 =
+        compiledSubs:
+        let
+          c0 = builtins.elemAt compiledSubs 0;
+          c1 = builtins.elemAt compiledSubs 1;
+          c2 = builtins.elemAt compiledSubs 2;
+          c3 = builtins.elemAt compiledSubs 3;
+          c4 = builtins.elemAt compiledSubs 4;
+          c5 = builtins.elemAt compiledSubs 5;
+        in
+        derivs:
+        let
+          r0 = c0 derivs;
+          r1 = c1 (builtins.elemAt r0 1);
+          r2 = c2 (builtins.elemAt r1 1);
+          r3 = c3 (builtins.elemAt r2 1);
+          r4 = c4 (builtins.elemAt r3 1);
+          r5 = c5 (builtins.elemAt r4 1);
+        in
+        if r0 == false || r1 == false || r2 == false || r3 == false || r4 == false || r5 == false then
+          false
+        else
+          [
+            [
+              (builtins.elemAt r0 0)
+              (builtins.elemAt r1 0)
+              (builtins.elemAt r2 0)
+              (builtins.elemAt r3 0)
+              (builtins.elemAt r4 0)
+              (builtins.elemAt r5 0)
+            ]
+            (builtins.elemAt r5 1)
+          ];
+
+      seq7 =
+        compiledSubs:
+        let
+          c0 = builtins.elemAt compiledSubs 0;
+          c1 = builtins.elemAt compiledSubs 1;
+          c2 = builtins.elemAt compiledSubs 2;
+          c3 = builtins.elemAt compiledSubs 3;
+          c4 = builtins.elemAt compiledSubs 4;
+          c5 = builtins.elemAt compiledSubs 5;
+          c6 = builtins.elemAt compiledSubs 6;
+        in
+        derivs:
+        let
+          r0 = c0 derivs;
+          r1 = c1 (builtins.elemAt r0 1);
+          r2 = c2 (builtins.elemAt r1 1);
+          r3 = c3 (builtins.elemAt r2 1);
+          r4 = c4 (builtins.elemAt r3 1);
+          r5 = c5 (builtins.elemAt r4 1);
+          r6 = c6 (builtins.elemAt r5 1);
+        in
+        if
+          r0 == false
+          || r1 == false
+          || r2 == false
+          || r3 == false
+          || r4 == false
+          || r5 == false
+          || r6 == false
+        then
+          false
+        else
+          [
+            [
+              (builtins.elemAt r0 0)
+              (builtins.elemAt r1 0)
+              (builtins.elemAt r2 0)
+              (builtins.elemAt r3 0)
+              (builtins.elemAt r4 0)
+              (builtins.elemAt r5 0)
+              (builtins.elemAt r6 0)
+            ]
+            (builtins.elemAt r6 1)
+          ];
+
       compileSeq =
         exprs:
         let
           compiledSubs = map compile exprs;
           k = builtins.length compiledSubs;
           build =
-            if k == 3 then
+            if k == 2 then
+              seq2
+            else if k == 3 then
               seq3
             else if k == 4 then
               seq4
             else if k == 5 then
               seq5
+            else if k == 6 then
+              seq6
+            else if k == 7 then
+              seq7
             else
               seqGeneric;
         in
