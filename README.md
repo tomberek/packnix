@@ -3,6 +3,7 @@
 A packrat/PEG parsing engine written entirely in the Nix expression
 language, plus a few grammars built on it — generic JSON, JSON specialized
 for `nix flake lock`'s exact output schema, a real (subset of) YAML, TSV,
+generic ATerm plus a grammar specialized to Nix's own `.drv` file format,
 and Ruby's Bundler `Gemfile.lock` and (a group-membership-focused subset of)
 `Gemfile` formats.
 
@@ -57,6 +58,8 @@ other Nix parsing libraries.
 | `grammar/yaml.nix` | A real YAML subset: block mappings/sequences nested by indentation, plain/quoted scalars, flow collections, comments. `mkYamlGrammar { indentStep; maxDepth; }` generates the grammar; see its header for scope limits (no anchors/tags/multi-doc/block-scalars, fixed indent step, bounded depth). |
 | `grammar/gemfile-lock.nix` | Ruby Bundler's `Gemfile.lock` format — see below for why this one has a real nixpkgs use case. |
 | `grammar/gemfile.nix` | A real (subset of) Ruby Bundler's `Gemfile` format — NOT the lockfile; recovers Bundler *group* membership per gem (`group :x do...end` blocks, inline `group:`/`groups:` kwargs, `if`/`unless`/`else` wrapping), the one fact `Gemfile.lock` never records. See its header for exact scope. |
+| `grammar/aterm.nix` | A generic ATerm (Annotated Term) grammar — the format Nix's own `.drv` files are written in, among other uses (ASF+SDF Meta-Environment, Stratego/XT). Covers all six real term kinds (int, real, appl, list, tuple, placeholder) plus annotations; verified against 500 real `.drv` files from a live `/nix/store`. |
+| `grammar/drv.nix` | A grammar specialized to Nix's `.drv` file format's exact shape (`Derive(outputs, inputDrvs, inputSrcs, system, builder, args, env)`, always exactly 7 fields) — semantically decodes each field (e.g. a fixed-output derivation's `hashAlgo`'s `"r:"` prefix into a `recursive` flag) rather than returning a generic ATerm tree. See its header for the confirmed field shapes. |
 | `examples/json-simple.nix` | A plain, unoptimized JSON grammar — every construct gets its own named rule, no attention paid to allocation. Good starting point for reading/writing your own grammar. |
 | `examples/json-optimized.nix` | Re-exports `grammar/json.nix`, annotated with what changed vs. `json-simple.nix` and why (rule inlining via the `action` combinator, fewer redundant whitespace scans, etc). |
 | `examples/flakelock-specialized.nix` | Re-exports `grammar/flakelock.nix`, annotated with the schema-specialization technique and measured wins. |
