@@ -144,10 +144,13 @@ rec {
       # the full remainder on every attempt makes the parse O(n^2). Not a
       # correctness bound: `tryWindow` doubles whenever a match exactly
       # fills the window (otherwise indistinguishable from truncation), so
-      # longer matches still parse correctly. 32 measured best for this
-      # grammar's match-length distribution; smaller starts paying more in
-      # doubling retries than it saves per attempt.
-      regexWindow = 32;
+      # longer matches still parse correctly. Re-measured across
+      # grammar/json.nix, grammar/flakelock.nix, and grammar/gemfile-lock.nix
+      # (the last against both a real, long-line Gemfile.lock and a larger
+      # synthetic one): 64 consistently beats 32 (fewer doubling retries on
+      # longer lines/tokens, confirmed via nrPrimOpCalls), with 128 only
+      # marginally better still -- diminishing returns past 64.
+      regexWindow = 64;
 
       evalRegex =
         regex:
