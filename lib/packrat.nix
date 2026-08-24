@@ -11,6 +11,11 @@
 #   { lit = "..."; }      -> literal string match
 #   { range = [a b]; }    -> single-char range match
 #   { regex = "..."; }    -> POSIX ERE match (via builtins.match) at point
+#   { regex = "..."; maxLen = N; } -> same, but the grammar author
+#                             guarantees the match can never exceed N
+#                             characters (e.g. a `{0,N}`-bounded regex) --
+#                             skips evalRegex's window-doubling entirely,
+#                             see its comment.
 #   [ e1 e2 ... ]          -> sequence
 #   { choice = [e1 ...]; } -> ordered choice
 #   { star = e; }          -> e*
@@ -73,7 +78,7 @@ rec {
         else if expr ? range then
           evalRange expr.range
         else if expr ? regex then
-          evalRegex expr.regex
+          evalRegex expr.regex (expr.maxLen or null)
         else if expr ? choice then
           compileChoice expr.choice
         else if expr ? star then
@@ -153,36 +158,66 @@ rec {
       regexWindow = 64;
 
       evalRegex =
-        regex:
+        regex: maxLen:
         let
           pattern = "${regex}.*";
         in
-        derivs:
-        let
-          count = builtins.elemAt derivs 0;
-          tryWindow =
-            windowSize:
+        if maxLen != null then
+          # The grammar author guarantees this regex can never match more
+          # than `maxLen` characters (e.g. a `{0,N}`-bounded repetition,
+          # like grammar/yaml.nix's per-depth indent check) -- so a single
+          # `substring count maxLen` window always contains the whole
+          # match, with no truncation possible and no doubling retry ever
+          # needed. Measured ~35% fewer primop calls than the generic
+          # window path for such a regex, in proportion to how much
+          # smaller `maxLen` is than `regexWindow`.
+          (
+            derivs:
             let
-              rest = builtins.substring count windowSize string;
+              count = builtins.elemAt derivs 0;
+              rest = builtins.substring count maxLen string;
               m = builtins.match pattern rest;
-              restLen = builtins.stringLength rest;
             in
             if builtins.isList m && m != [ ] && builtins.head m != null then
               let
                 matched = builtins.head m;
-                matchedLen = builtins.stringLength matched;
               in
-              if matchedLen < restLen || count + restLen >= len then
-                [
-                  matched
-                  (builtins.elemAt at (count + matchedLen))
-                ]
-              else
-                tryWindow (windowSize * 2) # filled the window -- might be truncated
+              [
+                matched
+                (builtins.elemAt at (count + builtins.stringLength matched))
+              ]
             else
-              false;
-        in
-        tryWindow regexWindow;
+              false
+          )
+        else
+          (
+            derivs:
+            let
+              count = builtins.elemAt derivs 0;
+              tryWindow =
+                windowSize:
+                let
+                  rest = builtins.substring count windowSize string;
+                  m = builtins.match pattern rest;
+                  restLen = builtins.stringLength rest;
+                in
+                if builtins.isList m && m != [ ] && builtins.head m != null then
+                  let
+                    matched = builtins.head m;
+                    matchedLen = builtins.stringLength matched;
+                  in
+                  if matchedLen < restLen || count + restLen >= len then
+                    [
+                      matched
+                      (builtins.elemAt at (count + matchedLen))
+                    ]
+                  else
+                    tryWindow (windowSize * 2) # filled the window -- might be truncated
+                else
+                  false;
+            in
+            tryWindow regexWindow
+          );
 
       # compileSeq's generic path builds the result via `foldl'` +
       # `elemAt acc 0 ++ [...]`, an O(current length) copy per step, so
@@ -445,6 +480,108 @@ rec {
       # (stop: failure) and success, needed to distinguish "branch didn't
       # match" from "cut committed, then failed". `go` returns the first
       # non-null branch result.
+      #
+      # `choice2`/`choice3`/`choice6` hand-unroll the same head/tail `go`
+      # loop below for the arities this repo's shipped grammars actually
+      # invoke at runtime (confirmed via call-count instrumentation on
+      # grammar/json.nix), mirroring seq2-seq7's exact pattern: hoisting
+      # `elemAt compiledBranches i` OUT of the returned closure (into the
+      # outer `let`, computed once per compile-site, not once per parse
+      # call) is what makes the win real -- an earlier attempt at this
+      # same idea that indexed `compiledBranches` inside the closure
+      # measured far weaker, which is presumably why an older investigation
+      # (see bench/investigation-notes.md item 6) found choice-specialization
+      # not worth it. Any other arity falls back to `choiceGeneric`
+      # (the original `go`), still correct, just without the speedup.
+      choice2 =
+        compiledBranches:
+        let
+          b0 = builtins.elemAt compiledBranches 0;
+          b1 = builtins.elemAt compiledBranches 1;
+        in
+        derivs:
+        let
+          r0 = b0 derivs;
+        in
+        if r0 != null then
+          r0
+        else
+          let
+            r1 = b1 derivs;
+          in
+          if r1 != null then r1 else false;
+
+      choice3 =
+        compiledBranches:
+        let
+          b0 = builtins.elemAt compiledBranches 0;
+          b1 = builtins.elemAt compiledBranches 1;
+          b2 = builtins.elemAt compiledBranches 2;
+        in
+        derivs:
+        let
+          r0 = b0 derivs;
+        in
+        if r0 != null then
+          r0
+        else
+          let
+            r1 = b1 derivs;
+          in
+          if r1 != null then
+            r1
+          else
+            let
+              r2 = b2 derivs;
+            in
+            if r2 != null then r2 else false;
+
+      choice6 =
+        compiledBranches:
+        let
+          b0 = builtins.elemAt compiledBranches 0;
+          b1 = builtins.elemAt compiledBranches 1;
+          b2 = builtins.elemAt compiledBranches 2;
+          b3 = builtins.elemAt compiledBranches 3;
+          b4 = builtins.elemAt compiledBranches 4;
+          b5 = builtins.elemAt compiledBranches 5;
+        in
+        derivs:
+        let
+          r0 = b0 derivs;
+        in
+        if r0 != null then
+          r0
+        else
+          let
+            r1 = b1 derivs;
+          in
+          if r1 != null then
+            r1
+          else
+            let
+              r2 = b2 derivs;
+            in
+            if r2 != null then
+              r2
+            else
+              let
+                r3 = b3 derivs;
+              in
+              if r3 != null then
+                r3
+              else
+                let
+                  r4 = b4 derivs;
+                in
+                if r4 != null then
+                  r4
+                else
+                  let
+                    r5 = b5 derivs;
+                  in
+                  if r5 != null then r5 else false;
+
       compileChoice =
         branches:
         let
@@ -487,7 +624,7 @@ rec {
           compiledBranches = map compileBranch branches;
           # `derivs` is an explicit parameter, not closed over, so `go`
           # doesn't get rebuilt every time the outer closure is called.
-          go =
+          choiceGeneric =
             derivs: bs:
             if bs == [ ] then
               false
@@ -495,9 +632,19 @@ rec {
               let
                 r = (builtins.head bs) derivs;
               in
-              if r != null then r else go derivs (builtins.tail bs);
+              if r != null then r else choiceGeneric derivs (builtins.tail bs);
+          k = builtins.length compiledBranches;
+          build =
+            if k == 2 then
+              choice2
+            else if k == 3 then
+              choice3
+            else if k == 6 then
+              choice6
+            else
+              (bs: derivs: choiceGeneric derivs bs);
         in
-        derivs: go derivs compiledBranches;
+        build compiledBranches;
 
       # Cap for compileStarPlain's cheap recursive path, well under Nix's
       # ~10000-deep call-depth wall.
