@@ -480,6 +480,108 @@ rec {
       # (stop: failure) and success, needed to distinguish "branch didn't
       # match" from "cut committed, then failed". `go` returns the first
       # non-null branch result.
+      #
+      # `choice2`/`choice3`/`choice6` hand-unroll the same head/tail `go`
+      # loop below for the arities this repo's shipped grammars actually
+      # invoke at runtime (confirmed via call-count instrumentation on
+      # grammar/json.nix), mirroring seq2-seq7's exact pattern: hoisting
+      # `elemAt compiledBranches i` OUT of the returned closure (into the
+      # outer `let`, computed once per compile-site, not once per parse
+      # call) is what makes the win real -- an earlier attempt at this
+      # same idea that indexed `compiledBranches` inside the closure
+      # measured far weaker, which is presumably why an older investigation
+      # (see bench/investigation-notes.md item 6) found choice-specialization
+      # not worth it. Any other arity falls back to `choiceGeneric`
+      # (the original `go`), still correct, just without the speedup.
+      choice2 =
+        compiledBranches:
+        let
+          b0 = builtins.elemAt compiledBranches 0;
+          b1 = builtins.elemAt compiledBranches 1;
+        in
+        derivs:
+        let
+          r0 = b0 derivs;
+        in
+        if r0 != null then
+          r0
+        else
+          let
+            r1 = b1 derivs;
+          in
+          if r1 != null then r1 else false;
+
+      choice3 =
+        compiledBranches:
+        let
+          b0 = builtins.elemAt compiledBranches 0;
+          b1 = builtins.elemAt compiledBranches 1;
+          b2 = builtins.elemAt compiledBranches 2;
+        in
+        derivs:
+        let
+          r0 = b0 derivs;
+        in
+        if r0 != null then
+          r0
+        else
+          let
+            r1 = b1 derivs;
+          in
+          if r1 != null then
+            r1
+          else
+            let
+              r2 = b2 derivs;
+            in
+            if r2 != null then r2 else false;
+
+      choice6 =
+        compiledBranches:
+        let
+          b0 = builtins.elemAt compiledBranches 0;
+          b1 = builtins.elemAt compiledBranches 1;
+          b2 = builtins.elemAt compiledBranches 2;
+          b3 = builtins.elemAt compiledBranches 3;
+          b4 = builtins.elemAt compiledBranches 4;
+          b5 = builtins.elemAt compiledBranches 5;
+        in
+        derivs:
+        let
+          r0 = b0 derivs;
+        in
+        if r0 != null then
+          r0
+        else
+          let
+            r1 = b1 derivs;
+          in
+          if r1 != null then
+            r1
+          else
+            let
+              r2 = b2 derivs;
+            in
+            if r2 != null then
+              r2
+            else
+              let
+                r3 = b3 derivs;
+              in
+              if r3 != null then
+                r3
+              else
+                let
+                  r4 = b4 derivs;
+                in
+                if r4 != null then
+                  r4
+                else
+                  let
+                    r5 = b5 derivs;
+                  in
+                  if r5 != null then r5 else false;
+
       compileChoice =
         branches:
         let
@@ -522,7 +624,7 @@ rec {
           compiledBranches = map compileBranch branches;
           # `derivs` is an explicit parameter, not closed over, so `go`
           # doesn't get rebuilt every time the outer closure is called.
-          go =
+          choiceGeneric =
             derivs: bs:
             if bs == [ ] then
               false
@@ -530,9 +632,19 @@ rec {
               let
                 r = (builtins.head bs) derivs;
               in
-              if r != null then r else go derivs (builtins.tail bs);
+              if r != null then r else choiceGeneric derivs (builtins.tail bs);
+          k = builtins.length compiledBranches;
+          build =
+            if k == 2 then
+              choice2
+            else if k == 3 then
+              choice3
+            else if k == 6 then
+              choice6
+            else
+              (bs: derivs: choiceGeneric derivs bs);
         in
-        derivs: go derivs compiledBranches;
+        build compiledBranches;
 
       # Cap for compileStarPlain's cheap recursive path, well under Nix's
       # ~10000-deep call-depth wall.
