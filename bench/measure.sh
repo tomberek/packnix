@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Phase 3 measurement harness: real /usr/bin/time -v RSS + wall-clock
 # numbers for the no-cut vs cut-enabled JSON grammar, over truncated
-# prefixes of lock-large.json. Does NOT assume Mizushima et al.'s "mostly
+# prefixes of synth-2000.json. Does NOT assume Mizushima et al.'s "mostly
 # constant space" result transfers to Nix's evaluator (Boehm GC, one-shot
 # CLI process, thunk-graph memory model rather than Haskell's) -- it
 # actually runs both variants and records what happens.
@@ -19,7 +19,7 @@ fixtures=(
   "50000:bench/fixtures/fixture-50000.json"
   "150000:bench/fixtures/fixture-150000.json"
   "300000:bench/fixtures/fixture-300000.json"
-  "full(391947):bench/fixtures/fixture-full.json"
+  "full(636392):bench/fixtures/fixture-full.json"
 )
 variants=("noCut:grammarNoCut:handlersNoCut" "cut:grammar:handlers")
 

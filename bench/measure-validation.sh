@@ -5,7 +5,7 @@
 # validators, no parser, so this is what a fair comparison against it
 # actually looks like), generic grammar/json.nix, and the schema-specialized
 # grammar/flakelock.nix, across synthetic flake.lock-shaped fixtures plus
-# the real lock-large.json.
+# the largest synthetic fixture.
 #
 # Usage: ./bench/measure-validation.sh  (cd's to repo root itself).
 # Requires bench/fixtures/synth-*.json (bench/make-synthetic-fixtures.py)
@@ -26,7 +26,6 @@ fixtures=(
   "500:bench/fixtures/synth-500.json"
   "1000:bench/fixtures/synth-1000.json"
   "2000:bench/fixtures/synth-2000.json"
-  "real(lock-large):data/lock-large.json"
 )
 
 variants=(

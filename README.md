@@ -130,7 +130,7 @@ let
   g = import ./grammar/flakelock.nix;
 in
 (packrat.run { grammar = g.grammar; handlers = g.handlers; } 0
-  (builtins.readFile ./data/lock-large.json)).DOCUMENT
+  (builtins.readFile ./bench/fixtures/synth-2000.json)).DOCUMENT
 ```
 
 Writing your own grammar: start from `examples/json-simple.nix` as a

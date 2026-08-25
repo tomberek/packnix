@@ -21,8 +21,6 @@ cd "$(dirname "$0")"
 fixtures=(
   data/lock.json
   data/lock-small.json
-  data/lock-large.json
-  bench/fixtures/fixture-full.json
   bench/fixtures/synth-5.json
   bench/fixtures/synth-15.json
   bench/fixtures/synth-30.json

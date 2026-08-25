@@ -28,12 +28,12 @@
 # (`DOCUMENT`) for the whole grammar, since nothing in a flake.lock's
 # fixed shape is recursive or revisits a position twice.
 #
-# Measured on lock-large.json (391947 bytes, a flake.lock-shaped fixture
-# confirmed to match this schema: same 4 node key-sets, 0 alphabetical-
-# order violations), full parse + materialization, byte-identical output
-# confirmed against Python's json.load: grammar/json.nix ~175.5MB RSS /
-# ~0.49s; this grammar ~138.1MB / ~0.32s -- roughly -21% RSS, -35% wall
-# time. NIX_SHOW_STATS attributes this structurally, not to noise:
+# Measured on a real-world 391947-byte flake.lock-shaped fixture (not
+# included in this repo; confirmed to match this schema: same 4 node
+# key-sets, 0 alphabetical-order violations), full parse + materialization,
+# byte-identical output confirmed against Python's json.load: grammar/json.nix
+# ~175.5MB RSS / ~0.49s; this grammar ~138.1MB / ~0.32s -- roughly -21% RSS,
+# -35% wall time. NIX_SHOW_STATS attributes this structurally, not to noise:
 # nrFunctionCalls -39%, nrPrimOpCalls -30%, sets.number -34%.
 #
 # Also run against a real, external ~14.2MB flake.lock (23756 nodes,
@@ -54,7 +54,7 @@
 #       packrat = import ../lib/packrat.nix;
 #       g = import ./flakelock-specialized.nix;
 #     in packrat.run { grammar = g.grammar; handlers = g.handlers; } 0
-#          (builtins.readFile ../data/lock-large.json)
+#          (builtins.readFile ../bench/fixtures/synth-2000.json)
 #   ' --json
 let
   real = import ../grammar/flakelock.nix;

@@ -16,11 +16,12 @@
 # false-before-true) -- present here only because this re-exports the
 # real file, not part of the action/inlining technique itself.
 #
-# Measured on lock-large.json (391947 bytes), same accept/reject/value
-# output confirmed byte-identical: json-simple.nix ~247.6MB RSS; this
-# file ~170.2MB, a ~31.2% reduction (larger than inlining alone would
-# give, ~22.8% in isolation -- the rest comes from those other
-# optimizations riding along for free).
+# Measured on a real-world 391947-byte flake.lock-shaped fixture (not
+# included in this repo), same accept/reject/value output confirmed
+# byte-identical: json-simple.nix ~247.6MB RSS; this file ~170.2MB, a
+# ~31.2% reduction (larger than inlining alone would give, ~22.8% in
+# isolation -- the rest comes from those other optimizations riding along
+# for free).
 #
 # Run with:
 #   nix eval --impure --expr '
