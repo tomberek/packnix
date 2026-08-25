@@ -4,9 +4,9 @@ A packrat/PEG parsing engine written entirely in the Nix expression
 language, plus a few grammars built on it — generic JSON, JSON specialized
 for `nix flake lock`'s exact output schema, a real (subset of) YAML, TSV,
 generic ATerm plus a grammar specialized to Nix's own `.drv` file format,
-Python's PEP 508 dependency-specification format, and Ruby's Bundler
-`Gemfile.lock` and (a group-membership-focused subset of) `Gemfile`
-formats.
+Python's PEP 508 dependency-specification format and Poetry's version-
+constraint syntax, and Ruby's Bundler `Gemfile.lock` and (a
+group-membership-focused subset of) `Gemfile` formats.
 
 Built from Ford's ["Packrat Parsing: Simple, Powerful, Lazy, Linear Time"](https://bford.info/pub/lang/packrat-icfp02/)
 and Mizushima et al.'s ["Packrat Parsers Can Handle Practical Grammars in
@@ -62,6 +62,7 @@ other Nix parsing libraries.
 | `grammar/aterm.nix` | A generic ATerm (Annotated Term) grammar — the format Nix's own `.drv` files are written in, among other uses (ASF+SDF Meta-Environment, Stratego/XT). Covers all six real term kinds (int, real, appl, list, tuple, placeholder) plus annotations; verified against 500 real `.drv` files from a live `/nix/store`. |
 | `grammar/drv.nix` | A grammar specialized to Nix's `.drv` file format's exact shape (`Derive(outputs, inputDrvs, inputSrcs, system, builder, args, env)`, always exactly 7 fields) — semantically decodes each field (e.g. a fixed-output derivation's `hashAlgo`'s `"r:"` prefix into a `recursive` flag) rather than returning a generic ATerm tree. See its header for the confirmed field shapes. |
 | `grammar/pep508.nix` | Python's PEP 508 dependency-specification format (`requests (>=2.0,<3.0) ; python_version >= "3.6" and sys_platform == "linux"`) — the same format nixpkgs' `poetry2nix` parses today via ~180 lines of hand-rolled character-walking with a known `# TODO: Handle single quoted values` gap and no real `and`/`or` precedence. Transcribed directly from PEP 508's own formal grammar (restructured to avoid left recursion); verified against 2126 real, distinct `Requires-Dist` specifiers extracted from real `*.dist-info/METADATA` files. |
+| `grammar/poetry-semver.nix` | Poetry's version-constraint syntax (`^1.2.3`, `~1.2`, `1.*`, `~2.7 \|\| ^3.5`) — parses AND evaluates (`mkSatisfies packrat version constraint`). Fixes several real, demonstrated bugs found in nixpkgs' `poetry2nix/semver.nix`/`lib.nix` while building this (wrong caret/tilde upper bounds that accept clearly-incompatible major versions, `!=X.Y.*` not actually excluding anything, bare versions/wildcards throwing instead of parsing). Verified against 65 real `python-versions`/`python = "..."` constraint strings from real `poetry.lock`/`pyproject.toml` files. See its header for the specific bugs and how they were confirmed. |
 | `examples/json-simple.nix` | A plain, unoptimized JSON grammar — every construct gets its own named rule, no attention paid to allocation. Good starting point for reading/writing your own grammar. |
 | `examples/json-optimized.nix` | Re-exports `grammar/json.nix`, annotated with what changed vs. `json-simple.nix` and why (rule inlining via the `action` combinator, fewer redundant whitespace scans, etc). |
 | `examples/flakelock-specialized.nix` | Re-exports `grammar/flakelock.nix`, annotated with the schema-specialization technique and measured wins. |
