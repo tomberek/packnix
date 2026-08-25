@@ -30,6 +30,26 @@
 #                              lets a value-transform travel with an
 #                              inlined sub-expression instead of requiring
 #                              a named Derivs-node field. See compileAction.
+#   { json = { }; }        -> hands the ENTIRE REMAINING input (position to
+#   { toml = { }; }           end of string) to builtins.fromJSON/fromTOML,
+#                             rather than parsing it rule-by-rule. COMMIT-ONLY:
+#                             unlike every other combinator, this THROWS
+#                             instead of returning `false` on malformed input
+#                             -- builtins.tryEval does not catch fromJSON/
+#                             fromTOML's parse errors (they aren't the
+#                             AssertionError thrown by the Nix language's own
+#                             `throw`/`assert`, which is all tryEval catches),
+#                             so there is no way to backtrack past a failed
+#                             json/toml the way `choice` backtracks past a
+#                             failed `lit`/`regex`. Only place this where the
+#                             grammar has ALREADY committed to "the rest of
+#                             the input is JSON/TOML" with no other
+#                             alternative left to try -- e.g. the last
+#                             `cutSeq` branch of a `choice`, or the final
+#                             element of a top-level `document` sequence. See
+#                             evalBuiltinParser's comment for why it's
+#                             deliberately unlike every other leaf combinator
+#                             in this file.
 #
 # `mkCompile string at` returns `compile : expr -> (derivs -> result)`,
 # deciding once which combinator an `expr` denotes instead of re-testing
@@ -100,6 +120,10 @@ rec {
           compileSeq expr.cutSeq
         else if expr ? action then
           compileAction expr.action.e expr.action.f
+        else if expr ? json then
+          evalBuiltinParser builtins.fromJSON
+        else if expr ? toml then
+          evalBuiltinParser builtins.fromTOML
         else
           throw "packrat: unrecognized expression: ${builtins.toJSON expr}";
 
@@ -218,6 +242,55 @@ rec {
             in
             tryWindow regexWindow
           );
+
+      # `{ json = {}; }`/`{ toml = {}; }`: hands `substring count (len -
+      # count) string` (position to end of input, not a bounded window like
+      # evalRegex -- fromJSON/fromTOML need the WHOLE value, and both
+      # already reject trailing content after a complete value, so there's
+      # no way to ask either for just "the JSON/TOML prefix starting here")
+      # to a native builtin parser instead of walking it rule-by-rule.
+      #
+      # Deliberately NOT wrapped in `builtins.tryEval`: confirmed (see
+      # ~/nix's src/libexpr/primops.cc `prim_tryEval`) that tryEval's catch
+      # clause only matches `AssertionError`, the C++ exception type behind
+      # the Nix LANGUAGE's own `throw`/`assert` -- fromJSON/fromTOML's parse
+      # errors are a different exception type entirely (from the underlying
+      # JSON/TOML libraries) and propagate straight through tryEval
+      # uncaught. There is no builtin that validates JSON/TOML without
+      # fully parsing it, and no way to catch a failed parse from Nix code
+      # at all. So unlike every other leaf combinator here, this one cannot
+      # return `false` on malformed input -- it throws, aborting the whole
+      # evaluation, not just this alternative. See this file's header
+      # comment for the resulting restriction: only use `json`/`toml` where
+      # the grammar has already committed with no other alternative left
+      # (e.g. a cutSeq's second branch, or the last element of a top-level
+      # sequence) -- everywhere else, a thrown error where a plain PEG
+      # combinator would have backtracked past a `false` is a correctness
+      # bug in the GRAMMAR, not in this function.
+      #
+      # `builtins.seq (parse rest) ...` forces the parse HERE, not lazily.
+      # Every other combinator's result is built eagerly enough that a
+      # caller like `opt`/`choice` only ever inspects the DERIVS half
+      # (`elemAt r 1`) to decide whether to keep going, never the value half
+      # -- so an unforced `parse rest` thunk sitting in the value slot would
+      # let a malformed json/toml silently ride through `opt`'s "succeeded"
+      # path (and any enclosing choice/sequence) with the parse error only
+      # surfacing much later, IF something ever reads that value at all,
+      # far from this call site and with no indication of which grammar
+      # position caused it. Forcing eagerly turns a misuse of this
+      # commit-only combinator into an immediate, loud failure at the
+      # actual parse site instead of a silently-wrong result.
+      evalBuiltinParser =
+        parse: derivs:
+        let
+          count = builtins.elemAt derivs 0;
+          rest = builtins.substring count (len - count) string;
+          value = parse rest;
+        in
+        builtins.seq value [
+          value
+          (builtins.elemAt at len)
+        ];
 
       # compileSeq's generic path builds the result via `foldl'` +
       # `elemAt acc 0 ++ [...]`, an O(current length) copy per step, so

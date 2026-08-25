@@ -8,6 +8,7 @@
 # Every attribute is a boolean; `allPassed` is true iff every check passed.
 let
   packrat = import ./lib/packrat.nix;
+  jsonTomlSafety = import ./lib/json-toml-safety.nix;
 
   run =
     grammar: count: string:
@@ -219,6 +220,125 @@ let
   bigJumpInput = builtins.concatStringsSep "" (builtins.genList (_: "a") 90000) + "!";
   rBigJump = run bigJumpGrammar 0 bigJumpInput;
 
+  # --- json/toml combinators: hand the rest of the input to a native
+  # builtins.fromJSON/fromTOML instead of parsing rule-by-rule (see
+  # lib/packrat.nix's evalBuiltinParser). Confirms both the success path
+  # (correct value, full input consumed) and a literal-prefix sequence
+  # committing before handing off the remainder.
+  jsonGrammar = {
+    DOC = {
+      json = { };
+    };
+  };
+  rJson = run jsonGrammar 0 ''{"a":1,"b":[1,2,3]}'';
+
+  tomlGrammar = {
+    DOC = {
+      toml = { };
+    };
+  };
+  rToml = run tomlGrammar 0 "a = 1\nb = [1, 2, 3]\n";
+
+  prefixedJsonGrammar = {
+    DOC = [
+      { lit = "PAYLOAD="; }
+      { json = { }; }
+    ];
+  };
+  rPrefixedJson = run prefixedJsonGrammar 0 ''PAYLOAD={"x":true}'';
+
+  # NOT a `checks` entry -- this demonstrates json/toml's commit-only
+  # restriction (see lib/packrat.nix's evalBuiltinParser) by actually
+  # throwing, and builtins.tryEval cannot catch that throw (confirmed: it's
+  # a JSON-library parse-error exception, not the Nix language's own
+  # AssertionError, which is all tryEval catches -- see evalBuiltinParser's
+  # comment). Including a genuinely-throwing expression as a `checks`
+  # value would abort this whole file's evaluation, not just fail one
+  # check, so this is a comment-documented reproducer instead, same spirit
+  # as a grammar file's header "Run with:" example. Confirmed manually:
+  #
+  #   nix eval --impure --expr '
+  #     let
+  #       packrat = import ./lib/packrat.nix;
+  #       grammar.DOC = [ { opt = { json = {}; }; } { lit = "trailing"; } ];
+  #     in (packrat.run { inherit grammar; } 0 "not json at alltrailing").DOC
+  #   '
+  #
+  # throws immediately (eager `builtins.seq` in evalBuiltinParser) instead
+  # of the `opt` silently swallowing the malformed JSON and reporting a
+  # bogus successful parse -- which is what happened before that `seq` was
+  # added: the error sat in an unforced thunk and only surfaced (if at
+  # all) whenever something later happened to read the value, arbitrarily
+  # far from the actual parse site.
+
+  # --- lib/json-toml-safety.nix: static (no input needed) check that no
+  # rule places json/toml somewhere a `false` would be gracefully absorbed
+  # instead of propagating as the whole rule failing. Unlike
+  # evalBuiltinParser's runtime throw (above), checkGrammarSafety's error
+  # IS a plain Nix `throw` (an AssertionError), so builtins.tryEval CAN
+  # catch it here -- these can be ordinary `checks` entries.
+  safeJsonPlacementGrammar = {
+    DOC = {
+      json = { };
+    };
+  };
+  safeJsonInLastChoiceBranch = {
+    DOC = {
+      choice = [
+        { lit = "x"; }
+        { json = { }; }
+      ];
+    };
+  };
+  unsafeJsonInOpt = {
+    DOC = {
+      opt = {
+        json = { };
+      };
+    };
+  };
+  unsafeJsonInNonLastChoiceBranch = {
+    DOC = {
+      choice = [
+        { json = { }; }
+        { lit = "x"; }
+      ];
+    };
+  };
+  unsafeJsonInStarBody = {
+    DOC = {
+      star = {
+        json = { };
+      };
+    };
+  };
+  unsafeJsonInCutSeqE1 = {
+    DOC = {
+      choice = [
+        { lit = "x"; }
+        {
+          cutSeq = [
+            { json = { }; }
+            { lit = "y"; }
+          ];
+        }
+      ];
+    };
+  };
+  safeJsonInCutSeqE2OfLastBranch = {
+    DOC = {
+      choice = [
+        { lit = "x"; }
+        {
+          cutSeq = [
+            { lit = "y"; }
+            { json = { }; }
+          ];
+        }
+      ];
+    };
+  };
+
   checks = {
     cutMain_parsesFullString = cutMainResult.M != false;
     cutMain_correctValue =
@@ -261,6 +381,45 @@ let
       rManyRepeats.MANY != false && builtins.length rManyRepeats.MANY == 64000;
 
     bigJumpDoesNotOverflow = rBigJump.B != false;
+
+    json_parsesRemainderOfInput =
+      rJson.DOC == {
+        a = 1;
+        b = [
+          1
+          2
+          3
+        ];
+      };
+    toml_parsesRemainderOfInput =
+      rToml.DOC == {
+        a = 1;
+        b = [
+          1
+          2
+          3
+        ];
+      };
+    json_commitsAfterLiteralPrefix =
+      rPrefixedJson.DOC == [
+        "PAYLOAD="
+        { x = true; }
+      ];
+
+    jsonSafety_acceptsSoleJson =
+      (jsonTomlSafety.checkGrammarSafety safeJsonPlacementGrammar) == safeJsonPlacementGrammar;
+    jsonSafety_acceptsLastChoiceBranch =
+      (builtins.tryEval (jsonTomlSafety.checkGrammarSafety safeJsonInLastChoiceBranch)).success;
+    jsonSafety_rejectsOpt =
+      !(builtins.tryEval (jsonTomlSafety.checkGrammarSafety unsafeJsonInOpt)).success;
+    jsonSafety_rejectsNonLastChoiceBranch =
+      !(builtins.tryEval (jsonTomlSafety.checkGrammarSafety unsafeJsonInNonLastChoiceBranch)).success;
+    jsonSafety_rejectsStarBody =
+      !(builtins.tryEval (jsonTomlSafety.checkGrammarSafety unsafeJsonInStarBody)).success;
+    jsonSafety_rejectsCutSeqE1 =
+      !(builtins.tryEval (jsonTomlSafety.checkGrammarSafety unsafeJsonInCutSeqE1)).success;
+    jsonSafety_acceptsCutSeqE2OfCommittedLastBranch =
+      (builtins.tryEval (jsonTomlSafety.checkGrammarSafety safeJsonInCutSeqE2OfLastBranch)).success;
   };
 
   allPassed = builtins.all (x: x) (builtins.attrValues checks);

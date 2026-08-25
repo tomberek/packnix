@@ -36,6 +36,13 @@ jobs:
       - name: Verify fixtures parse byte-identical to builtins.fromJSON
         run: ./verify-fixtures.sh
 
+      # verify-json-toml-commit.sh: the { json = {}; }/{ toml = {}; }
+      # combinator must throw EAGERLY on malformed input reached from a
+      # backtrackable position, not silently let `opt`/`choice` report a
+      # bogus success with the error hidden in an unforced thunk.
+      - name: Verify json/toml combinator throws eagerly, not lazily
+        run: ./verify-json-toml-commit.sh
+
       # default.nix / run.sh: the documented entry point actually works.
       - name: Run default.nix against data/lock.json
         run: ./run.sh
