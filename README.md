@@ -6,7 +6,8 @@ for `nix flake lock`'s exact output schema, a real (subset of) YAML, TSV,
 generic ATerm plus a grammar specialized to Nix's own `.drv` file format,
 Python's PEP 508 dependency-specification format and Poetry's version-
 constraint syntax, and Ruby's Bundler `Gemfile.lock` and (a
-group-membership-focused subset of) `Gemfile` formats.
+group-membership-focused subset of) `Gemfile` formats and Yarn classic's
+`yarn.lock` format.
 
 Built from Ford's ["Packrat Parsing: Simple, Powerful, Lazy, Linear Time"](https://bford.info/pub/lang/packrat-icfp02/)
 and Mizushima et al.'s ["Packrat Parsers Can Handle Practical Grammars in
@@ -59,6 +60,7 @@ other Nix parsing libraries.
 | `grammar/yaml.nix` | A real YAML subset: block mappings/sequences nested by indentation, plain/quoted scalars, flow collections, comments. `mkYamlGrammar { indentStep; maxDepth; }` generates the grammar; see its header for scope limits (no anchors/tags/multi-doc/block-scalars, fixed indent step, bounded depth). |
 | `grammar/gemfile-lock.nix` | Ruby Bundler's `Gemfile.lock` format — see below for why this one has a real nixpkgs use case. |
 | `grammar/gemfile.nix` | A real (subset of) Ruby Bundler's `Gemfile` format — NOT the lockfile; recovers Bundler *group* membership per gem (`group :x do...end` blocks, inline `group:`/`groups:` kwargs, `if`/`unless`/`else` wrapping), the one fact `Gemfile.lock` never records. See its header for exact scope. |
+| `grammar/yarn-lock.nix` | Yarn classic's `yarn.lock` ("yarn lockfile v1") format — see below for why this one has a real nixpkgs use case. Yarn Berry (v2+) lockfiles are a different, YAML-based format and out of scope. |
 | `grammar/aterm.nix` | A generic ATerm (Annotated Term) grammar — the format Nix's own `.drv` files are written in, among other uses (ASF+SDF Meta-Environment, Stratego/XT). Covers all six real term kinds (int, real, appl, list, tuple, placeholder) plus annotations; verified against 500 real `.drv` files from a live `/nix/store`. |
 | `grammar/drv.nix` | A grammar specialized to Nix's `.drv` file format's exact shape (`Derive(outputs, inputDrvs, inputSrcs, system, builder, args, env)`, always exactly 7 fields) — semantically decodes each field (e.g. a fixed-output derivation's `hashAlgo`'s `"r:"` prefix into a `recursive` flag) rather than returning a generic ATerm tree. See its header for the confirmed field shapes. |
 | `grammar/pep508.nix` | Python's PEP 508 dependency-specification format (`requests (>=2.0,<3.0) ; python_version >= "3.6" and sys_platform == "linux"`) — the same format nixpkgs' `poetry2nix` parses today via ~180 lines of hand-rolled character-walking with a known `# TODO: Handle single quoted values` gap and no real `and`/`or` precedence. Transcribed directly from PEP 508's own formal grammar (restructured to avoid left recursion); verified against 2126 real, distinct `Requires-Dist` specifiers extracted from real `*.dist-info/METADATA` files. |
@@ -188,6 +190,36 @@ blocks, platform-qualified spec versions, `!`-pinned/multi-constraint
 dependencies, CHECKSUMS, RUBY VERSION) byte/value-identical between the
 two. Deliberately out of scope: Bundler `PLUGIN SOURCES` (not seen in the
 corpus at all).
+
+## yarn.lock: a real nixpkgs use case
+
+Today, resolving a `yarn.lock` into Nix-consumable fetch info (as
+`yarn2nix`/`mkYarnPackage` need — see
+`pkgs/development/tools/yarn2nix-moretea` in nixpkgs) requires running an
+external Node-based tool, or a per-package network prefetch, to compute
+each package's fetch hash. But a Yarn classic (`yarn lockfile v1`)
+lockfile already embeds a `resolved` URL *and* an `integrity` value (SRI
+format, `sha512-<base64>` or `sha1-<base64>`) per package inline — the
+same "the hash is already sitting in the file" situation as
+`Gemfile.lock`'s `CHECKSUMS` section above, just SRI-base64 instead of
+hex. `grammar/yarn-lock.nix` reads the whole dependency graph and every
+package's fetch info directly out of the lockfile — no `yarn2nix`, no
+network, no external Node interpreter needed at eval time. (Converting
+the SRI base64 value to the base32 `nix-hash` format a fixed-output
+derivation wants is a separate, small step, not reimplemented here — same
+category as `examples/gemfile-lock-checksums.nix`'s hex-to-base32
+conversion for `Gemfile.lock`.)
+
+Correctness: cross-validated against an independent Python reference
+parser (not derived from this grammar) across 15 real `yarn.lock` files
+(2,395 entries total) pulled from nixpkgs-adjacent checkouts and
+`node_modules` sources — scoped package names, multi-spec lines (both
+bare and double-quoted forms), `dependencies:`/`optionalDependencies:`
+blocks, and every `version`/`resolved`/`integrity` field byte/value-
+identical between the two. A Yarn Berry (v2+) lockfile — a different,
+YAML-based format entirely — correctly fails to parse rather than
+silently mis-parsing (confirmed against a real 16000-line Berry lockfile
+found during corpus collection).
 
 ## Benchmarks
 
