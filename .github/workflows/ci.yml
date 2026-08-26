@@ -43,6 +43,14 @@ jobs:
       - name: Verify json/toml combinator throws eagerly, not lazily
         run: ./verify-json-toml-commit.sh
 
+      # verify-valuewalk-parity.sh: grammar/flakelock.nix (string-position
+      # packrat grammar) and examples/flakelock-valuewalk.nix (lib/
+      # valuewalk.nix schema over builtins.fromJSON's already-parsed
+      # value) must agree on every flake.lock-shaped fixture -- both
+      # accept with byte-identical output, or both reject.
+      - name: Verify packrat grammar and valuewalk schema agree
+        run: ./verify-valuewalk-parity.sh
+
       # default.nix / run.sh: the documented entry point actually works.
       - name: Run default.nix against data/lock.json
         run: ./run.sh

@@ -9,6 +9,7 @@
 let
   packrat = import ./lib/packrat.nix;
   jsonTomlSafety = import ./lib/json-toml-safety.nix;
+  valuewalk = import ./lib/valuewalk.nix;
 
   run =
     grammar: count: string:
@@ -339,6 +340,126 @@ let
     };
   };
 
+  # --- lib/valuewalk.nix: named-grammar API (run/compileGrammar),
+  # mirroring lib/packrat.nix's grammar shape and bare-string
+  # nonterminal-reference syntax over an already-parsed value tree
+  # instead of string positions. Confirms rule cross-reference by name
+  # ("LOCKED"/"NODE"), recursive self-reference via plain `rec`, and that
+  # a real, valid `false`/legitimately-shaped value doesn't collide with
+  # the `null` failure sentinel (see lib/valuewalk.nix's header for why
+  # that's a per-schema fact, confirmed here for THIS schema).
+  namedGrammar = {
+    LOCKED = {
+      attrs = {
+        closed = true;
+        optional = {
+          narHash = {
+            string = { };
+          };
+        };
+      };
+    };
+    NODE = {
+      oneOf = [
+        {
+          attrs = {
+            closed = true;
+            fields = {
+              flake = {
+                bool = { };
+              };
+              locked = "LOCKED";
+              original = "LOCKED";
+            };
+          };
+        }
+        {
+          attrs = {
+            closed = true;
+            fields = {
+              locked = "LOCKED";
+              original = "LOCKED";
+            };
+          };
+        }
+      ];
+    };
+    DOCUMENT = {
+      attrs = {
+        closed = true;
+        fields = {
+          nodes = {
+            attrsOf = "NODE";
+          };
+          root = {
+            string = { };
+          };
+          version = {
+            int = { };
+          };
+        };
+      };
+    };
+  };
+  namedGrammarValidDoc = {
+    nodes = {
+      # A real, legitimate `false` value on a field whose own type is
+      # bool -- must NOT be confused with valuewalk's `null` failure
+      # sentinel (it isn't `null` at all, so there's nothing to confuse
+      # here, but this is the same field flake.lock's real corpus has
+      # that first surfaced the false-vs-failure question this file's
+      # header comment discusses).
+      a = {
+        flake = false;
+        locked = {
+          narHash = "x";
+        };
+        original = {
+          narHash = "y";
+        };
+      };
+    };
+    root = "a";
+    version = 7;
+  };
+  rNamedGrammar = valuewalk.run { grammar = namedGrammar; } namedGrammarValidDoc;
+
+  namedGrammarInvalidDoc = namedGrammarValidDoc // {
+    version = "not an int";
+  };
+  rNamedGrammarInvalid = valuewalk.run { grammar = namedGrammar; } namedGrammarInvalidDoc;
+
+  # Recursive schema via plain `rec` self-reference (no named-grammar
+  # indirection at all) -- confirms lib/valuewalk.nix's `compile` (the
+  # single-schema entry point, refs = {}) handles a self-referential
+  # generic-JSON-value schema correctly: string/int/bool leaves, lists
+  # and attrsets of the SAME schema, recursively.
+  jsonValueSchema = rec {
+    oneOf = [
+      { string = { }; }
+      { int = { }; }
+      { bool = { }; }
+      { listOf = jsonValueSchema; }
+      { attrsOf = jsonValueSchema; }
+    ];
+  };
+  jsonValueMatcher = valuewalk.compile jsonValueSchema;
+  nestedValue = {
+    a = 1;
+    b = {
+      c = [
+        "x"
+        "y"
+        [
+          true
+          [ "deep" ]
+        ]
+      ];
+    };
+  };
+  rNestedValue = jsonValueMatcher nestedValue;
+  rWrongTypeValue = jsonValueMatcher (x: x);
+
   checks = {
     cutMain_parsesFullString = cutMainResult.M != false;
     cutMain_correctValue =
@@ -420,6 +541,11 @@ let
       !(builtins.tryEval (jsonTomlSafety.checkGrammarSafety unsafeJsonInCutSeqE1)).success;
     jsonSafety_acceptsCutSeqE2OfCommittedLastBranch =
       (builtins.tryEval (jsonTomlSafety.checkGrammarSafety safeJsonInCutSeqE2OfLastBranch)).success;
+
+    valuewalk_namedGrammarMatchesAndPreservesRealFalse = rNamedGrammar.DOCUMENT == namedGrammarValidDoc;
+    valuewalk_namedGrammarRejectsWrongType = rNamedGrammarInvalid.DOCUMENT == null;
+    valuewalk_recursiveSchemaMatchesNestedValue = rNestedValue == nestedValue;
+    valuewalk_recursiveSchemaRejectsWrongType = rWrongTypeValue == null;
   };
 
   allPassed = builtins.all (x: x) (builtins.attrValues checks);
