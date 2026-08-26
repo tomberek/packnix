@@ -26,7 +26,11 @@
 #                              POSIX ERE semantics as packrat.nix's regex,
 #                              but no position/window: matched against the
 #                              complete string value, not a prefix)
-#   { oneOf = [s1 s2 ...]; } -> ordered choice: first schema that matches
+#   { choice = [s1 s2 ...]; } -> ordered choice: first schema that matches
+#                              (same name and semantics as packrat.nix's
+#                              `choice` -- both are ordered alternation
+#                              over the SAME input/value, no difference
+#                              between the two domains here)
 #   { listOf = s; }         -> matches iff isList and every element
 #                              matches `s`
 #   { attrsOf = s; }        -> matches iff isAttrs and every VALUE
@@ -156,9 +160,9 @@ rec {
       (v: if builtins.isBool v then v else FAIL)
     else if expr ? pattern then
       (v: if builtins.isString v && builtins.match expr.pattern v != null then v else FAIL)
-    else if expr ? oneOf then
+    else if expr ? choice then
       let
-        compiled = map compile expr.oneOf;
+        compiled = map compile expr.choice;
         go =
           v: cs:
           if cs == [ ] then

@@ -111,7 +111,7 @@
   # "LOCKED" is a bare-string rule reference, resolved by name against
   # this same grammar attrset -- see lib/valuewalk.nix's header comment.
   NODE = {
-    oneOf = [
+    choice = [
       {
         attrs = {
           closed = true;

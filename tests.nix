@@ -360,7 +360,7 @@ let
       };
     };
     NODE = {
-      oneOf = [
+      choice = [
         {
           attrs = {
             closed = true;
@@ -435,7 +435,7 @@ let
   # generic-JSON-value schema correctly: string/int/bool leaves, lists
   # and attrsets of the SAME schema, recursively.
   jsonValueSchema = rec {
-    oneOf = [
+    choice = [
       { string = { }; }
       { int = { }; }
       { bool = { }; }
