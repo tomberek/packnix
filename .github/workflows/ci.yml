@@ -51,6 +51,13 @@ jobs:
       - name: Verify packrat grammar and valuewalk schema agree
         run: ./verify-valuewalk-parity.sh
 
+      # verify-roundtrip.sh: lib/generate.nix's output must be accepted
+      # by the SAME grammar/schema it was generated for -- confirms the
+      # generate/parse pair is a real fixpoint, not just that generation
+      # runs without throwing.
+      - name: Verify generated samples round-trip through their grammar
+        run: ./verify-roundtrip.sh
+
       # default.nix / run.sh: the documented entry point actually works.
       - name: Run default.nix against data/lock.json
         run: ./run.sh
