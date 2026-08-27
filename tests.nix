@@ -10,6 +10,7 @@ let
   packrat = import ./lib/packrat.nix;
   jsonTomlSafety = import ./lib/json-toml-safety.nix;
   valuewalk = import ./lib/valuewalk.nix;
+  generate = import ./lib/generate.nix;
 
   run =
     grammar: count: string:
@@ -460,6 +461,178 @@ let
   rNestedValue = jsonValueMatcher nestedValue;
   rWrongTypeValue = jsonValueMatcher (x: x);
 
+  # --- lib/generate.nix: generates a sample string/value that a
+  # lib/packrat.nix grammar or lib/valuewalk.nix schema would ACCEPT --
+  # the reverse direction of parsing. Every check here round-trips: the
+  # SAME grammar/schema generates a sample, then validates it via the
+  # SAME grammar/schema, confirming the two directions actually agree
+  # (not just that generation runs without throwing).
+  genFlakelockSchema = import ./examples/flakelock-valuewalk.nix;
+  genFlakelockSamples = builtins.genList (
+    i:
+    generate.generate {
+      grammar = genFlakelockSchema;
+      ruleName = "DOCUMENT";
+      seed = "gen-flakelock-${builtins.toString i}";
+      maxDepth = 4;
+    }
+  ) 5;
+  genFlakelockValidated = map (
+    sample: (valuewalk.run { grammar = genFlakelockSchema; } sample).DOCUMENT == sample
+  ) genFlakelockSamples;
+
+  genRecursiveJsonValueSamples = builtins.genList (
+    i:
+    generate.generateFromSchema {
+      schema = jsonValueSchema;
+      seed = "gen-rec-${builtins.toString i}";
+      maxDepth = 4;
+    }
+  ) 5;
+  genRecursiveJsonValueValidated = map (
+    sample: jsonValueMatcher sample == sample
+  ) genRecursiveJsonValueSamples;
+
+  genLitGrammar = {
+    DOC = {
+      lit = "hello";
+    };
+  };
+  genLitSample = generate.generate {
+    grammar = genLitGrammar;
+    ruleName = "DOC";
+    seed = "gen-lit";
+  };
+
+  genRangeGrammar = {
+    DOC = {
+      range = [
+        "a"
+        "z"
+      ];
+    };
+  };
+  genRangeSamples = builtins.genList (
+    i:
+    generate.generate {
+      grammar = genRangeGrammar;
+      ruleName = "DOC";
+      seed = "gen-range-${builtins.toString i}";
+    }
+  ) 10;
+
+  genPlusGrammar = {
+    DOC = {
+      plus = {
+        range = [
+          "0"
+          "9"
+        ];
+      };
+    };
+  };
+  genPlusSamples = builtins.genList (
+    i:
+    generate.generate {
+      grammar = genPlusGrammar;
+      ruleName = "DOC";
+      seed = "gen-plus-${builtins.toString i}";
+    }
+  ) 10;
+
+  genEpsilonSample = generate.generate {
+    grammar = {
+      DOC = "";
+    };
+    ruleName = "DOC";
+    seed = "gen-eps";
+  };
+
+  # `action`'s `f` must be IGNORED for generation (see lib/generate.nix's
+  # header comment) -- confirms a schema/grammar using `action` still
+  # generates successfully rather than throwing, and the generated value
+  # matches what `e` alone (without `f`) would accept.
+  genActionGrammar = {
+    DOC = {
+      action = {
+        e = {
+          lit = "raw";
+        };
+        f = v: "TRANSFORMED:${v}";
+      };
+    };
+  };
+  genActionSample = generate.generate {
+    grammar = genActionGrammar;
+    ruleName = "DOC";
+    seed = "gen-action";
+  };
+
+  # Pattern/regex generation requires an explicit override -- confirms
+  # both the success path (override used, verified via builtins.match)
+  # and that a missing override throws (checked via tryEval, since this
+  # IS a plain Nix throw, unlike fromJSON/fromTOML's uncatchable errors).
+  genPatternSchema = {
+    pattern = "([0-9]+)";
+  };
+  genPatternSample = generate.generateFromSchema {
+    schema = genPatternSchema;
+    seed = "gen-pattern";
+    patternGenerators = {
+      "([0-9]+)" = seed: "42";
+    };
+  };
+  genPatternMissingOverrideResult = builtins.tryEval (
+    generate.generateFromSchema {
+      schema = genPatternSchema;
+      seed = "gen-pattern-missing";
+    }
+  );
+
+  # `and`/`not` have no general generation strategy -- confirms this
+  # throws rather than silently producing a wrong value.
+  genNotSchema = {
+    not = {
+      string = { };
+    };
+  };
+  genNotResult = builtins.tryEval (
+    generate.generateFromSchema {
+      schema = genNotSchema;
+      seed = "gen-not";
+    }
+  );
+
+  # Determinism: same schema + same seed must always produce the same
+  # value (see lib/generate.nix's header comment -- this is a design
+  # property, not an accident of implementation).
+  genDeterminismSchema = {
+    attrs = {
+      closed = true;
+      fields = {
+        a = {
+          string = { };
+        };
+        b = {
+          int = { };
+        };
+      };
+      optional = {
+        c = {
+          bool = { };
+        };
+      };
+    };
+  };
+  genDeterminismRun1 = generate.generateFromSchema {
+    schema = genDeterminismSchema;
+    seed = "gen-determinism";
+  };
+  genDeterminismRun2 = generate.generateFromSchema {
+    schema = genDeterminismSchema;
+    seed = "gen-determinism";
+  };
+
   checks = {
     cutMain_parsesFullString = cutMainResult.M != false;
     cutMain_correctValue =
@@ -546,6 +719,20 @@ let
     valuewalk_namedGrammarRejectsWrongType = rNamedGrammarInvalid.DOCUMENT == null;
     valuewalk_recursiveSchemaMatchesNestedValue = rNestedValue == nestedValue;
     valuewalk_recursiveSchemaRejectsWrongType = rWrongTypeValue == null;
+
+    generate_flakelockSamplesAllValidate = builtins.all (x: x) genFlakelockValidated;
+    generate_recursiveJsonValueSamplesAllValidate = builtins.all (x: x) genRecursiveJsonValueValidated;
+    generate_litIsTheLiteralItself = genLitSample == "hello";
+    generate_rangeSamplesAllInBounds = builtins.all (
+      s: builtins.stringLength s == 1 && s >= "a" && s <= "z"
+    ) genRangeSamples;
+    generate_plusSamplesNeverEmpty = builtins.all (s: builtins.stringLength s >= 1) genPlusSamples;
+    generate_epsilonIsEmptyString = genEpsilonSample == "";
+    generate_actionIgnoresFAndGeneratesForE = genActionSample == "raw";
+    generate_patternOverrideUsedAndVerified = genPatternSample == "42";
+    generate_patternMissingOverrideThrows = !genPatternMissingOverrideResult.success;
+    generate_notHasNoStrategyAndThrows = !genNotResult.success;
+    generate_isDeterministic = genDeterminismRun1 == genDeterminismRun2;
   };
 
   allPassed = builtins.all (x: x) (builtins.attrValues checks);
