@@ -351,19 +351,47 @@ rec {
 
   isTerminal = grammar: expr: !(isRecursiveExpr grammar [ ] expr);
 
+  # A generic "any JSON value" schema, in lib/valuewalk.nix's OWN DSL
+  # (string/int/bool/choice/listOf/attrsOf) -- reused to generate for
+  # `{ json = {}; }` (see generateWith's `expr ? json` case below) by
+  # generating a Nix value with THIS schema, then `builtins.toJSON`-
+  # serializing it, rather than a separate ad-hoc value-construction path.
+  # Same shape as tests.nix's `jsonValueSchema` test case (confirmed there
+  # that a `rec`-based self-reference like this one generates and
+  # terminates correctly via isRecursiveExpr's object-identity cycle
+  # detection).
+  anyJsonValueSchema = rec {
+    choice = [
+      { string = { }; }
+      { int = { }; }
+      { bool = { }; }
+      {
+        listOf = anyJsonValueSchema;
+      }
+      {
+        attrsOf = anyJsonValueSchema;
+      }
+    ];
+  };
+  generateAnyJsonValue =
+    seed: depth: generateWith { } { } { } { } 3 anyJsonValueSchema (seed + "/json-value") depth;
+
   # --- Generation ---------------------------------------------------------
   # `refs`: lazily self-referential attrset of `{ <RuleName> = seed:
   # depth: value; ... }`, mirroring lib/valuewalk.nix's `compileWith`
   # (same "no position to index by, so plain name lookup via Nix's own
   # laziness is sufficient" reasoning -- see that file's header comment).
-  # `patternGenerators`: `{ "<pattern>" = seed: string; }` -- see REGEX
-  # GENERATION above. `maxDepth`: hard backstop even with terminal-branch
-  # detection, since `choice` can pick a non-terminal branch repeatedly
-  # before exhausting depth even when a terminal IS reachable.
+  # `patternGenerators`: `{ "<pattern>" = seed: string; }` -- see
+  # PATTERN/REGEX GENERATION above. `builtinParserGenerators`: `{ toml =
+  # seed: string; }` -- see the `expr ? toml` case below for why `json`
+  # needs no equivalent override. `maxDepth`: hard backstop even with
+  # terminal-branch detection, since `choice` can pick a non-terminal
+  # branch repeatedly before exhausting depth even when a terminal IS
+  # reachable.
   generateWith =
-    grammar: refs: patternGenerators: maxDepth: expr: seed: depth:
+    grammar: refs: patternGenerators: builtinParserGenerators: maxDepth: expr: seed: depth:
     let
-      generate = generateWith grammar refs patternGenerators maxDepth;
+      generate = generateWith grammar refs patternGenerators builtinParserGenerators maxDepth;
     in
     if expr == "" then
       # Epsilon: the empty string, ALWAYS checked before the general
@@ -518,6 +546,44 @@ rec {
       # matched `[lit opt lit]` triple; generating a string that
       # SEQUENCE would accept needs no knowledge of `f` at all).
       generate expr.action.e seed depth
+    else if expr ? json then
+      # `{ json = {}; }` accepts ANY JSON-shaped string at this position
+      # (see lib/packrat.nix's evalBuiltinParser) -- generate an
+      # arbitrary Nix value via a small self-referential valuewalk-domain
+      # schema (reusing the SAME string/int/bool/choice/listOf/attrsOf
+      # cases already above, not a separate code path), then serialize
+      # with builtins.toJSON, which exists and is exact (confirmed:
+      # `fromJSON (toJSON v) == v` for every value shape this schema can
+      # produce). No override needed, unlike `pattern`/`regex`/`toml`
+      # below -- toJSON's existence makes this the one builtin-parser
+      # escape hatch generation can synthesize for automatically.
+      builtins.toJSON (generateAnyJsonValue seed depth)
+    else if expr ? toml then
+      # Unlike `json` above, there is NO `builtins.toTOML` (confirmed) --
+      # no automatic synthesis is possible, so this requires an explicit
+      # override via `builtinParserGenerators.toml`, same override
+      # pattern as `patternGenerators` for `pattern`/`regex`.
+      #
+      # Still verified via `builtins.fromTOML candidate` (forced eagerly
+      # via `builtins.seq`, same reasoning as lib/packrat.nix's
+      # evalBuiltinParser: an unforced thunk here would let a bad
+      # override silently ride through until something ELSE happens to
+      # read the value) -- just not wrapped in `builtins.tryEval` to
+      # produce a custom message, unlike `pattern`/`regex`'s
+      # `builtins.match`-based check above: confirmed earlier (see
+      # evalBuiltinParser's own comment) that tryEval cannot catch
+      # fromJSON/fromTOML's parse errors at all (they are not the Nix
+      # language's own AssertionError, which is all tryEval catches). A
+      # bad override's error surfaces as fromTOML's own raw parse-error
+      # message instead -- not silently swallowed, just not re-wrapped.
+      if !(builtinParserGenerators ? toml) then
+        throw "generate: no generator provided for { toml = {}; } -- pass builtinParserGenerators.toml (no builtins.toTOML exists to synthesize automatically, unlike json)"
+      else
+        let
+          candidate = builtinParserGenerators.toml seed;
+          verified = builtins.fromTOML candidate;
+        in
+        builtins.seq verified candidate
     else if expr ? and || expr ? not then
       throw "generate: { and = ...; }/{ not = ...; } (lookahead) has no general generation strategy -- especially `not`, which would require negation-synthesis"
     else
@@ -526,29 +592,30 @@ rec {
   # Compiles every rule's generator ONCE via a self-referential attrset,
   # mirroring lib/valuewalk.nix's compileGrammar.
   generateGrammar =
-    patternGenerators: maxDepth: grammar:
+    patternGenerators: builtinParserGenerators: maxDepth: grammar:
     let
       compiled = builtins.mapAttrs (
         _: expr: seed: depth:
-        generateWith grammar compiled patternGenerators maxDepth expr seed depth
+        generateWith grammar compiled patternGenerators builtinParserGenerators maxDepth expr seed depth
       ) grammar;
     in
     compiled;
 
   # Public entry point for a NAMED grammar, mirroring lib/valuewalk.nix's
   # `run`/lib/packrat.nix's `run` shape: `generate { grammar; ruleName;
-  # seed; patternGenerators ? {}; maxDepth ? 5; }` returns a single
-  # generated value for `ruleName`.
+  # seed; patternGenerators ? {}; builtinParserGenerators ? {}; maxDepth
+  # ? 5; }` returns a single generated value for `ruleName`.
   generate =
     {
       grammar,
       ruleName,
       seed,
       patternGenerators ? { },
+      builtinParserGenerators ? { },
       maxDepth ? 5,
     }:
     let
-      compiled = generateGrammar patternGenerators maxDepth grammar;
+      compiled = generateGrammar patternGenerators builtinParserGenerators maxDepth grammar;
     in
     if !(compiled ? ${ruleName}) then
       throw "generate: no such rule \"${ruleName}\" in grammar"
@@ -563,7 +630,8 @@ rec {
       schema,
       seed,
       patternGenerators ? { },
+      builtinParserGenerators ? { },
       maxDepth ? 5,
     }:
-    generateWith { } { } patternGenerators maxDepth schema seed 0;
+    generateWith { } { } patternGenerators builtinParserGenerators maxDepth schema seed 0;
 }

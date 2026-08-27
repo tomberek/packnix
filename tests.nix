@@ -633,6 +633,66 @@ let
     seed = "gen-determinism";
   };
 
+  # { json = {}; }/{ toml = {}; } generation (see lib/packrat.nix's
+  # evalBuiltinParser): json needs no override (builtins.toJSON exists
+  # and is exact); toml has no builtins.toTOML, so requires an explicit
+  # builtinParserGenerators.toml override. Round-trips each generated
+  # sample through packrat.run to confirm the SAME grammar accepts what
+  # generate produced for it.
+  genJsonGrammar = {
+    DOC = {
+      json = { };
+    };
+  };
+  genJsonSamples = builtins.genList (
+    i:
+    generate.generate {
+      grammar = genJsonGrammar;
+      ruleName = "DOC";
+      seed = "gen-json-${builtins.toString i}";
+    }
+  ) 5;
+  genJsonValidated = map (
+    sample:
+    let
+      parsed = (run genJsonGrammar 0 sample).DOC;
+    in
+    # NOT `parsed != false && ...` -- confirmed (see Task #6 in the
+    # session's task list / this repo's issue tracker) that
+    # lib/packrat.nix's `run` has a pre-existing bug: it cannot
+    # distinguish a rule that FAILED from a rule whose matched VALUE
+    # legitimately IS `false` (only possible via json/toml, since every
+    # other combinator's matched value is always a string). Comparing
+    # directly against `builtins.fromJSON sample` (the ground truth) is
+    # correct regardless of that bug -- it happens to also equal `false`
+    # when the sample IS the JSON literal "false", which is exactly the
+    # case the bug affects, but the equality check itself never relies on
+    # the broken `!= false` distinction.
+    parsed == builtins.fromJSON sample
+  ) genJsonSamples;
+
+  genTomlGrammar = {
+    DOC = {
+      toml = { };
+    };
+  };
+  genTomlMissingOverrideResult = builtins.tryEval (
+    generate.generate {
+      grammar = genTomlGrammar;
+      ruleName = "DOC";
+      seed = "gen-toml-missing";
+    }
+  );
+  genTomlSample = generate.generate {
+    grammar = genTomlGrammar;
+    ruleName = "DOC";
+    seed = "gen-toml";
+    builtinParserGenerators = {
+      toml = seed: "a = 1\nb = true\n";
+    };
+  };
+  genTomlValidated = (run genTomlGrammar 0 genTomlSample).DOC != false;
+
   checks = {
     cutMain_parsesFullString = cutMainResult.M != false;
     cutMain_correctValue =
@@ -733,6 +793,9 @@ let
     generate_patternMissingOverrideThrows = !genPatternMissingOverrideResult.success;
     generate_notHasNoStrategyAndThrows = !genNotResult.success;
     generate_isDeterministic = genDeterminismRun1 == genDeterminismRun2;
+    generate_jsonSamplesAllValidate = builtins.all (x: x) genJsonValidated;
+    generate_tomlMissingOverrideThrows = !genTomlMissingOverrideResult.success;
+    generate_tomlWithOverrideValidates = genTomlValidated;
   };
 
   allPassed = builtins.all (x: x) (builtins.attrValues checks);
