@@ -50,7 +50,7 @@ let
     let
       doc = parse string;
     in
-    if doc == false then
+    if doc == packrat.NO_MATCH then
       throw "not a valid Gemfile.lock"
     else if doc.checksums == null then
       throw "this Gemfile.lock has no CHECKSUMS section (needs Bundler >= 2.7)"

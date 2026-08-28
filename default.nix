@@ -19,7 +19,8 @@ let
   myrun = count: string: packrat.run { inherit grammar handlers; } count string;
 
   # Reads `path` and parses it from position 0, returning the top-level X
-  # value (or `false` on failure).
+  # value (or `packrat.NO_MATCH` on failure -- see lib/packrat.nix's run
+  # for why that, not `false`, is the failure sentinel).
   pack =
     path:
     let

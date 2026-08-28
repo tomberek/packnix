@@ -119,7 +119,12 @@ packrat.run { grammar = json.grammar; handlers = json.handlers; } 0
 
 `run` returns `{ <NonterminalName> = value; ... }` for every rule in the
 grammar, evaluated from position `count` (usually `0`); a rule that failed
-to match at that position is `false`.
+to match at that position is `packrat.NO_MATCH` (a dedicated sentinel, not
+`false` — a rule can legitimately match a real `false`/`null` value via
+the `{ json = {}; }`/`{ toml = {}; }` combinator, which hands the rest of
+the input to `builtins.fromJSON`/`fromTOML` — see `lib/packrat.nix`'s own
+header comment — so `false` alone can't distinguish a real match from a
+failure).
 
 Using the flake.lock-specialized grammar instead (only accepts documents
 matching that exact schema — see next section):

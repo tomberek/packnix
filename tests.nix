@@ -657,17 +657,15 @@ let
     let
       parsed = (run genJsonGrammar 0 sample).DOC;
     in
-    # NOT `parsed != false && ...` -- confirmed (see Task #6 in the
-    # session's task list / this repo's issue tracker) that
-    # lib/packrat.nix's `run` has a pre-existing bug: it cannot
-    # distinguish a rule that FAILED from a rule whose matched VALUE
-    # legitimately IS `false` (only possible via json/toml, since every
-    # other combinator's matched value is always a string). Comparing
-    # directly against `builtins.fromJSON sample` (the ground truth) is
-    # correct regardless of that bug -- it happens to also equal `false`
-    # when the sample IS the JSON literal "false", which is exactly the
-    # case the bug affects, but the equality check itself never relies on
-    # the broken `!= false` distinction.
+    # Comparing directly against `builtins.fromJSON sample` (the ground
+    # truth) rather than checking `parsed != packrat.NO_MATCH` first --
+    # both are correct now that lib/packrat.nix's run() uses a dedicated
+    # NO_MATCH sentinel instead of `false` (see that file's own comment
+    # for the bug this fixed: `false` alone couldn't distinguish a rule
+    # that failed from a rule whose matched VALUE legitimately IS
+    # `false`, only reachable via json/toml). Comparing against
+    # fromJSON directly is simpler here and needs no sentinel check at
+    # all.
     parsed == builtins.fromJSON sample
   ) genJsonSamples;
 
@@ -691,7 +689,7 @@ let
       toml = seed: "a = 1\nb = true\n";
     };
   };
-  genTomlValidated = (run genTomlGrammar 0 genTomlSample).DOC != false;
+  genTomlValidated = (run genTomlGrammar 0 genTomlSample).DOC != packrat.NO_MATCH;
 
   # --- Regression: grammar/flakelock.nix used to accept a JSON object
   # missing the "," between two present fields (each field's leading
@@ -716,7 +714,7 @@ let
   } 0 flakelockValidCommaInput;
 
   checks = {
-    cutMain_parsesFullString = cutMainResult.M != false;
+    cutMain_parsesFullString = cutMainResult.M != packrat.NO_MATCH;
     cutMain_correctValue =
       cutMainResult.M == [
         [
@@ -735,28 +733,28 @@ let
         ";"
       ];
 
-    cutMisplaced_acceptsA = cutMisplacedA.P != false;
-    cutMisplaced_rejectsB = cutMisplacedB.P == false;
+    cutMisplaced_acceptsA = cutMisplacedA.P != packrat.NO_MATCH;
+    cutMisplaced_rejectsB = cutMisplacedB.P == packrat.NO_MATCH;
 
-    starCut_wholeStarFailsOnTrailingUnmatchedA = starCutOnBadInput.S == false;
-    starPlain_stopsAndSucceedsOnSameInput = starPlainOnBadInput.S != false;
-    starCut_succeedsWhenEveryPairComplete = starCutOnGoodInput.S != false;
+    starCut_wholeStarFailsOnTrailingUnmatchedA = starCutOnBadInput.S == packrat.NO_MATCH;
+    starPlain_stopsAndSucceedsOnSameInput = starPlainOnBadInput.S != packrat.NO_MATCH;
+    starCut_succeedsWhenEveryPairComplete = starCutOnGoodInput.S != packrat.NO_MATCH;
 
-    opt_matchesWhenPresent = rOptPresent.OPT_PRESENT != false;
-    opt_matchesWhenAbsent = rOptAbsent.OPT_ABSENT != false;
-    plus_matchesOneOrMore = rPlusOk.PLUS_OK != false;
-    plus_failsOnZero = rPlusFail.PLUS_FAIL == false;
-    and_lookaheadDoesNotConsume = rAnd.AND_LOOKAHEAD != false;
-    not_lookaheadRejectsWhenPresent = rNotRejects.NOT_LOOKAHEAD_REJECTS == false;
-    not_lookaheadPassesWhenAbsent = rNotPasses.NOT_LOOKAHEAD_PASSES != false;
+    opt_matchesWhenPresent = rOptPresent.OPT_PRESENT != packrat.NO_MATCH;
+    opt_matchesWhenAbsent = rOptAbsent.OPT_ABSENT != packrat.NO_MATCH;
+    plus_matchesOneOrMore = rPlusOk.PLUS_OK != packrat.NO_MATCH;
+    plus_failsOnZero = rPlusFail.PLUS_FAIL == packrat.NO_MATCH;
+    and_lookaheadDoesNotConsume = rAnd.AND_LOOKAHEAD != packrat.NO_MATCH;
+    not_lookaheadRejectsWhenPresent = rNotRejects.NOT_LOOKAHEAD_REJECTS == packrat.NO_MATCH;
+    not_lookaheadPassesWhenAbsent = rNotPasses.NOT_LOOKAHEAD_PASSES != packrat.NO_MATCH;
 
     regex_matchLongerThanWindowIsNotTruncated =
-      rLongMatch.LONG != false && builtins.stringLength rLongMatch.LONG == 2000;
+      rLongMatch.LONG != packrat.NO_MATCH && builtins.stringLength rLongMatch.LONG == 2000;
 
     star_manyRepeatsDoesNotOverflowOrHang =
-      rManyRepeats.MANY != false && builtins.length rManyRepeats.MANY == 64000;
+      rManyRepeats.MANY != packrat.NO_MATCH && builtins.length rManyRepeats.MANY == 64000;
 
-    bigJumpDoesNotOverflow = rBigJump.B != false;
+    bigJumpDoesNotOverflow = rBigJump.B != packrat.NO_MATCH;
 
     json_parsesRemainderOfInput =
       rJson.DOC == {
@@ -819,8 +817,8 @@ let
     generate_tomlMissingOverrideThrows = !genTomlMissingOverrideResult.success;
     generate_tomlWithOverrideValidates = genTomlValidated;
 
-    flakelock_rejectsMissingCommaBetweenFields = rFlakelockMissingComma.DOCUMENT == false;
-    flakelock_stillAcceptsValidCommaPlacement = rFlakelockValidComma.DOCUMENT != false;
+    flakelock_rejectsMissingCommaBetweenFields = rFlakelockMissingComma.DOCUMENT == packrat.NO_MATCH;
+    flakelock_stillAcceptsValidCommaPlacement = rFlakelockValidComma.DOCUMENT != packrat.NO_MATCH;
   };
 
   allPassed = builtins.all (x: x) (builtins.attrValues checks);

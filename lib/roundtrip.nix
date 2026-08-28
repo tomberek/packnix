@@ -61,7 +61,7 @@ rec {
         in
         {
           inherit seed generated;
-          accepted = parsed != false;
+          accepted = parsed != packrat.NO_MATCH;
         }
       ) numSamples;
     in
@@ -73,7 +73,7 @@ rec {
   # For a lib/valuewalk.nix VALUE schema/grammar. Same shape as
   # checkPackratGrammar, but `accepted` checks against `null` (valuewalk's
   # failure sentinel, see that file's header) rather than packrat's
-  # `false`.
+  # `NO_MATCH`.
   checkValuewalkGrammar =
     {
       grammar,

@@ -61,7 +61,7 @@ for fx in "${fixtures[@]}"; do
       g = import ./grammar/flakelock.nix;
       content = builtins.unsafeDiscardStringContext (builtins.readFile ./${fx});
       parsed = (packrat.run { grammar = g.grammar; handlers = g.handlers; } 0 content).DOCUMENT;
-    in if parsed == false then \"REJECTED\" else if parsed == builtins.fromJSON content then \"MATCH\" else \"MISMATCH\"
+    in if parsed == packrat.NO_MATCH then \"REJECTED\" else if parsed == builtins.fromJSON content then \"MATCH\" else \"MISMATCH\"
   " 2>&1)
 
   case "$flakelock_result" in

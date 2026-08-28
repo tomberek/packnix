@@ -49,8 +49,8 @@ for fx in "${fixtures[@]}"; do
       stringResult = (packrat.run { grammar = g.grammar; handlers = g.handlers; } 0 content).DOCUMENT;
       valueResult = (vw.run { grammar = schema; } (builtins.fromJSON content)).DOCUMENT;
     in
-      if stringResult == false && valueResult == null then \"BOTH_REJECTED\"
-      else if stringResult == false || valueResult == null then \"DISAGREE_ON_ACCEPT\"
+      if stringResult == packrat.NO_MATCH && valueResult == null then \"BOTH_REJECTED\"
+      else if stringResult == packrat.NO_MATCH || valueResult == null then \"DISAGREE_ON_ACCEPT\"
       else if stringResult == valueResult then \"MATCH\"
       else \"MISMATCH\"
   " 2>&1)

@@ -1064,9 +1064,41 @@ rec {
       inherit at nameToIndex;
     };
 
+  # `run`'s own "this rule did not match" sentinel -- NOT `false`
+  # (confirmed: a real bug, found via lib/generate.nix's round-trip
+  # testing generating the JSON string "false" through a `{ json = {};
+  # }`-using rule and `run` reporting it as a non-match, indistinguishable
+  # from a genuine parse failure). Only `{ json = {}; }`/`{ toml = {};
+  # }` can ever produce a non-string matched VALUE at all -- every other
+  # combinator's value is always a substring of the input -- so this
+  # collision was latent in `run`'s design since the file was written,
+  # with no way to manifest before json/toml existed.
+  #
+  # A path was chosen over wrapping every successful value in a list
+  # (mirroring lib/valuewalk.nix's own `null`-collision fix): both
+  # options require updating every existing `result.Rule != false`
+  # caller either way (any change to the failure signal does), but
+  # wrapping ALSO changes every successful value's shape (`result.Rule.
+  # someField` becoming `(result.Rule)[0].someField` everywhere), while a
+  # path sentinel leaves a matched value bare -- only the FAILURE
+  # comparison target changes. Measured via NIX_SHOW_STATS on a 636KB
+  # fixture through grammar/flakelock.nix: a bare path sentinel here
+  # costs literally ZERO additional allocations vs. the old `false`
+  # sentinel (identical values.number/nrPrimOpCalls/gc.totalBytes on both
+  # the success and failure paths) -- unlike lib/valuewalk.nix's OWN path-
+  # sentinel experiment, which cost ~10% more allocations there because
+  # that comparison runs once per TREE NODE during a deep recursive walk;
+  # `run`'s comparison runs once per RULE NAME, a constant independent of
+  # input size, so the difference here is too small to even register.
+  NO_MATCH = /var/empty/packrat-no-match-sentinel;
+
   # Public entry point: parse `string` from `count`, returning
-  # `{ <NonterminalName> = value; ... }` with `false` for any nonterminal
-  # that failed to match at that position.
+  # `{ <NonterminalName> = value; ... }` with `NO_MATCH` for any
+  # nonterminal that failed to match at that position (compare via
+  # `result.RuleName != packrat.NO_MATCH`, NOT `!= false` -- a rule's
+  # matched value can legitimately BE `false`/`null`/etc. when it uses
+  # `{ json = {}; }`/`{ toml = {}; }`, and only that comparison correctly
+  # distinguishes the two).
   run =
     {
       grammar,
@@ -1082,6 +1114,6 @@ rec {
       let
         r = builtins.elemAt atCount built.nameToIndex.${name};
       in
-      if r != false then builtins.elemAt r 0 else false
+      if r != false then builtins.elemAt r 0 else NO_MATCH
     ) grammar;
 }
