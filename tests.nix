@@ -693,6 +693,28 @@ let
   };
   genTomlValidated = (run genTomlGrammar 0 genTomlSample).DOC != false;
 
+  # --- Regression: grammar/flakelock.nix used to accept a JSON object
+  # missing the "," between two present fields (each field's leading
+  # comma was independently `opt`, with nothing actually requiring one
+  # between two REAL fields -- see grammar/flakelock.nix's
+  # fieldWithLeadingComma comment for the fix). Found independently via
+  # lib/generate.nix's round-trip testing, not by hand.
+  flakelockGrammarModule = import ./grammar/flakelock.nix;
+  flakelockMissingCommaInput = ''{"nodes": {"a": {"locked":{"dir": "x" "narHash":"y"},"original":{}}},"root": "a" ,"version":1 }'';
+  rFlakelockMissingComma = packrat.run {
+    grammar = flakelockGrammarModule.grammar;
+    handlers = flakelockGrammarModule.handlers;
+  } 0 flakelockMissingCommaInput;
+
+  # Confirm a VALID document (same shape, comma correctly present) still
+  # parses -- the fix must not have made the grammar reject legitimate
+  # input while fixing the missing-comma leniency.
+  flakelockValidCommaInput = ''{"nodes": {"a": {"locked":{"dir": "x", "narHash":"y"},"original":{}}},"root": "a" ,"version":1 }'';
+  rFlakelockValidComma = packrat.run {
+    grammar = flakelockGrammarModule.grammar;
+    handlers = flakelockGrammarModule.handlers;
+  } 0 flakelockValidCommaInput;
+
   checks = {
     cutMain_parsesFullString = cutMainResult.M != false;
     cutMain_correctValue =
@@ -796,6 +818,9 @@ let
     generate_jsonSamplesAllValidate = builtins.all (x: x) genJsonValidated;
     generate_tomlMissingOverrideThrows = !genTomlMissingOverrideResult.success;
     generate_tomlWithOverrideValidates = genTomlValidated;
+
+    flakelock_rejectsMissingCommaBetweenFields = rFlakelockMissingComma.DOCUMENT == false;
+    flakelock_stillAcceptsValidCommaPlacement = rFlakelockValidComma.DOCUMENT != false;
   };
 
   allPassed = builtins.all (x: x) (builtins.attrValues checks);

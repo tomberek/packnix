@@ -77,30 +77,45 @@ let
     };
   };
 
-  # `"key":` at a fixed position. Since which of the 12 known fields are
-  # actually present varies per object (a `locked`/`original` object's key
-  # set is any alphabetical subsequence, not always the same subset), the
-  # field that happens to be first among those PRESENT is not knowable
-  # ahead of parsing -- so the leading "," can't be tied to "is this the
-  # first field tried" (a hardcoded "no comma before the first-tried
-  # field" would leave every object where that field is absent missing a
-  # comma). Instead the comma itself is `opt`: for the one field that
-  # happens to be actually-first, no "," precedes it and the opt simply
-  # matches zero times; for every other present field, the "," left by the
-  # previous present field is there and the opt matches it.
-  field = key: valueExpr: {
+  # `"key":` at a fixed position, producing `{ name; value; }` directly
+  # (not a raw sequence tuple -- see fieldWithLeadingComma/lockedOrOriginalObject
+  # below for why). No comma handling here at all: this is the CORE
+  # match, reused for both "the first present field" (no leading comma)
+  # and "a later present field" (mandatory leading comma) below.
+  fieldCore = key: valueExpr: {
+    action = {
+      e = [
+        { lit = ''"${key}":''; }
+        ws
+        valueExpr
+        ws
+      ];
+      f = v: {
+        name = key;
+        value = builtins.elemAt v 2;
+      };
+    };
+  };
+
+  # A field that, IF PRESENT, must have a mandatory leading "," (used for
+  # every field except whichever one a lockedOrOriginalObject `choice`
+  # branch below has committed to as "the first present field" --
+  # BUGFIX: an earlier version made this comma `opt` unconditionally for
+  # EVERY field, which meant nothing in the grammar actually required a
+  # "," between two present fields at all -- confirmed independently via
+  # lib/generate.nix's round-trip testing, which generated
+  # `{"dir":"x""narHash":"y"}` and found this grammar accepted it as
+  # valid; that string is not valid JSON, and correctly returning `false`
+  # for it is exactly what the choice-over-first-present-field structure
+  # below now guarantees, since a field appearing anywhere other than
+  # immediately after a mandatory "," or as the branch's own committed
+  # first field simply has no matching position to land in).
+  fieldWithLeadingComma = key: valueExpr: {
     opt = [
-      {
-        opt = {
-          lit = ",";
-        };
-      }
+      { lit = ","; }
       ws
-      { lit = ''"${key}":''; }
-      ws
-      valueExpr
-      ws
-    ];
+    ]
+    ++ [ (fieldCore key valueExpr) ];
   };
 
   # Every `locked`/`original` field observed in the real file, alphabetical
@@ -161,46 +176,78 @@ let
       value = jsonString;
     }
   ];
-  lockedOriginalNames = map (f: f.name) lockedOriginalFields;
 
-  # Extracts the non-null [key value] pairs the field-sequence above
-  # actually matched out of `v` (the whole `[ "{" ws field0 .. fieldN "}"
-  # ]` sequence value), dropping the `null`s left by fields that weren't
-  # present (each `field` is `opt`, so an absent field's raw value is
-  # `null`, not a [comma? ws "key": ws VALUE ws] tuple). `offset` is where
-  # field0 lands in `v` (2: past the leading "{" and ws).
-  collectFields =
-    fieldNames: offset: v:
-    builtins.listToAttrs (
-      builtins.filter (x: x != null) (
-        builtins.genList (
-          i:
-          let
-            raw = builtins.elemAt v (offset + i);
-          in
-          if raw == null then
-            null
-          else
-            {
-              name = builtins.elemAt fieldNames i;
-              value = builtins.elemAt raw 4; # [comma? ws "key": ws VALUE ws] -> VALUE at index 4
-            }
-        ) (builtins.length fieldNames)
-      )
-    );
+  # A single `choice` branch committing to "field index k is the FIRST
+  # PRESENT field in this object" -- fields 0..k-1 are simply never
+  # tried (correct: if k is genuinely first, none of them can be
+  # present), field k itself is matched via fieldCore (no leading comma:
+  # it's the object's first field, nothing precedes it), and every field
+  # after k uses fieldWithLeadingComma (present ⟺ preceded by a
+  # mandatory ",", fixing the missing-comma bug -- see
+  # fieldWithLeadingComma's comment). Result: a flat list of the
+  # `{name;value;}`s that fields k..N-1 actually matched (fields after k
+  # that were absent contribute `null`, filtered out below).
+  branchForFirstFieldIndex =
+    k:
+    let
+      n = builtins.length lockedOriginalFields;
+      fieldAt = i: builtins.elemAt lockedOriginalFields i;
+    in
+    [ (fieldCore (fieldAt k).name (fieldAt k).value) ]
+    ++ (map (i: fieldWithLeadingComma (fieldAt i).name (fieldAt i).value) (
+      builtins.genList (i: k + 1 + i) (n - k - 1)
+    ));
 
-  # `"locked": {...}` / `"original": {...}`'s body: the field-scan above,
-  # wrapped in the object braces -- never a generic "parse a JSON object"
-  # (no key-count/order discovery at all).
+  # One choice branch per possible "first present field" index, plus one
+  # more for "no fields present at all" (an empty `locked`/`original`
+  # object -- not confirmed in the corpus but not excludable either,
+  # same discipline as every `opt`-wrapped field already applies).
+  lockedOrOriginalFieldsChoice = {
+    choice =
+      (map branchForFirstFieldIndex (builtins.genList (i: i) (builtins.length lockedOriginalFields)))
+      ++ [ [ ] ];
+  };
+
+  # `"locked": {...}` / `"original": {...}`'s body: the choice-over-
+  # first-present-field structure above, wrapped in the object braces --
+  # never a generic "parse a JSON object" (no key-count/order discovery
+  # at all: which alphabetical SUBSEQUENCE of the 12 fixed fields is
+  # present is discovered by the choice's branch selection, but their
+  # relative ORDER is still fixed and enforced, same as before this fix).
   lockedOrOriginalObject = {
     action = {
       e = [
         { lit = "{"; }
         ws
-      ]
-      ++ (map (f: field f.name f.value) lockedOriginalFields)
-      ++ [ { lit = "}"; } ];
-      f = collectFields lockedOriginalNames 2;
+        lockedOrOriginalFieldsChoice
+        ws
+        { lit = "}"; }
+      ];
+      f =
+        v:
+        builtins.listToAttrs (
+          builtins.filter (x: x != null) (
+            map (
+              raw:
+              if raw == null then
+                null
+              else if builtins.isAttrs raw && raw ? name then
+                raw
+              else
+                # fieldWithLeadingComma's `opt` wraps a MATCHED field in
+                # its own 3-element sequence `[ {lit=",";} ws
+                # fieldCoreResult ]` (`opt`'s success value is exactly
+                # its body's value, unwrapped no further -- confirmed
+                # against lib/packrat.nix's compileOpt) -- fieldCoreResult
+                # is at index 2, not 1 (an earlier version of this
+                # comment/index was WRONG, describing a shape this file
+                # never actually produced; caught by verify-fixtures.sh
+                # failing on every real fixture with "expected a set but
+                # found a string" once this fix was first written).
+                builtins.elemAt raw 2
+            ) (builtins.elemAt v 2)
+          )
+        );
     };
   };
 
