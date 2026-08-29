@@ -5,6 +5,15 @@ on:
     branches: [master]
   pull_request:
 
+# This repo pushes to the same branch/PR many times in quick succession
+# (observed: one branch triggered CI 15 times in under 2 days). Without a
+# concurrency group, each push runs a full ~30-40s cycle even after it's
+# already obsoleted by the next push. Cancel the in-flight run for the
+# same ref so only the latest push's CI keeps running.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -68,9 +77,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/nix-installer-action@v22
+      # `nix run nixpkgs#nixfmt` has to fetch and evaluate the whole
+      # nixpkgs tree just to resolve one attribute -- ~15-16s of this
+      # job's ~16s of Nix-related time, none of it spent on nixfmt's own
+      # (already-substituted, sub-second) closure. It's also a
+      # reproducibility gap: with no flake.lock, nixpkgs-unstable rolls
+      # forward under us, so "which nixfmt ran on commit X" isn't
+      # answerable later, and nixfmt has shipped real formatting-style
+      # changes across versions (RFC 166 rollout). Instead, fetch the
+      # pinned v1.4.0 static release binary directly: no Nix
+      # eval/fetch of nixpkgs at all, so it's both fully reproducible
+      # (fixed version + checksum-verifiable download) and much faster
+      # (~0.4s to download vs ~15-16s to resolve via nixpkgs).
+      - name: Fetch pinned nixfmt
+        run: |
+          curl -fsSL -o /usr/local/bin/nixfmt \
+            https://github.com/NixOS/nixfmt/releases/download/v1.4.0/nixfmt
+          echo "62488394d5233283096466350487ed46470366f57db4bec824a87ecbacce960a  /usr/local/bin/nixfmt" | sha256sum -c -
+          chmod +x /usr/local/bin/nixfmt
 
       # nixfmt (RFC 166) is the standard formatter; --check exits non-zero
       # on any unformatted file without touching it.
       - name: Check nix formatting
-        run: nix run nixpkgs#nixfmt -- --check $(find . -name '*.nix' -not -path './.claude/*')
+        run: nixfmt --check $(find . -name '*.nix' -not -path './.claude/*')
