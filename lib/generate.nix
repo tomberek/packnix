@@ -144,22 +144,33 @@
 #                              harder than every other form here -- not
 #                              attempted.
 #
-# PATTERN/REGEX GENERATION (Option 2 of two explored in parallel -- see
-# the sibling exploration of automatic POSIX-ERE-pattern synthesis in the
-# worktree-regex-generation branch): neither `{ pattern = "..."; }`
-# (lib/valuewalk.nix) nor `{ regex = "..."; }` (lib/packrat.nix, its
-# `maxLen` option is irrelevant here -- that's a PARSE-time performance
-# hint, not something generation needs) is synthesized from the pattern
-# text. Both must supply an explicit override via the SAME
-# `patternGenerators` argument: `{ "<the exact pattern string>" = seed: <a
-# string that matches it>; }` -- one table covers both DSLs, since a
-# POSIX ERE string is a POSIX ERE string regardless of which combinator
-# name wraps it. `generate` verifies every override-produced string
-# actually matches its pattern via `builtins.match` before using it
-# (never trusts the override blindly), and throws a clear "no generator
-# provided for pattern: ..." error for any unmatched `pattern`/`regex`
-# atom -- same "throw on missing case rather than silently produce
-# something wrong" discipline as everywhere else in this repo.
+# PATTERN/REGEX GENERATION: both `{ pattern = "..."; }` (lib/valuewalk.nix)
+# and `{ regex = "..."; }` (lib/packrat.nix, its `maxLen` option is
+# irrelevant here -- that's a PARSE-time performance hint, not something
+# generation needs) are synthesized AUTOMATICALLY via lib/regex-generate.nix
+# (a POSIX ERE parser + AST-walking generator), unless an explicit
+# override is supplied via `patternGenerators`: `{ "<the exact pattern
+# string>" = seed: <a string that matches it>; }` -- override takes
+# precedence when present (one table covers both DSLs, since a POSIX ERE
+# string is a POSIX ERE string regardless of which combinator name wraps
+# it), automatic synthesis is the fallback otherwise. `generate` verifies
+# EITHER path's produced string actually matches the pattern via
+# `builtins.match` before using it (never trusts either blindly).
+#
+# This started as two options explored in parallel: an explicit-
+# override-only design (what shipped first) and this automatic-synthesis
+# approach (built in worktree-agent-a3cf5185d19937ae1, independently
+# re-verified -- not just trusting its own self-report -- against every
+# static pattern in grammar/*.nix plus nested-alternation/bracket/bound
+# edge cases, and one real bug fixed during that review: `[:punct:]`
+# wrongly included digits and excluded some symbols, from a flawed
+# ASCII-range-position filter instead of an explicit letters+digits+
+# space exclusion). Merged as the default with override-as-escape-hatch,
+# since automatic synthesis covers the actual corpus without per-pattern
+# maintenance, while `patternGenerators` remains available for any
+# pattern regex-generate.nix can't parse (its own header comment lists
+# what's out of scope) or where a caller wants specific, non-arbitrary
+# sample values.
 #
 # DEPTH CONTROL: `choice`/`listOf`/`attrsOf`/`star`/`plus`/rule-references
 # all consume one unit of `maxDepth`. A schema's recursion structure is analyzed
@@ -172,6 +183,9 @@
 # (e.g. "branch 0 happens to be the simplest") -- confirmed against
 # lib/valuewalk.nix's own recursive `jsonValueSchema` test case in
 # tests.nix.
+let
+  regexGenerate = import ./regex-generate.nix;
+in
 rec {
   # --- Seeded pseudo-randomness -----------------------------------------
   # The ONLY source of pseudo-randomness in pure Nix (confirmed: no
@@ -424,17 +438,32 @@ rec {
     else if expr ? pattern || expr ? regex then
       let
         pat = if expr ? pattern then expr.pattern else expr.regex;
+        candidate =
+          if patternGenerators ? ${pat} then
+            patternGenerators.${pat} seed
+          else
+            # No explicit override -- fall back to automatic POSIX-ERE
+            # synthesis (lib/regex-generate.nix) rather than throwing
+            # outright. That file parses the pattern into an AST and
+            # walks it seed-deterministically; verified independently
+            # (not just trusting its own self-test) against every static
+            # pattern actually used in grammar/*.nix plus nested-
+            # alternation/bracket/bound edge cases before being wired in
+            # here. Still throws its OWN clear error for a pattern it
+            # can't parse (backreferences don't exist in POSIX ERE so
+            # that's not a real gap; unbalanced parens/malformed bounds/
+            # etc. do throw) -- callers needing to cover such a pattern
+            # still use `patternGenerators` to override it explicitly,
+            # same mechanism as before, just no longer MANDATORY for
+            # every pattern.
+            regexGenerate.generateForRegex pat seed;
       in
-      if !(patternGenerators ? ${pat}) then
-        throw "generate: no generator provided for pattern: ${pat}"
+      if builtins.match pat candidate == null then
+        throw "generate: ${
+          if patternGenerators ? ${pat} then "patternGenerators override" else "automatic regex synthesis"
+        } for \"${pat}\" produced a non-matching string: ${candidate}"
       else
-        let
-          candidate = patternGenerators.${pat} seed;
-        in
-        if builtins.match pat candidate == null then
-          throw "generate: patternGenerators override for \"${pat}\" produced a non-matching string: ${candidate}"
-        else
-          candidate
+        candidate
     else if expr ? choice then
       let
         branches = expr.choice;

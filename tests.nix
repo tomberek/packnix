@@ -11,6 +11,7 @@ let
   jsonTomlSafety = import ./lib/json-toml-safety.nix;
   valuewalk = import ./lib/valuewalk.nix;
   generate = import ./lib/generate.nix;
+  regexGenerate = import ./lib/regex-generate.nix;
 
   run =
     grammar: count: string:
@@ -568,10 +569,23 @@ let
     seed = "gen-action";
   };
 
-  # Pattern/regex generation requires an explicit override -- confirms
-  # both the success path (override used, verified via builtins.match)
-  # and that a missing override throws (checked via tryEval, since this
-  # IS a plain Nix throw, unlike fromJSON/fromTOML's uncatchable errors).
+  # Pattern/regex generation: an explicit patternGenerators override
+  # takes precedence when supplied; with none, lib/regex-generate.nix's
+  # automatic POSIX-ERE synthesis is the fallback (confirms both paths).
+  # The "unparseable pattern still throws" case is tested directly
+  # against lib/regex-generate.nix's own generateForRegex below, NOT
+  # through generate.nix's pattern/regex wrapper -- an unparseable-per-
+  # regex-generate.nix pattern is, in every case checked, ALSO invalid
+  # ERE syntax that builtins.match itself rejects (confirmed: e.g.
+  # "(unbalanced(group" throws directly from builtins.match's own
+  # "invalid regular expression" error, a DIFFERENT, tryEval-UNCATCHABLE
+  # exception -- same class as fromJSON/fromTOML's parse errors, not the
+  # Nix language's own AssertionError -- see lib/packrat.nix's
+  # evalBuiltinParser comment). generate.nix's wrapper always re-verifies
+  # via builtins.match regardless of which path produced a candidate, so
+  # testing "does an unparseable pattern throw" THROUGH generate.nix would
+  # hit that uncatchable path instead of regex-generate.nix's own
+  # catchable one.
   genPatternSchema = {
     pattern = "([0-9]+)";
   };
@@ -582,12 +596,72 @@ let
       "([0-9]+)" = seed: "42";
     };
   };
-  genPatternMissingOverrideResult = builtins.tryEval (
-    generate.generateFromSchema {
-      schema = genPatternSchema;
-      seed = "gen-pattern-missing";
-    }
+  genPatternAutoSample = generate.generateFromSchema {
+    schema = genPatternSchema;
+    seed = "gen-pattern-auto";
+  };
+  # An unrecognized POSIX class name: valid enough syntax to reach
+  # regex-generate.nix's OWN throw (not builtins.match's uncatchable
+  # one), confirmed directly against regexGenerate.generateForRegex,
+  # bypassing generate.nix's wrapper entirely for this specific check.
+  regexGenerateUnsupportedResult = builtins.tryEval (
+    regexGenerate.generateForRegex "([[:bogus:]])" "gen-pattern-unsupported"
   );
+
+  # Regression: every static (non-Nix-interpolated) regex pattern
+  # actually used in grammar/*.nix, cross-checked when this file was
+  # integrated (re-grep `grep -oh 'regex = "[^"]*"' grammar/*.nix | sort
+  # -u` to keep this list current if a new grammar adds a pattern).
+  # Confirms regex-generate.nix's synthesis+verification loop
+  # (generateForRegexChecked) holds for the actual corpus, not just
+  # hand-picked examples.
+  regexCorpusPatterns = [
+    "(.)"
+    "([^']+)"
+    "([^)]*)"
+    "(-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?)"
+    "(-?[0-9]+)"
+    "([0-9]+)"
+    "(-?[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?)"
+    "([0-9a-f]+)"
+    "([A-Za-z_]+)"
+    "([A-Za-z0-9_.*+!-]+)"
+    "([A-Za-z0-9_.-]+)"
+    "([A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?)"
+    "(:[A-Za-z_][A-Za-z0-9_]*)"
+    "([A-Za-z_][A-Za-z0-9_]*)"
+    "([^ \r\n]+)"
+    "([^'\r\n]*)"
+    "([^:\r\n#]+)"
+    "([^\r\n#]+)"
+    "([^\r\n]*)"
+    "([^\r\n]+)"
+    "([^]},:\r\n#]+)"
+    "(\r?\n)"
+    "([[:space:]]+)"
+    "([ \t])"
+    "([ \t]*)"
+    "([ \t]+)"
+    "([^ \t;]+)"
+    "([^\t\n]*)"
+    "([ \t\r\n]+)"
+  ];
+  regexCorpusAllMatch = builtins.all (
+    pattern:
+    builtins.all (
+      i:
+      builtins.match pattern (regexGenerate.generateForRegex pattern "corpus-${builtins.toString i}")
+      != null
+    ) (builtins.genList (i: i) 5)
+  ) regexCorpusPatterns;
+
+  # Regression for the specific bug caught and fixed while integrating
+  # this generator: [:punct:] originally included digits (0-9 sits well
+  # before 'A' in ASCII, so a range-position filter never excluded them)
+  # and excluded some real punctuation ([ \ ] ^ _ ` -- the symbols
+  # between 'Z' and 'a') -- both from checking ASCII-range POSITION
+  # instead of excluding letters/digits/space explicitly.
+  regexPunctClass = regexGenerate.posixClassChars "punct";
 
   # `and`/`not` have no general generation strategy -- confirms this
   # throws rather than silently producing a wrong value.
@@ -810,7 +884,26 @@ let
     generate_epsilonIsEmptyString = genEpsilonSample == "";
     generate_actionIgnoresFAndGeneratesForE = genActionSample == "raw";
     generate_patternOverrideUsedAndVerified = genPatternSample == "42";
-    generate_patternMissingOverrideThrows = !genPatternMissingOverrideResult.success;
+    generate_patternAutoSynthesisMatches =
+      builtins.match genPatternSchema.pattern genPatternAutoSample != null;
+    regexGenerate_unsupportedPosixClassThrows = !regexGenerateUnsupportedResult.success;
+    regexGenerate_corpusPatternsAllMatch = regexCorpusAllMatch;
+    regexGenerate_punctExcludesDigitsAndSpace =
+      !(builtins.any (c: builtins.elem c regexPunctClass) [
+        "0"
+        "9"
+        " "
+        "a"
+        "Z"
+      ]);
+    regexGenerate_punctIncludesBracketSymbols = builtins.all (c: builtins.elem c regexPunctClass) [
+      "["
+      "\\"
+      "]"
+      "^"
+      "_"
+      "`"
+    ];
     generate_notHasNoStrategyAndThrows = !genNotResult.success;
     generate_isDeterministic = genDeterminismRun1 == genDeterminismRun2;
     generate_jsonSamplesAllValidate = builtins.all (x: x) genJsonValidated;
