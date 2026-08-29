@@ -5,6 +5,19 @@
 # mirrors the cut paper's AC-FIRST example, PASTE'10 §4.2). Both variants
 # are kept for A/B benchmarking (see bench/measure.sh); default.nix picks
 # one via `useCut`.
+#
+# String escapes: `\" \\ \/ \b \f \n \r \t` -- everything JSON's own
+# grammar defines EXCEPT `\uXXXX`. That one is deliberately out of scope:
+# it needs encoding an arbitrary Unicode codepoint (including
+# surrogate-pair-combined astral characters) to UTF-8 bytes, and Nix has
+# no `chr`/`ord`/hex-literal builtin to build that from -- a correct
+# implementation would mean hand-rolling UTF-8's bit-packing from
+# scratch, a separate undertaking from fixing STRING's escape handling
+# itself. A `\uXXXX` escape in real input is correctly rejected (this
+# grammar's `stringFragment` has no branch for `\u`, so `STRING` fails to
+# match a string containing one) rather than silently mishandled --
+# same "fail loudly on what's out of scope, don't misparse" discipline as
+# every other grammar in this repo.
 let
   # Every named rule here is a field on EVERY Derivs node (one per input
   # position), regardless of whether a position ever uses it -- so a rule
@@ -13,11 +26,71 @@ let
   # position when there's only one. stringFragment/commaSeparated/setItem
   # below are folded this way (each replaces a rule that used to exist,
   # e.g. STRING_RAW/LIST_ITEMS/ITEMS/ITEM).
+  #
+  # BUGFIX: the escape branches below used to be bare `{ lit = ...; }`
+  # atoms with no decoding at all -- STRING's handler just concatenated
+  # whatever text matched, so a string containing `\"` decoded to the
+  # literal two-character sequence `\"` instead of a bare `"` (confirmed
+  # against builtins.fromJSON, which correctly decodes it) -- and the
+  # bare-backslash branch matched a LONE `\` with no escape partner,
+  # which is never valid JSON at all (a backslash must always be
+  # followed by an escape character). Found independently via
+  # lib/generate.nix's round-trip testing: no fixture in this repo's
+  # corpus happens to contain an escaped quote or backslash, so
+  # verify-fixtures.sh's byte-identical-to-fromJSON check never exercised
+  # this path. Fixed the same way grammar/aterm.nix's stringFragment
+  # already does it: each escape is `{ lit = "\\"; } { choice = [...] }`
+  # wrapped in `action`, decoding the matched escape CHARACTER to its
+  # real value, and STRING's handler (below) concatenates the DECODED
+  # fragments, not the raw matched text.
   stringFragment = {
     choice = [
       { regex = ''([^\\\"]+)''; }
-      { lit = ''\"''; }
-      { lit = ''\''; }
+      {
+        action = {
+          e = [
+            { lit = "\\"; }
+            {
+              choice = [
+                { lit = "\""; }
+                { lit = "\\"; }
+                { lit = "/"; }
+                { lit = "b"; }
+                { lit = "f"; }
+                { lit = "n"; }
+                { lit = "r"; }
+                { lit = "t"; }
+              ];
+            }
+          ];
+          f =
+            v:
+            let
+              c = builtins.elemAt v 1;
+            in
+            # Nix's OWN string literal syntax only recognizes `\n`/`\r`/
+            # `\t`/`\\`/`\"`/`\$` as escapes -- there is no `\b`/`\f`
+            # literal at all (confirmed: `"\b"` in Nix source is just the
+            # bare character `b`, not a backspace byte -- caught by this
+            # exact test failing when first written). Backspace/form-feed
+            # are instead obtained by asking `builtins.fromJSON` to decode
+            # them itself (a real, single-byte control character each,
+            # confirmed via `stringLength`), the one Nix builtin that DOES
+            # know what `\b`/`\f` mean.
+            if c == "b" then
+              builtins.fromJSON ''"\b"''
+            else if c == "f" then
+              builtins.fromJSON ''"\f"''
+            else if c == "n" then
+              "\n"
+            else if c == "r" then
+              "\r"
+            else if c == "t" then
+              "\t"
+            else
+              c; # \" \\ \/ decode to themselves minus the backslash
+        };
+      }
     ];
   };
 

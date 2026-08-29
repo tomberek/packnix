@@ -7,13 +7,15 @@
 # not equality against some "original" -- generation has no original to
 # compare against).
 #
-# Scope deliberately limited to grammars with few, easily-overridden
-# regex/pattern atoms (see this repo's grammar/*.nix action/regex-count
-# survey during this feature's development: every shipped grammar uses
-# regex heavily, so covering all of them here would mean writing and
-# maintaining a large patternGenerators table per grammar, disproportionate
-# to what this gate is for). grammar/tsv.nix and examples/flakelock-
-# valuewalk.nix are the two real, non-toy cases covered; tests.nix's
+# Scope deliberately limited to grammars that don't use `and`/`not`
+# (lookahead has no general generation strategy -- see lib/generate.nix's
+# header). Confirmed via grep that grammar/{drv,gemfile-lock,aterm,
+# yarn-lock,pep508,yaml,gemfile}.nix all use and/not somewhere, so they
+# remain out of reach for this gate regardless of pattern/regex
+# generation. grammar/tsv.nix, grammar/json.nix, and examples/flakelock-
+# valuewalk.nix are the three real, non-toy cases covered -- none need a
+# manual patternGenerators override anymore now that lib/regex-generate.nix
+# provides automatic POSIX-ERE synthesis as the fallback. tests.nix's
 # `generate_*` checks cover additional toy/synthetic schemas at smaller
 # scale (N=5) as part of the main combinator test suite.
 #
@@ -33,7 +35,6 @@ tsv_passed=$(nix eval --impure --expr '
       ruleName = "DOCUMENT";
       seedPrefix = "verify-roundtrip-tsv";
       numSamples = 50;
-      patternGenerators = { "([^\t\n]*)" = seed: "x"; };
     };
   in result.allPassed
 ' 2>&1)
@@ -42,6 +43,28 @@ if [[ "$tsv_passed" == "true" ]]; then
   echo "OK   roundtrip grammar/tsv.nix (50 samples)"
 else
   echo "FAIL roundtrip grammar/tsv.nix: $tsv_passed"
+  fail=1
+fi
+
+json_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/json.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "X";
+      seedPrefix = "verify-roundtrip-json";
+      numSamples = 50;
+      maxDepth = 3;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$json_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/json.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/json.nix: $json_passed"
   fail=1
 fi
 

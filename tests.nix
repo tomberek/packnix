@@ -787,6 +787,95 @@ let
     handlers = flakelockGrammarModule.handlers;
   } 0 flakelockValidCommaInput;
 
+  # --- Regression: grammar/json.nix's STRING handler used to never
+  # unescape anything at all -- it concatenated whatever text
+  # stringFragment matched literally, so a string containing `\"`
+  # decoded to the literal two-character sequence `\"` instead of a bare
+  # `"` (confirmed against builtins.fromJSON, which correctly decodes
+  # it). Separately, the bare-backslash choice branch matched a LONE `\`
+  # with no escape partner, which is never valid JSON at all. Found
+  # independently via lib/generate.nix's round-trip testing on a grammar
+  # no existing fixture happens to exercise (none contain an escaped
+  # quote or backslash). Fixed by decoding each escape via `action`
+  # (same pattern grammar/aterm.nix's stringFragment already
+  # established) instead of leaving the raw matched text unescaped.
+  jsonGrammarModule = import ./grammar/json.nix;
+  jsonParseString =
+    s:
+    (packrat.run {
+      grammar = jsonGrammarModule.grammar;
+      handlers = jsonGrammarModule.handlers;
+    } 0 s).STRING;
+  # Every escape JSON defines except \uXXXX (out of scope -- see
+  # grammar/json.nix's header comment: needs Unicode codepoint-to-UTF-8
+  # encoding from scratch, no builtin exists), plus a lone backslash
+  # (never valid) and a mixed multi-escape string.
+  jsonEscapeCases = [
+    {
+      input = ''"\""'';
+      expected = builtins.fromJSON ''"\""'';
+    }
+    {
+      input = ''"\\"'';
+      expected = builtins.fromJSON ''"\\"'';
+    }
+    {
+      input = ''"\/"'';
+      expected = builtins.fromJSON ''"\/"'';
+    }
+    {
+      input = ''"\b"'';
+      expected = builtins.fromJSON ''"\b"'';
+    }
+    {
+      input = ''"\f"'';
+      expected = builtins.fromJSON ''"\f"'';
+    }
+    {
+      input = ''"\n"'';
+      expected = builtins.fromJSON ''"\n"'';
+    }
+    {
+      input = ''"\r"'';
+      expected = builtins.fromJSON ''"\r"'';
+    }
+    {
+      input = ''"\t"'';
+      expected = builtins.fromJSON ''"\t"'';
+    }
+    {
+      input = ''"x\"y\\z\/w\n\t"'';
+      expected = builtins.fromJSON ''"x\"y\\z\/w\n\t"'';
+    }
+  ];
+  jsonEscapeResults = map (c: (jsonParseString c.input) == c.expected) jsonEscapeCases;
+
+  # A lone backslash (no escape partner) is never valid JSON -- confirms
+  # this is correctly REJECTED, not silently accepted the way it used to
+  # be before the fieldWithLeadingComma-style choice restructure.
+  jsonLoneBackslashInput = ''"a\ b"'';
+  rJsonLoneBackslash = jsonParseString jsonLoneBackslashInput;
+
+  # --- Regression: lib/generate.nix's isRecursiveExpr treated the
+  # epsilon marker `""` (packrat.nix's cutSeq uses `{ cutSeq = [ b ""];
+  # }`, matching mkCompile's own epsilon handling) as an unresolvable
+  # RULE REFERENCE instead of the special epsilon case, since it never
+  # checked `expr == ""` before the general `isString` dispatch the way
+  # generateWith itself already did. This made every choice branch
+  # wrapped in a cutSeq register as unconditionally recursive, which
+  # then starved `choice` of any terminal branch to bottom out at
+  # maxDepth even when most branches were genuinely non-recursive (e.g.
+  # grammar/json.nix's cut variant, where STRING/NUMBER/BOOL/NULL are
+  # all non-recursive but got misclassified because EVERY X branch is
+  # cutSeq-wrapped). Found via lib/roundtrip.nix's json.nix coverage,
+  # added once the string-escape fix above made generating for
+  # json.nix's cut grammar worth exercising at scale.
+  generateModule = import ./lib/generate.nix;
+  jsonCutChoiceBranches = (builtins.elemAt jsonGrammarModule.grammar.X 1).choice;
+  jsonCutChoiceTerminality = map (
+    b: generateModule.isTerminal jsonGrammarModule.grammar b
+  ) jsonCutChoiceBranches;
+
   checks = {
     cutMain_parsesFullString = cutMainResult.M != packrat.NO_MATCH;
     cutMain_correctValue =
@@ -912,6 +1001,10 @@ let
 
     flakelock_rejectsMissingCommaBetweenFields = rFlakelockMissingComma.DOCUMENT == packrat.NO_MATCH;
     flakelock_stillAcceptsValidCommaPlacement = rFlakelockValidComma.DOCUMENT != packrat.NO_MATCH;
+
+    json_allEscapeSequencesDecodeCorrectly = builtins.all (x: x) jsonEscapeResults;
+    json_rejectsLoneBackslash = rJsonLoneBackslash == packrat.NO_MATCH;
+    json_cutChoiceBranchesHaveTerminalOptions = builtins.any (x: x) jsonCutChoiceTerminality;
   };
 
   allPassed = builtins.all (x: x) (builtins.attrValues checks);

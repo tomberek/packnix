@@ -333,6 +333,29 @@ rec {
     grammar: seen: expr:
     if builtins.elem expr seen then
       true
+    else if expr == "" then
+      # Epsilon (the cut operator's `{ cutSeq = [ b ""]; }` marker,
+      # matching packrat.nix's own `mkCompile`) -- NOT a rule reference,
+      # even though it's also a plain Nix string, so this MUST be
+      # checked before the general isString case below (same dispatch
+      # order as generateWith itself already gets right; isRecursiveExpr
+      # originally didn't, and it's the same "" that's plain Nix string
+      # AND has meaning as a bare literal, just like `builtins.isString
+      # expr` couldn't distinguish "" from a genuine rule name without
+      # this check first). Epsilon always succeeds trivially and
+      # generates nothing, so it's never itself a source of recursion.
+      # BUG this fixes: without it, `!(grammar ? "")` is true for any
+      # real grammar (no rule is ever actually named the empty string),
+      # so epsilon was being treated as an unresolvable reference and
+      # conservatively marked recursive -- which then made EVERY choice
+      # branch containing a cutSeq (e.g. grammar/json.nix's cut variant,
+      # which wraps every X branch as `{ cutSeq = [ b ""]; }`) recursive
+      # too, leaving `choice` with zero terminal branches to bottom out
+      # at maxDepth even though STRING/NUMBER/BOOL/NULL are genuinely
+      # non-recursive. Found via lib/roundtrip.nix's json.nix coverage,
+      # added once the string-escape fix (this same task) made json.nix
+      # generation worth actually exercising.
+      false
     else if builtins.isString expr then
       if !(grammar ? ${expr}) then true else isRecursiveExpr grammar (seen ++ [ expr ]) grammar.${expr}
     else if builtins.isList expr then
