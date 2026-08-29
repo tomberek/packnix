@@ -365,18 +365,20 @@ let
     # leftover/missing spaces into the key name instead of failing to
     # parse -- e.g. "a:\n   b: 1" (3-space indent under a 2-space-step
     # grammar) would parse as key " b" rather than rejecting the bad
-    # indentation.
+    # indentation. Expressed as a single negated-class regex (no `not`
+    # lookahead needed) since the exclusion is a same-position, single-
+    # character check immediately followed by a capturing atom: the first
+    # character excludes {space,tab} union the original {:,\r,\n,#}, every
+    # subsequent character excludes only {:,\r,\n,#} -- exactly
+    # `[^ \t:\r\n#][^:\r\n#]*`, which accepts the identical language and
+    # produces the identical greedy capture as the original
+    # `not(regex[ \t]); regex([^:\r\n#]+)` pair.
     PLAIN_KEY = {
       action = {
-        e = [
-          {
-            not = {
-              regex = "([ \t])";
-            };
-          }
-          { regex = "([^:\r\n#]+)"; }
-        ];
-        f = v: trimTrailing (builtins.elemAt v 1);
+        e = {
+          regex = "([^ \t:\r\n#][^:\r\n#]*)";
+        };
+        f = v: trimTrailing v;
       };
     };
     KEY = {
