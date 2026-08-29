@@ -174,6 +174,16 @@ let
       }
       { lit = "a"; }
     ];
+    # { eof = {}; }: succeeds, consuming nothing, only when no input
+    # remains -- the plain-leaf alternative to { not = { regex = "(.)"; }; }.
+    EOF_AT_END = [
+      { lit = "ab"; }
+      { eof = { }; }
+    ];
+    EOF_REJECTS_TRAILING = [
+      { lit = "a"; }
+      { eof = { }; }
+    ];
   };
   rOptPresent = run basicGrammar 0 "xy";
   rOptAbsent = run basicGrammar 0 "y";
@@ -182,6 +192,8 @@ let
   rAnd = run basicGrammar 0 "ab";
   rNotRejects = run basicGrammar 0 "ab";
   rNotPasses = run basicGrammar 0 "ab";
+  rEofAtEnd = run basicGrammar 0 "ab";
+  rEofRejectsTrailing = run basicGrammar 0 "ab";
 
   # --- Regression: evalRegex's bounded lookahead window must not silently
   # truncate a match longer than the window (a plain, non-`star`-wrapped
@@ -883,6 +895,8 @@ let
     and_lookaheadDoesNotConsume = rAnd.AND_LOOKAHEAD != packrat.NO_MATCH;
     not_lookaheadRejectsWhenPresent = rNotRejects.NOT_LOOKAHEAD_REJECTS == packrat.NO_MATCH;
     not_lookaheadPassesWhenAbsent = rNotPasses.NOT_LOOKAHEAD_PASSES != packrat.NO_MATCH;
+    eof_succeedsAtTrueEndOfInput = rEofAtEnd.EOF_AT_END != packrat.NO_MATCH;
+    eof_rejectsWhenInputRemains = rEofRejectsTrailing.EOF_REJECTS_TRAILING == packrat.NO_MATCH;
 
     regex_matchLongerThanWindowIsNotTruncated =
       rLongMatch.LONG != packrat.NO_MATCH && builtins.stringLength rLongMatch.LONG == 2000;

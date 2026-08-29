@@ -356,6 +356,15 @@ rec {
       genBool seed
     else if expr ? lit then
       expr.lit
+    else if expr ? eof then
+      # { eof = {}; } (lib/packrat.nix): a plain leaf, not a lookahead --
+      # sound to generate as "" under the same convention as the
+      # not+regex EOF idiom below: it's only ever used as the trailing
+      # element of a sequence with nothing generated after it, so
+      # whatever the rest of the sequence produces IS, by construction,
+      # the full generated document, and the real `eof` combinator will
+      # find no input remaining when the parser reaches this point.
+      ""
     else if expr ? range then
       let
         start = builtins.elemAt expr.range 0;

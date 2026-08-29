@@ -104,11 +104,7 @@ let
   lineEnd = {
     choice = [
       { regex = "(\r?\n)"; }
-      {
-        not = {
-          regex = "(.)";
-        };
-      }
+      { eof = { }; }
     ];
   };
   blankLine = [
@@ -580,11 +576,7 @@ in
     # parse failure, not silently truncate.
     DOCUMENT = [
       "ITEM_LIST"
-      {
-        not = {
-          regex = "(.)";
-        };
-      }
+      { eof = { }; }
     ];
   };
 

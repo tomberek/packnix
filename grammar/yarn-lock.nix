@@ -134,11 +134,7 @@ let
   lineEnd = {
     choice = [
       { regex = "(\r?\n)"; }
-      {
-        not = {
-          regex = "(.)";
-        };
-      }
+      { eof = { }; }
     ];
   };
 
@@ -347,11 +343,7 @@ let
         regex = "(\r?\n)";
       };
     } # a lockfile's final line may or may not end in a newline
-    {
-      not = {
-        regex = "(.)";
-      };
-    } # require the ENTIRE input consumed, not just a prefix
+    { eof = { }; } # require the ENTIRE input consumed, not just a prefix
   ];
 
   documentHandler =

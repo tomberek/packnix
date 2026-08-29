@@ -185,11 +185,7 @@ let
         {
           choice = [
             { regex = "([ \t])"; }
-            {
-              not = {
-                regex = "(.)";
-              };
-            }
+            { eof = { }; }
           ];
         }
       ];
@@ -209,11 +205,7 @@ let
           choice = [
             { regex = "([ \t])"; }
             { regex = "(\r?\n)"; }
-            {
-              not = {
-                regex = "(.)";
-              };
-            }
+            { eof = { }; }
           ];
         };
       }
@@ -233,16 +225,11 @@ let
     # "end of line": an actual newline, OR end of input (the last line of
     # a file need not have a trailing newline). Consumes nothing in the
     # EOF case -- never `star`/`plus`-repeated directly (see BLANK_LINE
-    # below for why that would loop forever). `!(.)` is a correct EOF
-    # test since `{regex="(.)";}` fails only at end-of-input.
+    # below for why that would loop forever).
     LINE_END = {
       choice = [
         { regex = "(\r?\n)"; }
-        {
-          not = {
-            regex = "(.)";
-          };
-        }
+        { eof = { }; }
       ];
     };
 
@@ -629,11 +616,7 @@ let
           { star = "BLANK_LINE"; }
           "BODY"
           { star = "BLANK_LINE"; }
-          {
-            not = {
-              regex = "(.)";
-            };
-          }
+          { eof = { }; }
         ];
         f = v: builtins.elemAt v 1;
       };
@@ -713,11 +696,7 @@ let
                 {
                   choice = [
                     { regex = "(\r?\n)"; }
-                    {
-                      not = {
-                        regex = "(.)";
-                      };
-                    } # EOF: last line, no trailing newline
+                    { eof = { }; } # last line, no trailing newline
                   ];
                 }
               ];
