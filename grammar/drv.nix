@@ -232,18 +232,10 @@ in
           { lit = ","; }
           (drvList envTuple)
           { lit = ")"; }
-          # End-of-input guard, expressed without `and`/`not` lookahead:
-          # `builtins.match` anchors the WHOLE candidate substring, so a
-          # capturing group of `^$` can only match when the substring
-          # handed to it (a window starting at the current position) is
-          # itself empty -- i.e. only when nothing remains to consume.
-          # Consumes zero characters either way (the matched group text
-          # is always ""), so this is a drop-in replacement for the old
-          # `{ not = { regex = "(.)"; }; }`: same accept/reject behavior
-          # (trailing garbage after the closing paren still fails to
-          # parse), same "no value contributed" effect on this rule's
-          # `f` (which never reads this element).
-          { regex = "(^$)"; }
+          # End-of-input guard: succeeds, consuming nothing, only when no
+          # input remains -- rejects trailing garbage after the closing
+          # paren. `f` never reads this element.
+          { eof = { }; }
         ];
         f = v: {
           outputs = builtins.elemAt v 1;

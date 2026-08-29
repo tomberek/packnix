@@ -21,6 +21,18 @@
 #   { opt = e; }           -> e?
 #   { and = e; }           -> &e   positive lookahead, consumes nothing
 #   { not = e; }           -> !e   negative lookahead, consumes nothing
+#   { eof = { }; }         -> succeeds (consuming nothing) iff no input
+#                             remains, fails otherwise -- "assert end of
+#                             input". Unlike { not = { regex = "(.)"; }; },
+#                             which achieves the same thing via a
+#                             single-character lookahead, this is a plain
+#                             leaf (one O(1) integer compare against the
+#                             input's total length), not a lookahead over
+#                             a sub-expression -- so it needs no `compile`
+#                             call of its own, and lib/generate.nix can
+#                             treat it as an ordinary terminal (generate
+#                             "") instead of pattern-matching a specific
+#                             not+regex shape.
 #   { cutSeq = [e1 e2]; }  -> e1 ↑ e2 (PEG cut): valid only as a choice
 #                             branch or star body -- see compileChoice /
 #                             compileStarCut.
@@ -100,6 +112,8 @@ rec {
           compileAnd expr.and
         else if expr ? not then
           compileNot expr.not
+        else if expr ? eof then
+          evalEof
         else if expr ? cutSeq then
           # No commit context outside choice/star, so cutSeq degrades to a
           # plain sequence rather than making `compile` partial.
@@ -152,6 +166,18 @@ rec {
           ]
         else
           false;
+
+      # `{ eof = {}; }`: succeeds, consuming nothing, iff `count == len`
+      # (no characters remain) -- a direct integer comparison against the
+      # input's total length, not a lookahead over a sub-expression like
+      # `{ not = { regex = "(.)"; }; }` (which achieves the same result by
+      # attempting and failing a single-character match).
+      evalEof =
+        derivs:
+        let
+          count = builtins.elemAt derivs 0;
+        in
+        if count == len then epsilonAt derivs else false;
 
       # A fixed lookahead window, not the whole remaining input -- copying
       # the full remainder on every attempt makes the parse O(n^2). Not a

@@ -410,11 +410,7 @@ let
       ws
       versionExpr
       ws
-      {
-        not = {
-          regex = "(.)";
-        };
-      }
+      { eof = { }; }
     ];
   };
   handlersDef = {

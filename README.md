@@ -92,6 +92,7 @@ other Nix parsing libraries.
 { opt = e; }            # e?
 { and = e; }            # &e   positive lookahead, consumes nothing
 { not = e; }            # !e   negative lookahead, consumes nothing
+{ eof = { }; }          # succeeds (consuming nothing) iff no input remains
 { cutSeq = [e1 e2]; }   # e1 ↑ e2 -- valid only as a choice branch or star body
 { action = { e; f; }; } # e, with f applied to its matched value on success
 ```

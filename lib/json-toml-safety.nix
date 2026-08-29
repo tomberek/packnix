@@ -37,7 +37,7 @@ rec {
       builtins.concatMap (
         i: checkExprSafety (path ++ [ "seq[${builtins.toString i}]" ]) committed (builtins.elemAt expr i)
       ) (builtins.genList (i: i) (builtins.length expr))
-    else if expr ? lit || expr ? range || expr ? regex then
+    else if expr ? lit || expr ? range || expr ? regex || expr ? eof then
       [ ]
     else if expr ? choice then
       let
