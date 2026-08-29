@@ -1,5 +1,5 @@
 {
-  description = "A packrat/PEG parsing engine in pure Nix, plus grammars for JSON, YAML, TSV, nix flake.lock, ATerm/Nix .drv, PEP 508, and Ruby's Gemfile/Gemfile.lock/yarn.lock.";
+  description = "A packrat/PEG parsing engine in pure Nix, plus grammars for JSON, YAML, TSV, nix flake.lock, ATerm/Nix .drv, PEP 508, Poetry version constraints, and Ruby's Gemfile/Gemfile.lock/yarn.lock.";
 
   # Deliberately no `nixpkgs` input: everything this flake exposes (the
   # library itself, and the one check below) is pure Nix-language
@@ -58,6 +58,7 @@
           drv = import ./grammar/drv.nix;
           pep508 = import ./grammar/pep508.nix;
           yarnLock = import ./grammar/yarn-lock.nix;
+          poetrySemver = import ./grammar/poetry-semver.nix;
         };
       };
 
