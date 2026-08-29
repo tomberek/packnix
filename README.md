@@ -69,6 +69,11 @@ other Nix parsing libraries.
 | `examples/json-optimized.nix` | Re-exports `grammar/json.nix`, annotated with what changed vs. `json-simple.nix` and why (rule inlining via the `action` combinator, fewer redundant whitespace scans, etc). |
 | `examples/flakelock-specialized.nix` | Re-exports `grammar/flakelock.nix`, annotated with the schema-specialization technique and measured wins. |
 | `examples/gemfile-lock-checksums.nix` | Extracts `{ <gem name> = <sha256>; }` from a `Gemfile.lock`'s `CHECKSUMS` section — the piece a `bundlerEnv` replacement would need. See below. |
+| `lib/valuewalk.nix` | A schema-validation engine over an already-parsed value tree (from `fromJSON`/`fromTOML`), not string positions — see [Value-tree validation and generation](#value-tree-validation-and-generation) below. |
+| `lib/generate.nix` | Generates a sample value/string that a `lib/valuewalk.nix` schema or `lib/packrat.nix` grammar would accept — the reverse direction of validation, deterministically seeded. |
+| `lib/regex-generate.nix` | Inverts a POSIX ERE pattern into a sample string it would accept; backs `generate`'s automatic `pattern`/`regex` synthesis. |
+| `lib/roundtrip.nix` | Generates N samples for a grammar/schema and confirms its own parser accepts every one — the fixpoint gate `verify-roundtrip.sh` runs. |
+| `examples/flakelock-valuewalk.nix` | The `grammar/flakelock.nix` schema rewritten against `lib/valuewalk.nix`, over `builtins.fromJSON`'s output instead of string positions. |
 | `default.nix` | Thin wrapper: `pack ./somefile.json` parses a file with the JSON grammar. |
 | `tests.nix` | Standalone combinator test suite (cut-operator semantics, star/regex edge cases, etc). |
 | `bench/` | Fixture generators, measurement scripts, `comparison-report.md`, `arcnmx-json-comparison.md`. |
@@ -163,6 +168,53 @@ of a generic "parse a key, dispatch on its name, loop until `}`" parser —
 no backtracking over key identity or order. A differently-shaped
 flake.lock, or arbitrary JSON, correctly fails to parse rather than
 silently mis-parsing; that inflexibility is the trade for the speed.
+
+## Value-tree validation and generation
+
+`lib/packrat.nix`'s `{ json = {}; }`/`{ toml = {}; }` combinator (see that
+file's header) hands a substring to the native `fromJSON`/`fromTOML` for
+speed, but that alone gives no structural validation — no "does this
+object have exactly these fields, in these types" the way a hand-written
+packrat grammar gets for free from its rule-by-rule shape. `lib/valuewalk.nix`
+is that validation layer, applied to the *already-parsed* value tree
+instead of re-deriving it from text: on a 636KB/2000-node synthetic
+flake.lock, it's ~8x faster and ~4x less memory than `grammar/flakelock.nix`
+on the same fixture, confirmed byte-identical output (see
+`examples/flakelock-valuewalk.nix`, the flake.lock schema rewritten
+against it). Its schema DSL is deliberately parallel to the [Grammar
+DSL](#grammar-dsl) above (`{ string = {}; }`, `{ attrs = { fields;
+optional; closed; }; }`, `{ listOf = s; }`, etc., plus shared forms like
+`choice`/`action`/`"Name"`-reference) but matches VALUES, not string
+positions — see its header comment for the full form list and its
+`null`-as-failure-sentinel rationale.
+
+`lib/generate.nix` runs either engine's DSL in reverse: given a
+`lib/packrat.nix` grammar or `lib/valuewalk.nix` schema, it produces a
+sample string/value that DSL would accept, instead of validating one that
+already exists. Nix has no RNG at all (no `builtins.random`, no
+`builtins.currentTime`), so generation is deterministically SEEDED
+instead of random: every choice derives from `builtins.hashString "sha256"
+seed`, and every recursive call derives a fresh child seed, so `generate
+schema seed` is a pure function — same schema + same seed always
+produces the same value, which makes a failure reproducible instead of
+flaky. `{ pattern = "..."; }`/`{ regex = "..."; }` leaves are synthesized
+automatically by `lib/regex-generate.nix` (a POSIX ERE parser + AST-
+walking generator), with an explicit `patternGenerators` override
+available as a fallback; `and`/`not` lookahead has no general generation
+strategy and is thrown as an explicit error rather than guessed at — see
+`lib/generate.nix`'s header for exactly what's covered and why.
+
+`lib/roundtrip.nix` wires the two together into a fixpoint check: generate
+N samples for a grammar/schema, feed each back through that SAME
+grammar/schema's own parser, and confirm every one is *accepted*. This is
+narrower than "generated value equals the original" — there is no
+original here, only "does the parser accept what was generated for it".
+`./verify-roundtrip.sh` runs this in CI at N=50 for `grammar/tsv.nix`,
+`grammar/json.nix`, and `examples/flakelock-valuewalk.nix` — the grammars
+that don't use `and`/`not` anywhere. `grammar/drv.nix`, `grammar/gemfile-
+lock.nix`, `grammar/aterm.nix`, `grammar/yarn-lock.nix`, `grammar/pep508.nix`,
+`grammar/yaml.nix`, and `grammar/gemfile.nix` all use lookahead and remain
+out of scope for this gate for that reason.
 
 ## Gemfile.lock: a real nixpkgs use case
 
@@ -275,6 +327,10 @@ cases for the array-indexed `Derivs` design.
 `./verify-fixtures.sh` checks the other direction: every JSON fixture under
 `data/` and `bench/fixtures/` parses byte-identical to `builtins.fromJSON`
 through both grammars (schema-mismatched fixtures correctly failing
-`grammar/flakelock.nix` count as a pass, not an error). CI
-(`.github/workflows/ci.yml`) runs both of the above plus `nixfmt --check`
-on every push and PR.
+`grammar/flakelock.nix` count as a pass, not an error). `./verify-
+valuewalk-parity.sh` checks that `grammar/flakelock.nix` and `examples/
+flakelock-valuewalk.nix` agree on every flake.lock-shaped fixture — both
+accept with byte-identical output, or both reject. `./verify-roundtrip.sh`
+runs the [round-trip](#value-tree-validation-and-generation) fixpoint
+check described above. CI (`.github/workflows/ci.yml`) runs all of the
+above plus `nixfmt --check` on every push and PR.
