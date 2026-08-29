@@ -4,20 +4,17 @@
 # parser (lib/packrat.nix's run, or lib/valuewalk.nix's run/compile)
 # accepts every one -- the fixpoint property lib/roundtrip.nix formalizes
 # (see that file's header for exactly what is/isn't checked: acceptance,
-# not equality against some "original" -- generation has no original to
-# compare against).
+# not equality against some "original").
 #
 # Scope deliberately limited to grammars that don't use `and`/`not`
 # (lookahead has no general generation strategy -- see lib/generate.nix's
-# header). Confirmed via grep that grammar/{drv,gemfile-lock,aterm,
-# yarn-lock,pep508,yaml,gemfile}.nix all use and/not somewhere, so they
-# remain out of reach for this gate regardless of pattern/regex
-# generation. grammar/tsv.nix, grammar/json.nix, and examples/flakelock-
-# valuewalk.nix are the three real, non-toy cases covered -- none need a
-# manual patternGenerators override anymore now that lib/regex-generate.nix
-# provides automatic POSIX-ERE synthesis as the fallback. tests.nix's
-# `generate_*` checks cover additional toy/synthetic schemas at smaller
-# scale (N=5) as part of the main combinator test suite.
+# header). grammar/{drv,gemfile-lock,aterm,yarn-lock,pep508,yaml,
+# gemfile}.nix all use and/not somewhere, so they remain out of reach for
+# this gate. grammar/tsv.nix, grammar/json.nix, and
+# examples/flakelock-valuewalk.nix are the three real, non-toy cases
+# covered here. tests.nix's `generate_*` checks cover additional
+# toy/synthetic schemas at smaller scale (N=5) as part of the main
+# combinator test suite.
 #
 # Usage: ./verify-roundtrip.sh
 set -uo pipefail

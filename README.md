@@ -62,8 +62,8 @@ other Nix parsing libraries.
 | `grammar/gemfile.nix` | A real (subset of) Ruby Bundler's `Gemfile` format — NOT the lockfile; recovers Bundler *group* membership per gem (`group :x do...end` blocks, inline `group:`/`groups:` kwargs, `if`/`unless`/`else` wrapping), the one fact `Gemfile.lock` never records. See its header for exact scope. |
 | `grammar/yarn-lock.nix` | Yarn classic's `yarn.lock` ("yarn lockfile v1") format — see below for why this one has a real nixpkgs use case. Yarn Berry (v2+) lockfiles are a different, YAML-based format and out of scope. |
 | `grammar/aterm.nix` | A generic ATerm (Annotated Term) grammar — the format Nix's own `.drv` files are written in, among other uses (ASF+SDF Meta-Environment, Stratego/XT). Covers all six real term kinds (int, real, appl, list, tuple, placeholder) plus annotations; verified against 500 real `.drv` files from a live `/nix/store`. |
-| `grammar/drv.nix` | A grammar specialized to Nix's `.drv` file format's exact shape (`Derive(outputs, inputDrvs, inputSrcs, system, builder, args, env)`, always exactly 7 fields) — semantically decodes each field (e.g. a fixed-output derivation's `hashAlgo`'s `"r:"` prefix into a `recursive` flag) rather than returning a generic ATerm tree. See its header for the confirmed field shapes. |
-| `grammar/pep508.nix` | Python's PEP 508 dependency-specification format (`requests (>=2.0,<3.0) ; python_version >= "3.6" and sys_platform == "linux"`) — the same format nixpkgs' `poetry2nix` parses today via ~180 lines of hand-rolled character-walking with a known `# TODO: Handle single quoted values` gap and no real `and`/`or` precedence. Transcribed directly from PEP 508's own formal grammar (restructured to avoid left recursion); verified against 2126 real, distinct `Requires-Dist` specifiers extracted from real `*.dist-info/METADATA` files. |
+| `grammar/drv.nix` | A grammar specialized to Nix's `.drv` file format's exact shape (`Derive(outputs, inputDrvs, inputSrcs, system, builder, args, env)`, always exactly 7 fields) — semantically decodes each field (e.g. a fixed-output derivation's `hashAlgo`'s `"r:"` prefix into a `recursive` flag) rather than returning a generic ATerm tree. |
+| `grammar/pep508.nix` | Python's PEP 508 dependency-specification format (`requests (>=2.0,<3.0) ; python_version >= "3.6" and sys_platform == "linux"`) — the same format nixpkgs' `poetry2nix` parses today via ~180 lines of hand-rolled character-walking with no real `and`/`or` precedence. Transcribed directly from PEP 508's own formal grammar (restructured to avoid left recursion); verified against 2126 real, distinct `Requires-Dist` specifiers. |
 | `grammar/poetry-semver.nix` | Poetry's version-constraint syntax (`^1.2.3`, `~1.2`, `1.*`, `~2.7 \|\| ^3.5`) — parses AND evaluates (`mkSatisfies packrat version constraint`). Fixes several real, demonstrated bugs found in nixpkgs' `poetry2nix/semver.nix`/`lib.nix` while building this (wrong caret/tilde upper bounds that accept clearly-incompatible major versions, `!=X.Y.*` not actually excluding anything, bare versions/wildcards throwing instead of parsing). Verified against 65 real `python-versions`/`python = "..."` constraint strings from real `poetry.lock`/`pyproject.toml` files. See its header for the specific bugs and how they were confirmed. |
 | `examples/json-simple.nix` | A plain, unoptimized JSON grammar — every construct gets its own named rule, no attention paid to allocation. Good starting point for reading/writing your own grammar. |
 | `examples/json-optimized.nix` | Re-exports `grammar/json.nix`, annotated with what changed vs. `json-simple.nix` and why (rule inlining via the `action` combinator, fewer redundant whitespace scans, etc). |
@@ -189,12 +189,11 @@ plus a small base32 re-encode (not reimplemented here — see
 network access entirely for those lockfiles.
 
 Correctness: cross-validated against an independent Python reference
-parser (not derived from this grammar) across 134 real `Gemfile.lock`
-files pulled from a nixpkgs checkout — every field (multiple GEM/GIT/PATH
-blocks, platform-qualified spec versions, `!`-pinned/multi-constraint
-dependencies, CHECKSUMS, RUBY VERSION) byte/value-identical between the
-two. Deliberately out of scope: Bundler `PLUGIN SOURCES` (not seen in the
-corpus at all).
+parser across 134 real `Gemfile.lock` files pulled from a nixpkgs
+checkout — every field (multiple GEM/GIT/PATH blocks, platform-qualified
+spec versions, `!`-pinned/multi-constraint dependencies, CHECKSUMS, RUBY
+VERSION) byte/value-identical between the two. Deliberately out of
+scope: Bundler `PLUGIN SOURCES` (not seen in the corpus at all).
 
 ## yarn.lock: a real nixpkgs use case
 
@@ -216,15 +215,12 @@ category as `examples/gemfile-lock-checksums.nix`'s hex-to-base32
 conversion for `Gemfile.lock`.)
 
 Correctness: cross-validated against an independent Python reference
-parser (not derived from this grammar) across 15 real `yarn.lock` files
-(2,395 entries total) pulled from nixpkgs-adjacent checkouts and
-`node_modules` sources — scoped package names, multi-spec lines (both
-bare and double-quoted forms), `dependencies:`/`optionalDependencies:`
-blocks, and every `version`/`resolved`/`integrity` field byte/value-
-identical between the two. A Yarn Berry (v2+) lockfile — a different,
-YAML-based format entirely — correctly fails to parse rather than
-silently mis-parsing (confirmed against a real 16000-line Berry lockfile
-found during corpus collection).
+parser across 15 real `yarn.lock` files (2,395 entries total) — scoped
+package names, multi-spec lines (both bare and double-quoted forms),
+`dependencies:`/`optionalDependencies:` blocks, and every
+`version`/`resolved`/`integrity` field byte/value-identical between the
+two. A Yarn Berry (v2+) lockfile — a different, YAML-based format
+entirely — correctly fails to parse rather than silently mis-parsing.
 
 ## Benchmarks
 
@@ -263,8 +259,8 @@ widening as input grew — 14x more RSS at 50KB, ~38x at 384KB — and it hit
 `error: OutOfMemory` on a `tests.nix` regression case
 (`bigJumpDoesNotOverflow`) that `nix` handles in well under a second. See
 the "`fix` vs `nix`" section of
-[`bench/comparison-report.md`](bench/comparison-report.md) for the full
-numbers and two unrelated CLI-compatibility gaps found along the way.
+[`bench/comparison-report.md`](bench/comparison-report.md) for full
+numbers.
 
 ## Tests
 

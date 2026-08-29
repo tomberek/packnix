@@ -11,13 +11,7 @@
 # bare-string ("LOCKED") nonterminal-reference syntax as closely as this
 # domain allows -- see lib/valuewalk.nix's header comment for what
 # resolving "Name" by lookup into a lazily self-referential attrset of
-# compiled rules means here, and why that's the right mechanism even
-# though there's no position dimension to memoize against the way
-# packrat.nix's array-indexed Derivs nodes are. Confirmed this
-# rule-by-name indirection costs nothing measurable vs. writing the same
-# schema with plain Nix `let`/`inherit` sharing instead (both variants:
-# ~0.07-0.09s / ~50-52MB on the fixture below) -- it's purely a
-# readability/structure choice, matching grammar/flakelock.nix's own
+# compiled rules means here. Matches grammar/flakelock.nix's own
 # LOCKED/NODE/DOCUMENT rule names one-for-one so the two files read as
 # parallel structures.
 #

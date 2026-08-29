@@ -8,9 +8,7 @@
 # Why this matters: `packnix-bundler`'s `mkGemset` needs per-gem group
 # membership to make `bundlerEnv`'s `groups` filtering actually work --
 # without it, every gem is tagged `["default"]` and `groups` filtering
-# becomes a silent no-op (nixpkgs' `groupMatches` always matches when
-# every gem is tagged `"default"`, since `groups ++ ["default"]` always
-# includes it).
+# becomes a silent no-op.
 #
 # Scope confirmed by scanning a nixpkgs checkout's 136-file corpus for
 # every Gemfile that uses groups at all (6 files) -- these are the ONLY
@@ -21,12 +19,12 @@
 #     three real spellings of an inline alternative to the block form.
 #   - `if <cond> ... end`, `unless <cond> ... end`, and
 #     `if <cond> ... else ... end` wrapping either of the above. The
-#     condition itself (typically `ENV["X"] == "1"`) is captured as raw
-#     text but never interpreted -- there's no way to know its value
-#     without knowing the environment `bundle install` was run under.
-#     Both branches' gems are collected (a union, not a choice of one
-#     branch) -- this never silently drops a gem, though it may
-#     over-include relative to one specific real `bundle install` run.
+#     condition itself is captured as raw text but never interpreted --
+#     there's no way to know its value without knowing the environment
+#     `bundle install` was run under. Both branches' gems are collected
+#     (a union, not a choice of one branch) -- this never silently drops
+#     a gem, though it may over-include relative to one specific real
+#     `bundle install` run.
 #
 # Deliberately out of scope (real, but rare -- 1-2 files each in the
 # corpus):
@@ -295,14 +293,13 @@ let
   # Recognizes a `def`/`class`/`module`/`begin`/`case` keyword line only
   # -- NOT a generic `<arbitrary-expr> do [|args|]` opener (e.g.
   # redmine's `Dir.glob(...).each do |file|`): evalRegex's bounded
-  # lookahead window only retries with a wider window when a match fills
-  # the window exactly, not when no match is found at all, so a pattern
-  # needing to scan past an arbitrary-length expression before finding
-  # " do" can silently fail to match a longer real line. That form is
-  # already out of scope (falls back to UNRECOGNIZED_LINE's failure ->
-  # mkGemset's whole-file fallback), so this only needs to cover the
-  # keyword forms, always short enough to fit the window. Tried AFTER
-  # GROUP_BLOCK/IF_BLOCK in itemExpr's choice.
+  # lookahead window only retries wider when a match fills the window
+  # exactly, not when no match is found at all, so a pattern needing to
+  # scan past an arbitrary-length expression before finding " do" can
+  # silently fail on a longer real line. That form is already out of
+  # scope (falls back to UNRECOGNIZED_LINE's failure -> mkGemset's
+  # whole-file fallback). Tried AFTER GROUP_BLOCK/IF_BLOCK in itemExpr's
+  # choice.
   OPAQUE_OPENER_LINE = [
     { regex = "((def|class|module|begin|case)([ \t?!(][^\r\n]*)?)"; }
     lineEnd

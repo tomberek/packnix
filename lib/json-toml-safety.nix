@@ -1,36 +1,33 @@
 # Static check for lib/packrat.nix's `{ json = {}; }`/`{ toml = {}; }`
 # combinator: does any rule place one somewhere a PEG combinator could
-# gracefully absorb its failure (`opt`, a non-last `choice` branch, `star`'s
-# plain body, `and`, `not`) instead of somewhere failure necessarily
-# propagates as the whole rule failing? Runs once per rule, over the rule's
-# own expression tree, BEFORE any input is parsed -- catches a
-# structurally-wrong grammar regardless of what input it's ever fed,
-# complementing packrat.nix's evalBuiltinParser (whose eager `builtins.seq`
-# only catches a bad placement WHEN malformed input actually reaches it at
-# parse time, on that specific input). See packrat.nix's header comment and
-# evalBuiltinParser for why `json`/`toml` cannot return `false` at all --
-# only succeed or throw -- which is the whole reason this check exists.
+# gracefully absorb its failure (`opt`, a non-last `choice` branch,
+# `star`'s plain body, `and`, `not`) instead of somewhere failure
+# necessarily propagates as the whole rule failing? Runs once per rule,
+# over the rule's expression tree, BEFORE any input is parsed -- catches
+# a structurally-wrong grammar regardless of what input it's ever fed.
+# This matters because `json`/`toml` cannot return `false` at all --
+# only succeed or throw (see packrat.nix's evalBuiltinParser) -- so
+# placing one where a `false` would normally be gracefully absorbed
+# turns backtracking into a hard, uncatchable failure.
 #
 # Does NOT follow nonterminal references (a bare `"Name"`) into the
-# referenced rule -- same documented limitation as packrat.nix's
-# compileAction single-reference safety requirement not being checked
-# either; a `json`/`toml` reached only via a chain of nonterminal refs from
-# an unsafe position is not caught by this walk. Each rule is checked
-# independently, from its own top (always `committed = true`: a whole rule
-# reporting `false` to `run`'s caller is an ordinary, correctly
-# backtracking outcome, not a swallowed failure).
+# referenced rule; a `json`/`toml` reached only via a chain of
+# nonterminal refs from an unsafe position is not caught by this walk.
+# Each rule is checked independently, from its own top (always
+# `committed = true`: a whole rule reporting `false` to `run`'s caller
+# is an ordinary, correctly backtracking outcome, not a swallowed
+# failure).
 #
-# `committed`'s meaning at a given position: true iff a `false` there would
-# necessarily make the ENCLOSING RULE's own top-level result `false` too --
-# i.e. no combinator between here and the rule's top would instead absorb
-# that `false` into an overall success (`opt` producing `null`, `star` just
-# stopping the loop, an earlier `choice` branch's failure being retried as
-# the next branch, `and`/`not` swallowing it into their own lookahead
-# result). `json`/`toml` is safe only where `committed` is true: it can't
-# return `false` at all, so anywhere a `false` would have been gracefully
-# absorbed, throwing instead is a correctness break -- but where
-# `committed` is already true, a hard failure was going to happen
-# regardless, so throwing changes nothing observable.
+# `committed`'s meaning at a given position: true iff a `false` there
+# would necessarily make the ENCLOSING RULE's own top-level result
+# `false` too -- i.e. no combinator between here and the rule's top
+# would instead absorb that `false` into an overall success (`opt`
+# producing `null`, `star` just stopping the loop, an earlier `choice`
+# branch's failure being retried as the next branch, `and`/`not`
+# swallowing it into their own lookahead result). `json`/`toml` is safe
+# only where `committed` is true: where it's already true, a hard
+# failure was going to happen regardless, so throwing changes nothing
+# observable.
 rec {
   checkExprSafety =
     path: committed: expr:

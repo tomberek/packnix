@@ -252,13 +252,11 @@ let
 
   # NOT a `checks` entry -- this demonstrates json/toml's commit-only
   # restriction (see lib/packrat.nix's evalBuiltinParser) by actually
-  # throwing, and builtins.tryEval cannot catch that throw (confirmed: it's
-  # a JSON-library parse-error exception, not the Nix language's own
-  # AssertionError, which is all tryEval catches -- see evalBuiltinParser's
-  # comment). Including a genuinely-throwing expression as a `checks`
-  # value would abort this whole file's evaluation, not just fail one
-  # check, so this is a comment-documented reproducer instead, same spirit
-  # as a grammar file's header "Run with:" example. Confirmed manually:
+  # throwing, which builtins.tryEval cannot catch (a JSON-library
+  # parse-error exception, not the Nix language's own AssertionError).
+  # Including a genuinely-throwing expression as a `checks` value would
+  # abort this whole file's evaluation, so this is a comment-documented
+  # reproducer instead:
   #
   #   nix eval --impure --expr '
   #     let
@@ -268,11 +266,8 @@ let
   #   '
   #
   # throws immediately (eager `builtins.seq` in evalBuiltinParser) instead
-  # of the `opt` silently swallowing the malformed JSON and reporting a
-  # bogus successful parse -- which is what happened before that `seq` was
-  # added: the error sat in an unforced thunk and only surfaced (if at
-  # all) whenever something later happened to read the value, arbitrarily
-  # far from the actual parse site.
+  # of `opt` silently swallowing the malformed JSON and reporting a bogus
+  # successful parse.
 
   # --- lib/json-toml-safety.nix: static (no input needed) check that no
   # rule places json/toml somewhere a `false` would be gracefully absorbed
@@ -574,18 +569,14 @@ let
   # automatic POSIX-ERE synthesis is the fallback (confirms both paths).
   # The "unparseable pattern still throws" case is tested directly
   # against lib/regex-generate.nix's own generateForRegex below, NOT
-  # through generate.nix's pattern/regex wrapper -- an unparseable-per-
-  # regex-generate.nix pattern is, in every case checked, ALSO invalid
-  # ERE syntax that builtins.match itself rejects (confirmed: e.g.
-  # "(unbalanced(group" throws directly from builtins.match's own
-  # "invalid regular expression" error, a DIFFERENT, tryEval-UNCATCHABLE
-  # exception -- same class as fromJSON/fromTOML's parse errors, not the
-  # Nix language's own AssertionError -- see lib/packrat.nix's
-  # evalBuiltinParser comment). generate.nix's wrapper always re-verifies
-  # via builtins.match regardless of which path produced a candidate, so
-  # testing "does an unparseable pattern throw" THROUGH generate.nix would
-  # hit that uncatchable path instead of regex-generate.nix's own
-  # catchable one.
+  # through generate.nix's pattern/regex wrapper: an unparseable pattern
+  # is, in every case checked, ALSO invalid ERE syntax that
+  # builtins.match itself rejects with a DIFFERENT, tryEval-uncatchable
+  # exception (same class as fromJSON/fromTOML's parse errors -- see
+  # lib/packrat.nix's evalBuiltinParser). generate.nix's wrapper always
+  # re-verifies via builtins.match, so testing through it would hit
+  # that uncatchable path instead of regex-generate.nix's own catchable
+  # one.
   genPatternSchema = {
     pattern = "([0-9]+)";
   };
@@ -733,13 +724,12 @@ let
     in
     # Comparing directly against `builtins.fromJSON sample` (the ground
     # truth) rather than checking `parsed != packrat.NO_MATCH` first --
-    # both are correct now that lib/packrat.nix's run() uses a dedicated
-    # NO_MATCH sentinel instead of `false` (see that file's own comment
-    # for the bug this fixed: `false` alone couldn't distinguish a rule
-    # that failed from a rule whose matched VALUE legitimately IS
-    # `false`, only reachable via json/toml). Comparing against
-    # fromJSON directly is simpler here and needs no sentinel check at
-    # all.
+    # both are correct since lib/packrat.nix's run() uses a dedicated
+    # NO_MATCH sentinel instead of `false` (see that file's comment for
+    # why: `false` alone can't distinguish a rule that failed from a
+    # rule whose matched VALUE legitimately IS `false`, only reachable
+    # via json/toml). Comparing against fromJSON directly is simpler
+    # here and needs no sentinel check at all.
     parsed == builtins.fromJSON sample
   ) genJsonSamples;
 
@@ -765,12 +755,9 @@ let
   };
   genTomlValidated = (run genTomlGrammar 0 genTomlSample).DOC != packrat.NO_MATCH;
 
-  # --- Regression: grammar/flakelock.nix used to accept a JSON object
-  # missing the "," between two present fields (each field's leading
-  # comma was independently `opt`, with nothing actually requiring one
-  # between two REAL fields -- see grammar/flakelock.nix's
-  # fieldWithLeadingComma comment for the fix). Found independently via
-  # lib/generate.nix's round-trip testing, not by hand.
+  # --- Regression: grammar/flakelock.nix must reject a JSON object
+  # missing the "," between two present fields (see that file's
+  # fieldWithLeadingComma comment).
   flakelockGrammarModule = import ./grammar/flakelock.nix;
   flakelockMissingCommaInput = ''{"nodes": {"a": {"locked":{"dir": "x" "narHash":"y"},"original":{}}},"root": "a" ,"version":1 }'';
   rFlakelockMissingComma = packrat.run {
@@ -787,18 +774,10 @@ let
     handlers = flakelockGrammarModule.handlers;
   } 0 flakelockValidCommaInput;
 
-  # --- Regression: grammar/json.nix's STRING handler used to never
-  # unescape anything at all -- it concatenated whatever text
-  # stringFragment matched literally, so a string containing `\"`
-  # decoded to the literal two-character sequence `\"` instead of a bare
-  # `"` (confirmed against builtins.fromJSON, which correctly decodes
-  # it). Separately, the bare-backslash choice branch matched a LONE `\`
-  # with no escape partner, which is never valid JSON at all. Found
-  # independently via lib/generate.nix's round-trip testing on a grammar
-  # no existing fixture happens to exercise (none contain an escaped
-  # quote or backslash). Fixed by decoding each escape via `action`
-  # (same pattern grammar/aterm.nix's stringFragment already
-  # established) instead of leaving the raw matched text unescaped.
+  # --- Regression: grammar/json.nix's STRING handler must correctly
+  # unescape `\"`/`\\`/etc. rather than leaving raw matched text
+  # unescaped, and must reject a lone backslash with no escape partner
+  # (never valid JSON) -- see that file's stringFragment comment.
   jsonGrammarModule = import ./grammar/json.nix;
   jsonParseString =
     s:
@@ -851,25 +830,19 @@ let
   jsonEscapeResults = map (c: (jsonParseString c.input) == c.expected) jsonEscapeCases;
 
   # A lone backslash (no escape partner) is never valid JSON -- confirms
-  # this is correctly REJECTED, not silently accepted the way it used to
-  # be before the fieldWithLeadingComma-style choice restructure.
+  # this is correctly REJECTED, not silently accepted.
   jsonLoneBackslashInput = ''"a\ b"'';
   rJsonLoneBackslash = jsonParseString jsonLoneBackslashInput;
 
-  # --- Regression: lib/generate.nix's isRecursiveExpr treated the
+  # --- Regression: lib/generate.nix's isRecursiveExpr must treat the
   # epsilon marker `""` (packrat.nix's cutSeq uses `{ cutSeq = [ b ""];
-  # }`, matching mkCompile's own epsilon handling) as an unresolvable
-  # RULE REFERENCE instead of the special epsilon case, since it never
-  # checked `expr == ""` before the general `isString` dispatch the way
-  # generateWith itself already did. This made every choice branch
-  # wrapped in a cutSeq register as unconditionally recursive, which
-  # then starved `choice` of any terminal branch to bottom out at
-  # maxDepth even when most branches were genuinely non-recursive (e.g.
-  # grammar/json.nix's cut variant, where STRING/NUMBER/BOOL/NULL are
-  # all non-recursive but got misclassified because EVERY X branch is
-  # cutSeq-wrapped). Found via lib/roundtrip.nix's json.nix coverage,
-  # added once the string-escape fix above made generating for
-  # json.nix's cut grammar worth exercising at scale.
+  # }`) as the special epsilon case, not an unresolvable RULE REFERENCE
+  # -- otherwise every choice branch wrapped in a cutSeq registers as
+  # unconditionally recursive, starving `choice` of any terminal branch
+  # to bottom out at maxDepth even when most branches are genuinely
+  # non-recursive (e.g. grammar/json.nix's cut variant, where
+  # STRING/NUMBER/BOOL/NULL are all non-recursive but every X branch is
+  # cutSeq-wrapped).
   generateModule = import ./lib/generate.nix;
   jsonCutChoiceBranches = (builtins.elemAt jsonGrammarModule.grammar.X 1).choice;
   jsonCutChoiceTerminality = map (

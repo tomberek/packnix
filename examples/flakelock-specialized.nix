@@ -15,12 +15,11 @@
 #   - no string in the file contains a `"` or `\`, so no escape handling
 #     is needed
 # That lets every object become a fixed, linear sequence of `opt`-wrapped
-# fields tried once each in a known order (a `field` helper: literal key,
-# then value, `opt`-wrapped so an absent field just costs one failed
-# `opt`) instead of a generic "parse a key, dispatch on its name" loop --
-# no backtracking over key identity or order at all. The only genuinely
-# generic parsing left is where key names really are arbitrary data (node
-# names in `nodes`, input names in `inputs`).
+# fields tried once each in a known order instead of a generic "parse a
+# key, dispatch on its name" loop -- no backtracking over key identity or
+# order at all. The only genuinely generic parsing left is where key
+# names really are arbitrary data (node names in `nodes`, input names in
+# `inputs`).
 #
 # Like json-optimized.nix, every non-recursive sub-expression is inlined
 # via `{ action = { e; f; }; }` (lib/packrat.nix) rather than given a
@@ -28,18 +27,15 @@
 # (`DOCUMENT`) for the whole grammar, since nothing in a flake.lock's
 # fixed shape is recursive or revisits a position twice.
 #
-# Measured on a real-world 391947-byte flake.lock-shaped fixture (not
-# included in this repo; confirmed to match this schema: same 4 node
-# key-sets, 0 alphabetical-order violations), full parse + materialization,
-# byte-identical output confirmed against Python's json.load: grammar/json.nix
-# ~175.5MB RSS / ~0.49s; this grammar ~138.1MB / ~0.32s -- roughly -21% RSS,
-# -35% wall time. NIX_SHOW_STATS attributes this structurally, not to noise:
-# nrFunctionCalls -39%, nrPrimOpCalls -30%, sets.number -34%.
+# Measured on a real-world 391947-byte flake.lock-shaped fixture, full
+# parse + materialization, byte-identical output confirmed against
+# Python's json.load: grammar/json.nix ~175.5MB RSS / ~0.49s; this
+# grammar ~138.1MB / ~0.32s -- roughly -21% RSS, -35% wall time.
 #
-# Also run against a real, external ~14.2MB flake.lock (23756 nodes,
-# outside this repo, not included here): grammar/json.nix ~19.4s / 4.71GB
-# RSS; this grammar ~10.6s / 3.4GB RSS (-45% time, -28% RSS), output
-# confirmed byte-identical to Python's json.load of the same file.
+# Also run against a real, external ~14.2MB flake.lock (23756 nodes):
+# grammar/json.nix ~19.4s / 4.71GB RSS; this grammar ~10.6s / 3.4GB RSS
+# (-45% time, -28% RSS), output confirmed byte-identical to Python's
+# json.load of the same file.
 #
 # The trade-off for all of this: the grammar only accepts documents
 # matching the exact schema above. A flake.lock from a future nix version

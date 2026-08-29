@@ -1,24 +1,21 @@
-# A generator that inverts a POSIX ERE pattern (the kind used in this
-# repo's `{ regex = "..."; }` grammar leaves, matched via `builtins.match`)
-# into a sample string the pattern would accept. Companion to the
-# (separate, not-yet-written) grammar-level generator for lib/packrat.nix
-# and lib/valuewalk.nix -- this file only handles the regex leaf case,
-# which doesn't invert trivially the way `lit`/`range`/`choice`/`star` do.
+# Generates a sample string that a POSIX ERE pattern (the kind used in
+# this repo's `{ regex = "..."; }` grammar leaves, matched via
+# `builtins.match`) would accept. Companion to lib/generate.nix, which
+# handles every other grammar/schema form but delegates regex leaves
+# here since a regex doesn't invert as trivially as `lit`/`range`/
+# `choice`/`star` do.
 #
 # Approach: parse the ERE into a small AST (parseERE), then walk the AST
 # producing a string, drawing every pseudo-random decision (which
 # alternative, how many repetitions, which class member) from
 # `builtins.hashString "sha256" seed`, deriving a fresh child seed for
-# every recursive call so the whole thing is a pure, reproducible function
-# of (pattern, seed) -- see the module header in lib/packrat.nix's sibling
-# generator work for why: Nix has no RNG and no char<->codepoint builtins,
-# so both randomness and "pick the Nth character of a range" have to be
-# faked with `hashString` and a precomputed character table, respectively.
+# every recursive call -- a pure, reproducible function of (pattern,
+# seed). Nix has no RNG and no char<->codepoint builtins, so both
+# randomness and "pick the Nth character of a range" are faked with
+# `hashString` and a precomputed character table, respectively.
 #
-# Supported ERE constructs (sufficient for every pattern actually used in
-# grammar/*.nix as of this writing -- re-grep
-# `grep -oh 'regex = "[^"]*"' grammar/*.nix` to confirm against the current
-# corpus):
+# Supported ERE constructs (sufficient for every pattern used in
+# grammar/*.nix):
 #   - literals, including backslash-escaped metacharacters (\. \* \( etc.)
 #     and the \r \n \t shorthands
 #   - `.` (any character)
@@ -31,33 +28,23 @@
 #   - quantifiers `*`, `+`, `?`, `{m}`, `{m,}`, `{m,n}`
 #   - `^` / `$` treated as zero-width no-ops (this repo's grammars only
 #     ever hand a pattern to `builtins.match` as a whole-string match, so
-#     anchors carry no extra constraint beyond what "whole string" already
-#     means -- see lib/packrat.nix's evalRegex)
+#     anchors carry no extra constraint -- see lib/packrat.nix's evalRegex)
 #
 # Explicitly NOT supported (throws a clear "regex-generate: ..." error
 # rather than guessing):
 #   - backreferences (don't exist in POSIX ERE, so no loss)
-#   - anything that doesn't parse per the (deliberately small) grammar
-#     below (unbalanced parens, dangling backslash, malformed `{m,n}`,
-#     unterminated bracket expressions, etc.) -- though note most of
-#     these are *also* rejected by `builtins.match` itself as invalid ERE
-#     syntax before generation even matters, since the underlying regex
-#     engine validates the pattern independently of anything this file does
+#   - anything that doesn't parse per the grammar below (unbalanced
+#     parens, dangling backslash, malformed `{m,n}`, unterminated bracket
+#     expressions, etc.)
 #   - POSIX collating symbols / equivalence classes (`[.foo.]`, `[=a=]`)
-#     are NOT specially parsed here, but this is not a gap in practice:
-#     confirmed empirically that Nix's `builtins.match` doesn't implement
-#     them either (`[.foo.]` behaves identically to the literal-char class
-#     `[.fo]` under `builtins.match`), so treating every character between
-#     `[...]` that isn't a `[:name:]` POSIX class as a literal/range item
-#     (this file's actual behavior) already agrees with the engine we're
-#     generating for
+#     are not specially parsed here, matching that `builtins.match`
+#     doesn't implement them either (`[.foo.]` behaves identically to the
+#     literal-char class `[.fo]` under `builtins.match`)
 #
 # Every generated string is meant to be checked by the CALLER via
 # `builtins.match pattern generated != null` (see `generateForRegexChecked`
-# below for a convenience wrapper that does this itself and throws loudly
-# if generation ever produces something the pattern rejects) -- that check
-# is the ground truth this file was developed against, not a formal proof
-# of correctness.
+# below for a convenience wrapper that does this and throws loudly if
+# generation ever produces something the pattern rejects).
 rec {
   ################################################################
   # Small pure-Nix utilities: none of these exist as builtins.
@@ -181,16 +168,9 @@ rec {
     else if name == "lower" then
       expandRange "a" "z"
     else if name == "punct" then
-      # BUGFIX: the original filter (`!(index >= 'A' && index <= 'z')`)
-      # excluded the WHOLE A-z range as "not punctuation" -- correct for
-      # the letters themselves, but it also wrongly swept in the symbols
-      # that sit BETWEEN 'Z' and 'a' in ASCII ([ \ ] ^ _ `) as excluded
-      # (they should be punctuation) while doing nothing to exclude
-      # digits at all (0-9 sits well before 'A', so the range check never
-      # touched them) -- confirmed via `builtins.elem` against the
-      # correct 32-character POSIX punct set, not just spot-checked.
-      # Fixed by excluding letters and digits explicitly instead of by
-      # ASCII-range position.
+      # Excludes letters/digits/space explicitly rather than filtering by
+      # ASCII-range position: a range-position filter would wrongly sweep
+      # in the symbols between 'Z' and 'a' ([ \ ] ^ _ `) as excluded.
       let
         excluded = expandRange "A" "Z" ++ expandRange "a" "z" ++ expandRange "0" "9" ++ [ " " ];
       in
@@ -537,13 +517,9 @@ rec {
       included
     else
       # Negated class: there's no way to enumerate "everything except
-      # these characters" without a finite universe to draw from, so we
-      # draw from the same asciiChars table used for ranges and filter out
-      # whatever the class excludes. Every negated class actually used in
-      # this repo's grammars (`[^"]`, `[^\r\n]`, `[^,":\r\n]`, etc.)
-      # excludes only a handful of characters, so the filtered pool is
-      # never empty in practice -- but if it were, that's a real "can't
-      # synthesize" condition, not something to paper over.
+      # these characters" without a finite universe to draw from, so
+      # draw from the same asciiChars table used for ranges and filter
+      # out whatever the class excludes.
       let
         pool = builtins.filter (c: !(builtins.elem c included)) asciiChars;
       in

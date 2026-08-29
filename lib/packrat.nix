@@ -1,21 +1,19 @@
-# A packrat/PEG parsing engine: one lazy `Derivs` node per input position,
-# held in a single position-indexed array (`buildDerivs`'s `at`), following
-# Ford's "Packrat Parsing: Simple, Powerful, Lazy, Linear Time" (arXiv
-# cs/0603077). `genList`'s per-element laziness means a node is only built
-# when actually accessed, and `elemAt at pos` from any caller lands on the
-# same shared thunk -- so Nix's ordinary thunk-sharing gives memoization
-# for free.
+# A packrat/PEG parsing engine: one lazy `Derivs` node per input position
+# (see buildDerivs's `at`), following Ford's "Packrat Parsing: Simple,
+# Powerful, Lazy, Linear Time". `genList`'s per-element laziness means a
+# node is only built when accessed, and repeated `elemAt at pos` calls land
+# on the same shared thunk, giving memoization for free via Nix's ordinary
+# thunk-sharing.
 #
 # Grammar DSL (attrset-as-data):
 #   "Name"                -> nonterminal reference (bare "" = epsilon)
 #   { lit = "..."; }      -> literal string match
 #   { range = [a b]; }    -> single-char range match
 #   { regex = "..."; }    -> POSIX ERE match (via builtins.match) at point
-#   { regex = "..."; maxLen = N; } -> same, but the grammar author
-#                             guarantees the match can never exceed N
-#                             characters (e.g. a `{0,N}`-bounded regex) --
-#                             skips evalRegex's window-doubling entirely,
-#                             see its comment.
+#   { regex = "..."; maxLen = N; } -> same, but the caller guarantees the
+#                             match can never exceed N characters (e.g. a
+#                             `{0,N}`-bounded regex), skipping evalRegex's
+#                             window-doubling entirely.
 #   [ e1 e2 ... ]          -> sequence
 #   { choice = [e1 ...]; } -> ordered choice
 #   { star = e; }          -> e*
@@ -23,50 +21,38 @@
 #   { opt = e; }           -> e?
 #   { and = e; }           -> &e   positive lookahead, consumes nothing
 #   { not = e; }           -> !e   negative lookahead, consumes nothing
-#   { cutSeq = [e1 e2]; }  -> e1 ↑ e2 (Mizushima et al., PASTE'10 §3.2),
-#                             valid only as a choice branch or star body --
-#                             see compileChoice / compileStarCut.
+#   { cutSeq = [e1 e2]; }  -> e1 ↑ e2 (PEG cut): valid only as a choice
+#                             branch or star body -- see compileChoice /
+#                             compileStarCut.
 #   { action = { e; f; }; } -> e, with f applied to its VALUE on success --
 #                              lets a value-transform travel with an
 #                              inlined sub-expression instead of requiring
 #                              a named Derivs-node field. See compileAction.
-#   { json = { }; }        -> hands the ENTIRE REMAINING input (position to
+#   { json = { }; }        -> hand the ENTIRE REMAINING input (position to
 #   { toml = { }; }           end of string) to builtins.fromJSON/fromTOML,
 #                             rather than parsing it rule-by-rule. COMMIT-ONLY:
 #                             unlike every other combinator, this THROWS
 #                             instead of returning `false` on malformed input
-#                             -- builtins.tryEval does not catch fromJSON/
-#                             fromTOML's parse errors (they aren't the
-#                             AssertionError thrown by the Nix language's own
-#                             `throw`/`assert`, which is all tryEval catches),
-#                             so there is no way to backtrack past a failed
-#                             json/toml the way `choice` backtracks past a
-#                             failed `lit`/`regex`. Only place this where the
-#                             grammar has ALREADY committed to "the rest of
-#                             the input is JSON/TOML" with no other
-#                             alternative left to try -- e.g. the last
-#                             `cutSeq` branch of a `choice`, or the final
-#                             element of a top-level `document` sequence. See
-#                             evalBuiltinParser's comment for why it's
-#                             deliberately unlike every other leaf combinator
-#                             in this file.
+#                             (builtins.tryEval cannot catch fromJSON/
+#                             fromTOML's parse errors), so there is no way
+#                             to backtrack past a failed json/toml the way
+#                             `choice` backtracks past a failed `lit`/
+#                             `regex`. Only place this where the grammar has
+#                             ALREADY committed with no other alternative
+#                             left to try -- e.g. the last `cutSeq` branch
+#                             of a `choice`, or the final element of a
+#                             top-level sequence. See evalBuiltinParser.
 #
 # `mkCompile string at` returns `compile : expr -> (derivs -> result)`,
 # deciding once which combinator an `expr` denotes instead of re-testing
-# its shape on every call. `at` is the position-indexed node array, passed
-# in so evalLit/evalRegex can jump straight to a known target position via
-# `elemAt at pos` instead of walking there one `.next` hop at a time.
+# its shape on every call.
 rec {
   # result = [ value derivs ]  (success)  |  false  (failure)
-  # A 2-element list, not `{ value = ...; derivs = ...; }`: an attrset
-  # carries a Bindings header plus one Attr slot per field (~56 bytes vs.
-  # ~24 for the list, measured), and this is the highest-volume allocation
-  # site in the engine. `[a b] == false` is `false` too, so `false` is
-  # safe as the failure sentinel. Every combinator builds/reads this list
-  # directly via `elemAt r 0`/`1` rather than through named helpers --
-  # wrapping it in a function cost real RSS at this call volume (measured
-  # ~4% total removing two such helpers). There's no single choke point
-  # for this shape anymore; changing it means touching every site by hand.
+  # A list, not an attrset, since this is the highest-volume allocation
+  # site in the engine and a list is markedly cheaper per instance. `[a b]
+  # == false` is `false` too, so `false` is safe as the failure sentinel.
+  # Every combinator reads/builds this via `elemAt r 0`/`1` directly rather
+  # than through named helpers, for the same allocation-count reason.
 
   # `nameToIndex.<Name>` gives the fixed list-slot index of rule `<Name>`
   # within a node (see buildDerivs's `mkNode`); slot 0 is always `count`.
@@ -127,10 +113,8 @@ rec {
         else
           throw "packrat: unrecognized expression: ${builtins.toJSON expr}";
 
-      # A known-length jump (the match's length is already known once
-      # evalLit/evalRegex succeed) is a single `elemAt`, not a walk of `n`
-      # `.next` hops -- measured far fewer allocations/calls than walking.
-      # `count` lives at fixed slot 0 of the node (see mkNode).
+      # A known-length jump is a single `elemAt`, not a walk of `n` `.next`
+      # hops. `count` lives at fixed slot 0 of the node (see mkNode).
       evalLit =
         lit:
         let
@@ -173,12 +157,9 @@ rec {
       # the full remainder on every attempt makes the parse O(n^2). Not a
       # correctness bound: `tryWindow` doubles whenever a match exactly
       # fills the window (otherwise indistinguishable from truncation), so
-      # longer matches still parse correctly. Re-measured across
-      # grammar/json.nix, grammar/flakelock.nix, and grammar/gemfile-lock.nix
-      # (the last against both a real, long-line Gemfile.lock and a larger
-      # synthetic one): 64 consistently beats 32 (fewer doubling retries on
-      # longer lines/tokens, confirmed via nrPrimOpCalls), with 128 only
-      # marginally better still -- diminishing returns past 64.
+      # longer matches still parse correctly. 64 was measured to beat 32
+      # (fewer doubling retries on longer lines/tokens) with diminishing
+      # returns past that.
       regexWindow = 64;
 
       evalRegex =
@@ -187,14 +168,11 @@ rec {
           pattern = "${regex}.*";
         in
         if maxLen != null then
-          # The grammar author guarantees this regex can never match more
-          # than `maxLen` characters (e.g. a `{0,N}`-bounded repetition,
-          # like grammar/yaml.nix's per-depth indent check) -- so a single
+          # Caller guarantees this regex can never match more than
+          # `maxLen` characters (e.g. a `{0,N}`-bounded repetition, like
+          # grammar/yaml.nix's per-depth indent check), so a single
           # `substring count maxLen` window always contains the whole
-          # match, with no truncation possible and no doubling retry ever
-          # needed. Measured ~35% fewer primop calls than the generic
-          # window path for such a regex, in proportion to how much
-          # smaller `maxLen` is than `regexWindow`.
+          # match -- no truncation possible, no doubling retry needed.
           (
             derivs:
             let
@@ -246,40 +224,28 @@ rec {
       # `{ json = {}; }`/`{ toml = {}; }`: hands `substring count (len -
       # count) string` (position to end of input, not a bounded window like
       # evalRegex -- fromJSON/fromTOML need the WHOLE value, and both
-      # already reject trailing content after a complete value, so there's
-      # no way to ask either for just "the JSON/TOML prefix starting here")
-      # to a native builtin parser instead of walking it rule-by-rule.
+      # already reject trailing content, so there's no way to ask either
+      # for just "the JSON/TOML prefix starting here") to a native builtin
+      # parser instead of walking it rule-by-rule.
       #
-      # Deliberately NOT wrapped in `builtins.tryEval`: confirmed (see
-      # ~/nix's src/libexpr/primops.cc `prim_tryEval`) that tryEval's catch
-      # clause only matches `AssertionError`, the C++ exception type behind
-      # the Nix LANGUAGE's own `throw`/`assert` -- fromJSON/fromTOML's parse
-      # errors are a different exception type entirely (from the underlying
-      # JSON/TOML libraries) and propagate straight through tryEval
-      # uncaught. There is no builtin that validates JSON/TOML without
-      # fully parsing it, and no way to catch a failed parse from Nix code
-      # at all. So unlike every other leaf combinator here, this one cannot
-      # return `false` on malformed input -- it throws, aborting the whole
-      # evaluation, not just this alternative. See this file's header
-      # comment for the resulting restriction: only use `json`/`toml` where
-      # the grammar has already committed with no other alternative left
-      # (e.g. a cutSeq's second branch, or the last element of a top-level
-      # sequence) -- everywhere else, a thrown error where a plain PEG
-      # combinator would have backtracked past a `false` is a correctness
-      # bug in the GRAMMAR, not in this function.
+      # Deliberately NOT wrapped in `builtins.tryEval`: tryEval's catch
+      # clause only matches the Nix language's own `throw`/`assert`
+      # exception type; fromJSON/fromTOML's parse errors are a different
+      # exception type and propagate straight through uncaught. So unlike
+      # every other leaf combinator here, this one cannot return `false`
+      # on malformed input -- it throws, aborting the whole evaluation,
+      # not just this alternative. See this file's header comment for the
+      # resulting restriction on where `json`/`toml` may be used.
       #
       # `builtins.seq (parse rest) ...` forces the parse HERE, not lazily.
-      # Every other combinator's result is built eagerly enough that a
-      # caller like `opt`/`choice` only ever inspects the DERIVS half
-      # (`elemAt r 1`) to decide whether to keep going, never the value half
-      # -- so an unforced `parse rest` thunk sitting in the value slot would
-      # let a malformed json/toml silently ride through `opt`'s "succeeded"
-      # path (and any enclosing choice/sequence) with the parse error only
-      # surfacing much later, IF something ever reads that value at all,
-      # far from this call site and with no indication of which grammar
-      # position caused it. Forcing eagerly turns a misuse of this
-      # commit-only combinator into an immediate, loud failure at the
-      # actual parse site instead of a silently-wrong result.
+      # Every other combinator only ever inspects the DERIVS half (`elemAt
+      # r 1`) to decide whether to keep going, never the value half -- so
+      # an unforced `parse rest` thunk sitting in the value slot would let
+      # a malformed json/toml silently ride through `opt`'s "succeeded"
+      # path (and any enclosing choice/sequence), with the parse error
+      # only surfacing later, far from this call site. Forcing eagerly
+      # turns a misuse of this commit-only combinator into an immediate
+      # failure at the actual parse site instead of a silently-wrong result.
       evalBuiltinParser =
         parse: derivs:
         let
@@ -294,18 +260,10 @@ rec {
 
       # compileSeq's generic path builds the result via `foldl'` +
       # `elemAt acc 0 ++ [...]`, an O(current length) copy per step, so
-      # O(k^2) for a k-element sequence -- measurably worse than a
-      # hand-unrolled builder even at these grammars' typical lengths.
-      # `seq2`/`seq3`/`seq4`/`seq5`/`seq6`/`seq7` build the result as one
-      # list literal instead; any other length falls back to `seqGeneric`,
-      # still correct, just without the speedup. (A generic non-hardcoded
-      # O(k) fix via self-referential `genList` was tried and came out
-      # worse than the original -- there's no free generic fix, only
-      # specialization.) 2-7 covers every sequence length that appears in
-      # this repo's shipped grammars (confirmed by scanning grammar/*.nix);
-      # a real-world grammar can of course have longer sequences than
-      # that, which still parse correctly via seqGeneric, just without
-      # this speedup.
+      # O(k^2) for a k-element sequence. `seq2`..`seq7` build the result as
+      # one list literal instead, covering every sequence length that
+      # appears in this repo's shipped grammars; longer sequences still
+      # parse correctly via seqGeneric, just without the speedup.
       seqGeneric =
         compiledSubs: derivs:
         builtins.foldl'
@@ -364,9 +322,7 @@ rec {
         let
           # `||` short-circuits, so laying every rN out flat and checking
           # them in one chain is equivalent to nesting `if rN == false
-          # then false else let r{N+1} = ...` one level deeper per stage
-          # (forcing r{N+1} while an earlier stage is `false` would throw,
-          # but that never happens once an earlier disjunct is `true`).
+          # then false else ...` one level deeper per stage.
           r0 = c0 derivs;
           r1 = c1 (builtins.elemAt r0 1);
           r2 = c2 (builtins.elemAt r1 1);
@@ -544,28 +500,22 @@ rec {
         in
         build compiledSubs;
 
-      # Ordered choice with cut (↑, Mizushima et al. §3.2): a branch
-      # `{ cutSeq = [e1 e2]; }` evaluates e1 first; if e1 fails, the next
-      # branch is tried as usual. If e1 succeeds, e2's result becomes the
-      # WHOLE CHOICE'S result even if e2 fails -- remaining branches are
-      # never tried. Each compiled branch returns `null` for "didn't
-      # match, try the next branch", a third state alongside `false`
-      # (stop: failure) and success, needed to distinguish "branch didn't
-      # match" from "cut committed, then failed". `go` returns the first
-      # non-null branch result.
+      # Ordered choice with cut (↑): a branch `{ cutSeq = [e1 e2]; }`
+      # evaluates e1 first; if e1 fails, the next branch is tried as usual.
+      # If e1 succeeds, e2's result becomes the WHOLE CHOICE'S result even
+      # if e2 fails -- remaining branches are never tried. Each compiled
+      # branch returns `null` for "didn't match, try the next branch", a
+      # third state alongside `false` (stop: failure) and success, needed
+      # to distinguish "branch didn't match" from "cut committed, then
+      # failed". `go` returns the first non-null branch result.
       #
       # `choice2`/`choice3`/`choice6` hand-unroll the same head/tail `go`
       # loop below for the arities this repo's shipped grammars actually
-      # invoke at runtime (confirmed via call-count instrumentation on
-      # grammar/json.nix), mirroring seq2-seq7's exact pattern: hoisting
-      # `elemAt compiledBranches i` OUT of the returned closure (into the
-      # outer `let`, computed once per compile-site, not once per parse
-      # call) is what makes the win real -- an earlier attempt at this
-      # same idea that indexed `compiledBranches` inside the closure
-      # measured far weaker, which is presumably why an older investigation
-      # (see bench/investigation-notes.md item 6) found choice-specialization
-      # not worth it. Any other arity falls back to `choiceGeneric`
-      # (the original `go`), still correct, just without the speedup.
+      # invoke at runtime, mirroring seq2-seq7's pattern: hoisting `elemAt
+      # compiledBranches i` OUT of the returned closure (computed once per
+      # compile-site, not once per parse call) is what makes the win real.
+      # Any other arity falls back to `choiceGeneric` (the original `go`),
+      # still correct, just without the speedup.
       choice2 =
         compiledBranches:
         let
@@ -984,21 +934,14 @@ rec {
   # Each node is a LIST, not an attrset: slot 0 is `count`, slots 1..N are
   # the grammar's rules in a fixed order (`names`/`nameToIndex`, baked once
   # here and threaded into `mkCompile` so nonterminal references resolve
-  # to a slot index at compile time, not a name lookup at run time). A
-  # list element costs ~24 bytes vs. an attrset Attr slot's ~56 bytes
-  # (measured, see the top-of-file comment on the `[value derivs]` result
-  # shape) for the exact same "spine eager, values lazy" behavior -- so
-  # this keeps the one-shared-spine memoization design (unlike the
-  # struct-of-arrays alternative, which traded one shared spine for N
-  # separate full-length ones and lost on any grammar with more than a
-  # couple of rules) while shrinking the per-node allocation.
+  # to a slot index at compile time, not a name lookup at run time). This
+  # keeps a single shared spine per position (unlike a struct-of-arrays
+  # alternative, which would need N separate full-length arrays) while
+  # using the cheaper list representation.
   #
   # `mkNode` hoists `builtins.elemAt at count` ONCE per node (into
   # `derivsNode`) rather than re-deriving it inside a per-slot callback
-  # invoked N times -- an index-driven `genList (i: ... elemAt at count)`
-  # measured ~24-30% more `nrPrimOpCalls` than this, entirely from that
-  # redundant re-lookup plus the `elemAt compiledFieldsInOrder (i - 1)`
-  # index arithmetic `map` doesn't need (it walks the list directly).
+  # invoked N times.
   buildDerivs =
     grammar: handlers: string:
     let
@@ -1046,11 +989,7 @@ rec {
 
       # One list per position: `[ count field_1 field_2 ... field_numRules ]`.
       # `derivsNode` is `elemAt at count` hoisted to a single `let` binding
-      # (every field function is called with the SAME node -- itself,
-      # tied together by `at`'s laziness -- so there is exactly one value
-      # to fetch here, not one per slot). `map` over the already-ordered
-      # `compiledFieldsInOrder` needs no per-element index arithmetic on
-      # the Nix side (the primop walks the list internally).
+      # since every field function is called with the SAME node.
       mkNode =
         count:
         let
@@ -1064,32 +1003,19 @@ rec {
       inherit at nameToIndex;
     };
 
-  # `run`'s own "this rule did not match" sentinel -- NOT `false`
-  # (confirmed: a real bug, found via lib/generate.nix's round-trip
-  # testing generating the JSON string "false" through a `{ json = {};
-  # }`-using rule and `run` reporting it as a non-match, indistinguishable
-  # from a genuine parse failure). Only `{ json = {}; }`/`{ toml = {};
-  # }` can ever produce a non-string matched VALUE at all -- every other
-  # combinator's value is always a substring of the input -- so this
-  # collision was latent in `run`'s design since the file was written,
-  # with no way to manifest before json/toml existed.
+  # `run`'s own "this rule did not match" sentinel -- NOT `false`. Only
+  # `{ json = {}; }`/`{ toml = {}; }` can ever produce a non-string
+  # matched VALUE at all (every other combinator's value is always a
+  # substring of the input), so a rule using one of those could legitimately
+  # match with value `false`, which `false`-as-sentinel would misreport as
+  # a non-match.
   #
-  # A path was chosen over wrapping every successful value in a list
-  # (mirroring lib/valuewalk.nix's own `null`-collision fix): both
-  # options require updating every existing `result.Rule != false`
-  # caller either way (any change to the failure signal does), but
-  # wrapping ALSO changes every successful value's shape (`result.Rule.
-  # someField` becoming `(result.Rule)[0].someField` everywhere), while a
-  # path sentinel leaves a matched value bare -- only the FAILURE
-  # comparison target changes. Measured via NIX_SHOW_STATS on a 636KB
-  # fixture through grammar/flakelock.nix: a bare path sentinel here
-  # costs literally ZERO additional allocations vs. the old `false`
-  # sentinel (identical values.number/nrPrimOpCalls/gc.totalBytes on both
-  # the success and failure paths) -- unlike lib/valuewalk.nix's OWN path-
-  # sentinel experiment, which cost ~10% more allocations there because
-  # that comparison runs once per TREE NODE during a deep recursive walk;
-  # `run`'s comparison runs once per RULE NAME, a constant independent of
-  # input size, so the difference here is too small to even register.
+  # A path sentinel was chosen over wrapping every successful value in a
+  # list (mirroring lib/valuewalk.nix's own `null`-collision fix): both
+  # require updating every `result.Rule != false` caller, but wrapping
+  # also changes every successful value's shape (`result.Rule.someField`
+  # becoming `(result.Rule)[0].someField` everywhere), while a path
+  # sentinel only changes the failure comparison target.
   NO_MATCH = /var/empty/packrat-no-match-sentinel;
 
   # Public entry point: parse `string` from `count`, returning

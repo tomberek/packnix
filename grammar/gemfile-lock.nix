@@ -4,19 +4,16 @@
 # Gemfile.lock files (a nixpkgs checkout's pkgs/ tree), not derived from
 # Bundler's docs alone.
 #
-# Why this grammar matters for nixpkgs specifically: today, converting a
-# Gemfile.lock into a Nix-consumable `gemset.nix` (as `bundlerEnv` expects
-# -- see pkgs/development/ruby-modules/bundled-common) requires running
-# `bundix`, an external Ruby tool that needs network access (or
-# `nix-prefetch-git`) to compute each gem's sha256. But Bundler >=2.7's
-# `CHECKSUMS` section already embeds a hex sha256 per gem, and that hash
-# is EXACTLY what bundix ends up storing (verified: `nix hash convert
-# --to base32 --hash-algo sha256 <hex from CHECKSUMS>` produces the exact
-# same string bundix writes into gemset.nix, cross-checked against a real
-# nixpkgs package's paired Gemfile.lock/gemset.nix). For any lockfile with
-# a CHECKSUMS section, a pure-Nix parser can read the whole dependency
-# graph AND every gem's fetch hash directly -- no bundix, no network, no
-# external Ruby interpreter needed at eval time.
+# Why this grammar matters for nixpkgs: converting a Gemfile.lock into a
+# Nix-consumable `gemset.nix` (as `bundlerEnv` expects) today requires
+# running `bundix`, an external Ruby tool needing network access to
+# compute each gem's sha256. But Bundler >=2.7's `CHECKSUMS` section
+# already embeds a hex sha256 per gem, and that hash is EXACTLY what
+# bundix ends up storing (`nix hash convert --to base32 --hash-algo
+# sha256 <hex from CHECKSUMS>` produces the identical string bundix
+# writes into gemset.nix). For any lockfile with a CHECKSUMS section, a
+# pure-Nix parser can read the whole dependency graph AND every gem's
+# fetch hash directly -- no bundix, no network needed at eval time.
 #
 # Top-level shape (fixed order, confirmed across the whole corpus):
 #   [ (GEM|GIT|PATH source block)* ]
@@ -35,24 +32,22 @@
 #   - indentation is fixed and NOT configurable like grammar/yaml.nix's
 #     indentStep -- Bundler always emits exactly 2/4/6 spaces (section
 #     body / spec name / spec dependency), and 3 spaces for the one-line
-#     RUBY VERSION / BUNDLED WITH values. This is Bundler's own fixed
-#     serialization, not something callers vary.
-#   - a document can have MULTIPLE GEM/GIT/PATH blocks (confirmed: 3 of
-#     136 files have 2+ GEM blocks; large multi-gem monorepo lockfiles
-#     like GitLab's have dozens of PATH blocks) -- modeled as `star`, not
-#     a fixed count.
+#     RUBY VERSION / BUNDLED WITH values.
+#   - a document can have MULTIPLE GEM/GIT/PATH blocks (3 of 136 corpus
+#     files have 2+ GEM blocks; large multi-gem monorepo lockfiles like
+#     GitLab's have dozens of PATH blocks) -- modeled as `star`, not a
+#     fixed count.
 #   - a GEM/GIT/PATH block's `specs:` list is never actually empty in
 #     valid output, but an EMPTY "specs:" with a trailing blank line
-#     immediately after DOES occur (confirmed: one corpus file has a bare
+#     immediately after DOES occur (one corpus file has a bare
 #     "GEM\n  specs:\n\n" block) -- modeled as `star`, not `plus`, on spec
 #     entries.
 #   - nesting is capped at exactly one level: a spec has direct
 #     dependencies listed under it (6-space indent), but those dependency
 #     lines are BARE gem names/constraints, never further-nested specs of
-#     their own (confirmed: no line in the corpus is indented past 6
-#     spaces) -- unlike grammar/yaml.nix, this format needs no
-#     depth-indexed rule generation at all, just three fixed indent
-#     literals.
+#     their own (no line in the corpus is indented past 6 spaces) --
+#     unlike grammar/yaml.nix, this format needs no depth-indexed rule
+#     generation at all, just three fixed indent literals.
 #   - a spec's version can be platform-qualified (e.g. "ffi
 #     (1.17.1-x86_64-linux-gnu)") -- the version and platform suffix are
 #     both free-form and separated by "-", and gem names themselves
@@ -64,23 +59,20 @@
 #   - DEPENDENCIES lines may have a trailing "!" (means "path/git source,
 #     not from the primary GEM index" in Bundler's own semantics) and/or
 #     one-or-more comma-separated version constraints in parens (e.g.
-#     "sys-filesystem (~> 1.5, >= 1.5.5)") -- both confirmed present
-#     across the corpus, both optional and independent of each other.
+#     "sys-filesystem (~> 1.5, >= 1.5.5)") -- both optional and
+#     independent of each other.
 #   - version constraint operators confirmed in use: = != < <= > >= ~>
-#     (checked via corpus grep, not assumed from Bundler's docs)
-#   - CHECKSUMS entries can have NO hash at all (confirmed: path-sourced
-#     gems have a checksum line with just "name (version)", no
-#     " sha256=...") -- modeled as an optional trailing field.
+#   - CHECKSUMS entries can have NO hash at all (path-sourced gems have a
+#     checksum line with just "name (version)", no " sha256=...") --
+#     modeled as an optional trailing field.
 #   - GIT blocks always have remote+revision; PATH blocks only ever have
 #     remote (no revision -- there's nothing to pin, it's a local path).
 #     GIT blocks MAY additionally have exactly one of tag:/ref:/branch:
-#     (confirmed tag: and ref: in the corpus; branch: is a real Bundler
-#     field not seen in this corpus but supported for completeness, same
-#     shape as tag:/ref:).
+#     (branch: is a real Bundler field not seen in this corpus but
+#     supported for completeness, same shape as tag:/ref:).
 #   - no escape sequences anywhere in this format -- gem names, versions,
-#     remotes, revisions are all plain text with a restricted charset
-#     (confirmed: no quoting/escaping syntax exists in Bundler's lockfile
-#     serializer at all).
+#     remotes, revisions are all plain text with a restricted charset (no
+#     quoting/escaping syntax exists in Bundler's lockfile serializer).
 #
 # Deliberately out of scope:
 #   - PLUGIN SOURCES / plugin-specific sections (rare Bundler plugin
