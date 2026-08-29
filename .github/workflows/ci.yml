@@ -71,6 +71,14 @@ jobs:
       - name: Run default.nix against data/lock.json
         run: ./run.sh
 
+      # nix flake check: exercises flake.nix's own outputs (lib.*,
+      # checks.<system>.tests) the way a consumer flake actually would --
+      # catches flake.nix breakage (a bad `import`, a typo'd attribute
+      # name) that tests.nix and the verify-*.sh scripts, which never go
+      # through flake.nix, can't.
+      - name: Run nix flake check
+        run: nix flake check
+
   fmt:
     runs-on: ubuntu-latest
     timeout-minutes: 10
