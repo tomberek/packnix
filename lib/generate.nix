@@ -142,7 +142,13 @@
 #                              "schema `e` does NOT match" is a
 #                              negation-synthesis problem, genuinely
 #                              harder than every other form here -- not
-#                              attempted.
+#                              attempted. ONE exception, handled as a
+#                              special case rather than thrown: `{ not =
+#                              { regex = "(.)"; }; }` (the "assert end of
+#                              input" idiom, e.g. grammar/aterm.nix's
+#                              DOCUMENT) generates as "" -- see the
+#                              `generateWith` case below for why this one
+#                              shape needs no negation-synthesis at all.
 #
 # PATTERN/REGEX GENERATION: both `{ pattern = "..."; }` (lib/valuewalk.nix)
 # and `{ regex = "..."; }` (lib/packrat.nix, its `maxLen` option is
@@ -636,6 +642,24 @@ rec {
           verified = builtins.fromTOML candidate;
         in
         builtins.seq verified candidate
+    else if expr ? not && (expr.not ? regex) && expr.not.regex == "(.)" then
+      # Special case: `{ not = { regex = "(.)"; }; }` is the "assert end
+      # of input" idiom (see grammar/aterm.nix's DOCUMENT for the
+      # canonical example) -- a single-char negated-regex lookahead used
+      # as the trailing element of a top-level sequence, with nothing
+      # generated after it. This is provably sound to generate as "",
+      # NOT a heuristic: since nothing is emitted following this point,
+      # whatever string the enclosing sequence produces IS, by
+      # construction, the entire generated document -- feeding it back
+      # into the real, unmodified lib/packrat.nix, the parse position at
+      # this point necessarily equals the string's length, so the actual
+      # `not = { regex = "(.)"; };` combinator will find no character to
+      # match and succeed for real. No negation-synthesis is needed
+      # because the assertion becomes trivially true by the very fact
+      # that generation stops here. This does NOT generalize to `not`
+      # over an arbitrary pattern, or to `and` at all -- see the `throw`
+      # below for those.
+      ""
     else if expr ? and || expr ? not then
       throw "generate: { and = ...; }/{ not = ...; } (lookahead) has no general generation strategy -- especially `not`, which would require negation-synthesis"
     else

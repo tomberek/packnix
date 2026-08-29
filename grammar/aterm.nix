@@ -206,54 +206,69 @@ let
   };
 
   # A quoted-string Constructor immediately followed by "(" is an APPL;
-  # the same quoted string NOT followed by "(" is a plain STRING term --
-  # `&(...)` positive lookahead distinguishes them without consuming
-  # anything, so `string` below can still try the same `quotedBody` if
-  # this lookahead fails.
+  # the same quoted string NOT followed by "(" is a plain STRING term.
+  # This used to be decided via `&(...)` positive lookahead (checking
+  # quotedBody+"(" without consuming, then re-matching quotedBody once
+  # committed). That lookahead's disambiguation role is reproduced here
+  # by ordinary PEG ordered choice instead: the quoted-Constructor
+  # branch below is a single atomic sequence (quotedBody immediately
+  # followed by a MANDATORY "(" and the rest of the arg list) -- if
+  # any part of it fails, the whole branch fails and backtracks to the
+  # start, leaving the quoted string wholly unconsumed so `string`
+  # (TERM's next alternative below) can still match it as a plain
+  # STRING term. This is behaviorally identical to the old lookahead
+  # for every well-formed and no-parens-at-all input; the only
+  # difference is a malformed/truncated arg list immediately after a
+  # quoted Constructor (e.g. `"foo"(1,2` with a missing `)`), where the
+  # old version reported a 0-arg APPL (the shared `opt` arg list
+  # reverted independently of the already-committed lookahead) and this
+  # version instead falls through to STRING -- same consumed length and
+  # leftover position either way, so accept/reject of DOCUMENT (or any
+  # embedding grammar) is unaffected.
   appl = {
-    action = {
-      e = [
-        {
-          choice = [
+    choice = [
+      {
+        action = {
+          e = [
+            quotedBody
+            { lit = "("; }
+            ws
+            termList
+            ws
+            { lit = ")"; }
+          ];
+          f = v: {
+            constructor = builtins.elemAt v 0;
+            args = builtins.elemAt v 3;
+          };
+        };
+      }
+      {
+        action = {
+          e = [
+            identBody
             {
-              action = {
-                e = {
-                  cutSeq = [
-                    {
-                      and = [
-                        quotedBody
-                        { lit = "("; }
-                      ];
-                    }
-                    quotedBody
+              opt = {
+                action = {
+                  e = [
+                    { lit = "("; }
+                    ws
+                    termList
+                    ws
+                    { lit = ")"; }
                   ];
+                  f = v: builtins.elemAt v 2;
                 };
-                f = v: builtins.elemAt v 1;
               };
             }
-            identBody
           ];
-        }
-        {
-          opt = {
-            action = {
-              e = [
-                { lit = "("; }
-                ws
-                termList
-                ws
-                { lit = ")"; }
-              ];
-              f = v: builtins.elemAt v 2;
-            };
+          f = v: {
+            constructor = builtins.elemAt v 0;
+            args = if builtins.elemAt v 1 == null then [ ] else builtins.elemAt v 1;
           };
-        }
-      ];
-      f = v: {
-        constructor = builtins.elemAt v 0;
-        args = if builtins.elemAt v 1 == null then [ ] else builtins.elemAt v 1;
-      };
-    };
+        };
+      }
+    ];
   };
 
   string = quotedBody;
