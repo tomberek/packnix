@@ -6,10 +6,6 @@
 # flake.lock-shaped documents, so its failures are reported but don't fail
 # the gate unless a fixture is specifically flake.lock-shaped).
 #
-# This formalizes the "confirmed byte-identical against builtins.fromJSON"
-# check that's been done by hand throughout this repo's history (see
-# examples/*.nix, bench/*.md) into something CI can run on every push.
-#
 # Deliberately excludes bench/fixtures/fixture-{50000,150000,300000}.json:
 # those are truncated mid-token on purpose (see bench/make-fixtures.sh) to
 # exercise backtracking on invalid input, not valid JSON to round-trip.

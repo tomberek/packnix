@@ -1,13 +1,10 @@
 # A grammar for PEP 508's dependency specification format -- what
 # Python's own ecosystem (pip, Poetry, etc.) calls a "requirement", e.g.
 # `requests (>=2.0,<3.0) ; python_version >= "3.6" and sys_platform ==
-# "linux"`. This is currently parsed in nixpkgs by
-# pkgs/development/tools/poetry2nix/poetry2nix/pep508.nix via ~180 lines
-# of character-by-character paren-walking (findSubExpressions) plus
-# regex-splitting on literal " and "/" or " substrings -- fragile by its
-# own admission (a `# TODO: Handle single quoted values` comment), with
-# no real operator-precedence handling for mixed `and`/`or` and a fixed
-# value-character-class regex that can't distinguish quoting contexts.
+# "linux"`. Contrast with nixpkgs' pep508.nix (poetry2nix), which parses
+# this via ~180 lines of character-by-character paren-walking plus
+# regex-splitting on literal " and "/" or " substrings, with no real
+# operator-precedence handling for mixed `and`/`or`.
 #
 # Grammar transcribed directly from PEP 508's own formal (Parsley)
 # grammar, restructured for a packrat/PEG engine (no left recursion --
@@ -15,9 +12,8 @@
 # the spec's left-recursive `marker_and wsp* 'and' marker_expr |
 # marker_expr` shape) and cross-checked against 2126 real, distinct
 # `Requires-Dist` specifiers extracted from real `*.dist-info/METADATA`
-# files on this machine (a broad, real-world Python package sample, not
-# synthetic test cases) -- every confirmed real-world shape below is
-# backed by that corpus, not assumed from the spec text alone:
+# files -- every confirmed real-world shape below is backed by that
+# corpus, not assumed from the spec text alone:
 #   - both `name(constraints)` (parenthesized version spec, e.g. `Jinja2
 #     (>=3.0.0)`) and `name constraints` (bare, e.g. `Jinja2>=2.10.1`)
 #     spacing conventions are real and common, sometimes even for the
@@ -35,19 +31,16 @@
 #     real: e.g. `mdit-py-plugins @
 #     git+https://github.com/executablebooks/mdit-py-plugins@master`.
 #   - `.*` wildcard version segments (`==1.14.*`, `!=8.0.*`) are real.
-#   - of PEP 508's 11 env_vars, 9 appear in this corpus (all except
-#     `platform_release`/`platform_version`/`implementation_version`,
-#     both/all confirmed rare in practice by the spec itself) -- this
-#     grammar still accepts all 11, since their absence from one
-#     machine's installed packages doesn't mean they're not real.
+#   - of PEP 508's 11 env_vars, 9 appear in this corpus (the spec itself
+#     also flags the missing ones as rare) -- this grammar still accepts
+#     all 11, since absence from one sample doesn't mean they're not real.
 #
 # Deliberately out of scope: this grammar does NOT validate the URL in
-# a `url_req` against RFC 3986 (PEP 508 embeds the full URI grammar, but
-# a URL specifier here is accepted as "everything up to whitespace or
-# the `;` that starts a marker clause" -- the same "we don't need to
-# fully understand every field, just structurally recover the ones that
-# matter" posture grammar/gemfile-lock.nix takes with Ruby version
-# constraint strings it also leaves as opaque text).
+# a `url_req` against RFC 3986 -- a URL specifier here is accepted as
+# "everything up to whitespace or the `;` that starts a marker clause",
+# the same "recover structure, don't fully understand every field"
+# posture grammar/gemfile-lock.nix takes with Ruby version constraint
+# strings it also leaves as opaque text.
 let
   ws = {
     opt = {
@@ -206,37 +199,25 @@ let
 
   # `python_str_c` is PEP 508's exact allowed-character set inside a
   # quoted marker string -- deliberately NOT "anything except the
-  # closing quote" (that would also accept the OTHER quote character
-  # unescaped, which the spec's grammar doesn't: a squote-delimited
-  # string may contain a bare dquote and vice versa, but neither may
-  # contain its OWN delimiter at all -- there is no escape mechanism in
-  # this format). Modeled as a regex character class matching the
-  # spec's literal enumeration (whitespace/letters/digits and a fixed
-  # punctuation set) rather than "not the delimiter", so a delimiter
-  # character appearing where it's NOT allowed (e.g. a stray backslash,
-  # which PEP 508 does not list) correctly fails to match instead of
-  # being silently accepted.
+  # closing quote" (the spec's grammar disallows a string containing its
+  # OWN delimiter, but allows the OTHER quote character unescaped; there
+  # is no escape mechanism in this format). Modeled as a regex character
+  # class matching the spec's literal enumeration rather than "not the
+  # delimiter", so a disallowed character (e.g. a stray backslash)
+  # correctly fails to match instead of being silently accepted.
   #
   # `]` must be the very first character after `[` in a (non-negated)
-  # POSIX ERE bracket expression to be treated as a literal at all --
-  # escaping it (`\]`) is invalid syntax in this engine outside a
-  # bracket expression, and mid-class placement makes it a literal
-  # closing bracket instead of a class member (confirmed directly; same
-  # idiom grammar/yaml.nix's PLAIN_SCALAR_FLOW and grammar/gemfile.nix
-  # use for their own negated classes -- this is the non-negated
-  # variant of that same rule). `[` needs escaping (`\[`), but must NOT
-  # sit directly next to a literal `.` inside the class -- `[.` is read
-  # as the start of a POSIX collating-symbol construct (`[.x.]`)
-  # regardless of any escaping before it, consuming the rest of the
-  # pattern looking for a `.]` terminator that never appears, which
-  # makes the whole regex invalid (confirmed directly by bisecting
-  # exactly which characters, in which order, triggered
-  # "invalid regular expression"). `-` is placed last so it's never
-  # mistaken for a range operator; the delimiter char that varies
-  # between single/double-quoted strings is spliced in right after the
-  # leading `]` instead of at the very end, for the same reason (a
-  # trailing `-<delim>` would make `-` look like a range operator
-  # instead of a literal).
+  # POSIX ERE bracket expression to be a literal at all (same idiom
+  # grammar/yaml.nix's PLAIN_SCALAR_FLOW and grammar/gemfile.nix use for
+  # their negated classes -- this is the non-negated variant). `[` needs
+  # escaping (`\[`), but must NOT sit directly next to a literal `.`
+  # inside the class -- `[.` is read as the start of a POSIX
+  # collating-symbol construct (`[.x.]`) regardless of escaping,
+  # consuming the rest of the pattern looking for a `.]` terminator that
+  # never appears, making the whole regex invalid. `-` is placed last so
+  # it's never mistaken for a range operator; the delimiter char that
+  # varies between single/double-quoted strings is spliced in right
+  # after the leading `]` instead of at the very end, for the same reason.
   mkPythonStrCClass = delim: "]${delim}A-Za-z0-9 \t()\\[{}_*#:;,/?!~`@$%^&=+|<>.-";
   singleQuotedStr = {
     action = {
@@ -374,19 +355,14 @@ let
   # `marker_and = marker_expr wsp* "and" marker_expr | marker_expr` and
   # `marker_or = marker_and wsp* "or" marker_and | marker_and` are
   # LEFT-recursive in PEP 508's own grammar (a packrat/PEG engine can't
-  # evaluate left recursion directly -- it would recurse into the same
-  # rule at the same position forever). Restructured as the standard
+  # evaluate left recursion directly). Restructured as the standard
   # "first operand, then a star of (operator, operand) pairs" shape,
-  # which recognizes the identical language (left-associative `and`/
-  # `or` chains) without left recursion; `and` binds tighter than `or`,
-  # matching the spec's two-level and/or split (an `andChain` is one
-  # operand of `orChain`, so an unparenthesized `a or b and c` parses
-  # as `a or (b and c)`, matching every real language with this same
-  # precedence convention -- PEP 508 doesn't spell this out as
-  # explicitly as e.g. Python's own `or`/`and` docs do, but its grammar
-  # SHAPE -- marker_or built from marker_and, not the reverse -- only
-  # makes sense under that precedence, and no real corpus example
-  # contradicts it).
+  # which recognizes the identical language without left recursion;
+  # `and` binds tighter than `or` (an `andChain` is one operand of
+  # `orChain`, so an unparenthesized `a or b and c` parses as `a or (b
+  # and c)`), matching every real language with this precedence
+  # convention -- PEP 508's grammar shape (marker_or built from
+  # marker_and, not the reverse) only makes sense under that precedence.
   andChain = {
     action = {
       e = [

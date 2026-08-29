@@ -99,17 +99,13 @@ let
 
   # A field that, IF PRESENT, must have a mandatory leading "," (used for
   # every field except whichever one a lockedOrOriginalObject `choice`
-  # branch below has committed to as "the first present field" --
-  # BUGFIX: an earlier version made this comma `opt` unconditionally for
-  # EVERY field, which meant nothing in the grammar actually required a
-  # "," between two present fields at all -- confirmed independently via
-  # lib/generate.nix's round-trip testing, which generated
-  # `{"dir":"x""narHash":"y"}` and found this grammar accepted it as
-  # valid; that string is not valid JSON, and correctly returning `false`
-  # for it is exactly what the choice-over-first-present-field structure
-  # below now guarantees, since a field appearing anywhere other than
-  # immediately after a mandatory "," or as the branch's own committed
-  # first field simply has no matching position to land in).
+  # branch below has committed to as "the first present field"). Without
+  # this, nothing in the grammar would require a "," between two present
+  # fields, so a comma-less concatenation like `{"dir":"x""narHash":"y"}`
+  # (invalid JSON) would wrongly be accepted -- the choice-over-
+  # first-present-field structure below closes that gap, since a field
+  # appearing anywhere other than immediately after a mandatory "," or as
+  # the branch's own committed first field has no matching position.
   fieldWithLeadingComma = key: valueExpr: {
     opt = [
       { lit = ","; }
@@ -237,13 +233,8 @@ let
                 # fieldWithLeadingComma's `opt` wraps a MATCHED field in
                 # its own 3-element sequence `[ {lit=",";} ws
                 # fieldCoreResult ]` (`opt`'s success value is exactly
-                # its body's value, unwrapped no further -- confirmed
-                # against lib/packrat.nix's compileOpt) -- fieldCoreResult
-                # is at index 2, not 1 (an earlier version of this
-                # comment/index was WRONG, describing a shape this file
-                # never actually produced; caught by verify-fixtures.sh
-                # failing on every real fixture with "expected a set but
-                # found a string" once this fix was first written).
+                # its body's value, unwrapped no further) -- so
+                # fieldCoreResult is at index 2, not 1.
                 builtins.elemAt raw 2
             ) (builtins.elemAt v 2)
           )

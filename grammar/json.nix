@@ -27,22 +27,15 @@ let
   # below are folded this way (each replaces a rule that used to exist,
   # e.g. STRING_RAW/LIST_ITEMS/ITEMS/ITEM).
   #
-  # BUGFIX: the escape branches below used to be bare `{ lit = ...; }`
-  # atoms with no decoding at all -- STRING's handler just concatenated
-  # whatever text matched, so a string containing `\"` decoded to the
-  # literal two-character sequence `\"` instead of a bare `"` (confirmed
-  # against builtins.fromJSON, which correctly decodes it) -- and the
-  # bare-backslash branch matched a LONE `\` with no escape partner,
-  # which is never valid JSON at all (a backslash must always be
-  # followed by an escape character). Found independently via
-  # lib/generate.nix's round-trip testing: no fixture in this repo's
-  # corpus happens to contain an escaped quote or backslash, so
-  # verify-fixtures.sh's byte-identical-to-fromJSON check never exercised
-  # this path. Fixed the same way grammar/aterm.nix's stringFragment
-  # already does it: each escape is `{ lit = "\\"; } { choice = [...] }`
-  # wrapped in `action`, decoding the matched escape CHARACTER to its
-  # real value, and STRING's handler (below) concatenates the DECODED
-  # fragments, not the raw matched text.
+  # Each escape is `{ lit = "\\"; } { choice = [...] }` wrapped in
+  # `action`, decoding the matched escape CHARACTER to its real value
+  # (STRING's handler below concatenates the DECODED fragments, not the
+  # raw matched text) -- a bare `{ lit = ...; }` atom with no decoding
+  # would leave e.g. `\"` as the literal two characters `\"` instead of a
+  # bare `"`, and would let a lone `\` with no escape partner match
+  # (never valid JSON, since a backslash must always be followed by an
+  # escape character). Same approach grammar/aterm.nix's stringFragment
+  # uses.
   stringFragment = {
     choice = [
       { regex = ''([^\\\"]+)''; }
@@ -70,13 +63,11 @@ let
             in
             # Nix's OWN string literal syntax only recognizes `\n`/`\r`/
             # `\t`/`\\`/`\"`/`\$` as escapes -- there is no `\b`/`\f`
-            # literal at all (confirmed: `"\b"` in Nix source is just the
-            # bare character `b`, not a backspace byte -- caught by this
-            # exact test failing when first written). Backspace/form-feed
-            # are instead obtained by asking `builtins.fromJSON` to decode
-            # them itself (a real, single-byte control character each,
-            # confirmed via `stringLength`), the one Nix builtin that DOES
-            # know what `\b`/`\f` mean.
+            # literal at all (`"\b"` in Nix source is just the bare
+            # character `b`, not a backspace byte). Backspace/form-feed
+            # are instead obtained by asking `builtins.fromJSON` to
+            # decode them itself, the one Nix builtin that DOES know
+            # what `\b`/`\f` mean.
             if c == "b" then
               builtins.fromJSON ''"\b"''
             else if c == "f" then

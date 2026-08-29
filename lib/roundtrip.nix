@@ -2,22 +2,17 @@
 # generate N samples (lib/generate.nix) across N distinct seeds, feed
 # each back through the SAME grammar/schema's parser (lib/packrat.nix's
 # `run` or lib/valuewalk.nix's `run`/`compile`), and confirm the parser
-# ACCEPTS what the generator produced FOR it -- the fixpoint property this
-# whole generate/parse pair exists to have. This is deliberately a
-# THIN wrapper, not a new engine: it just wires generate.nix's output
-# into packrat.nix's/valuewalk.nix's own `run`, the same way a human
-# would by hand (as done throughout this conversation before this file
-# existed) -- formalized here so it can run at N=50-style scale in CI
-# instead of N=5 ad hoc spot checks.
+# ACCEPTS what the generator produced for it. A thin wrapper, not a new
+# engine -- just wires generate.nix's output into packrat.nix's/
+# valuewalk.nix's own `run`, formalized so it can run at N=50-style scale
+# in CI instead of ad hoc spot checks.
 #
-# Deliberately does NOT check "generated value equals original value"
-# (there is no "original" here -- generation has no input to compare
-# against, only "does the parser accept what was generated FOR it").
-# Contrast with lib/valuewalk.nix's own README-style checks elsewhere in
-# this repo (verify-fixtures.sh, verify-valuewalk-parity.sh), which DO
-# have a real document to compare byte-identical output against; this
-# file's property is narrower and more basic: soundness of the
-# generator against its own grammar, not equivalence between two
+# Deliberately does NOT check "generated value equals original value" --
+# there is no "original" here, only "does the parser accept what was
+# generated FOR it". Contrast with verify-fixtures.sh/
+# verify-valuewalk-parity.sh, which DO compare byte-identical output
+# against a real document; this file's property is narrower: soundness
+# of the generator against its own grammar, not equivalence between two
 # different grammars.
 let
   packrat = import ./packrat.nix;

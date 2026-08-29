@@ -1,10 +1,8 @@
 # A real (subset of) YAML grammar for lib/packrat.nix -- block mappings and
 # sequences nested by indentation, plain/quoted scalars, flow collections,
-# comments. Contrast with grammar/flakelock.nix (single fixed schema, no
-# generic recursion) and grammar/json.nix (generic, but no indentation
-# sensitivity at all, since JSON's nesting is punctuation-delimited) -- YAML
-# is the first grammar in this repo where nesting depth is driven by
-# something the *input* decides (indentation), not by matching brackets.
+# comments. Unlike grammar/flakelock.nix (fixed schema) and
+# grammar/json.nix (bracket-delimited nesting), YAML's nesting depth is
+# driven by the *input*'s indentation, not by matching brackets.
 #
 # The engine (lib/packrat.nix) has no notion of "current indent column" --
 # every nonterminal is a fixed rule, compiled once, independent of how deep
@@ -13,10 +11,7 @@
 # per nesting depth (0..maxDepth), each depth's rules requiring exactly
 # `indentStep * depth` literal leading spaces. A block value that continues
 # more deeply just means "depth d's rules reference depth (d+1)'s rules" --
-# ordinary PEG nonterminal reference, no new engine primitive. This is the
-# same "generate repeated grammar structure via a Nix-level function" idea
-# `grammar/flakelock.nix` uses for its field sequences, applied to depth
-# instead of field name.
+# ordinary PEG nonterminal reference, no new engine primitive.
 #
 # Deliberate scope, to keep this a practical, correctness-checked subset
 # rather than a full YAML 1.2 implementation:
@@ -28,15 +23,12 @@
 #   - explicit indentation indicators (`|2`, `>3-`, etc.) aren't supported,
 #     AND a block scalar's base indent is always exactly the current
 #     depth's indent plus one `indentStep` -- real YAML instead
-#     auto-detects the base indent from the block's first content line
-#     (so e.g. a block scalar indented 3 extra spaces under a 2-space-step
-#     document still works in real YAML, treating all 3 as the base).
+#     auto-detects the base indent from the block's first content line.
 #     This subset requires exactly `indentStep` extra spaces; anything
 #     beyond that is kept as literal leading whitespace in the content
-#     instead of being absorbed into the base indent (confirmed
-#     divergence from PyYAML on over-indented block scalars specifically;
-#     exactly-`indentStep`-indented block scalars, the common case, are
-#     unaffected and match PyYAML exactly)
+#     instead of being absorbed into the base indent (diverges from
+#     PyYAML on over-indented block scalars specifically; exactly-
+#     indentStep-indented block scalars, the common case, match exactly)
 #   - flow-collection scalars (inside [...]/{...}) can't contain a literal
 #     `,` `]` `}` `:` unquoted -- quote such values, same restriction real
 #     YAML has for flow-context plain scalars
@@ -47,11 +39,9 @@
 # parse rather than silently mis-parsing.
 #
 # Every rule below is written as a named grammar/Derivs-node field (not
-# `action`-inlined) even where inlining would be safe -- unlike
-# grammar/flakelock.nix, this is written for debuggability first (each
-# piece individually testable via `packrat.run`), matching how
-# examples/json-simple.nix precedes examples/json-optimized.nix. Inlining
-# is a plausible follow-up once this is verified correct.
+# `action`-inlined) even where inlining would be safe -- written for
+# debuggability first (each piece individually testable via
+# `packrat.run`).
 let
   spaces = n: builtins.concatStringsSep "" (builtins.genList (_: " ") n);
 
@@ -66,33 +56,26 @@ let
     in
     if m == null then "" else builtins.head m;
 
-  # Implements block scalar chomping + (for folded style) line-folding, per
-  # the YAML spec's §8.1 rules -- verified empirically against PyYAML's
-  # `safe_load` across dozens of hand-constructed cases (blank-line runs of
-  # every length at every transition, leading/trailing blanks, chomp
-  # indicators, more-indented lines interacting with folding) rather than
-  # derived from the spec text, since the interaction between folding and
-  # "more-indented" lines is easy to get subtly wrong -- e.g. it is NOT
-  # simply "N blank lines -> N newlines except 0 -> fold": a transition
-  # touching a "more-indented" line always uses N+1 newlines even at N=0,
-  # while a plain-to-plain transition uses exactly N newlines at N>=1 (not
-  # N+1) and folds to a single space only at N=0.
+  # Implements block scalar chomping + (for folded style) line-folding,
+  # per the YAML spec's §8.1 rules. The interaction between folding and
+  # "more-indented" lines is subtle: a transition touching a "more-
+  # indented" line always uses N+1 newlines even at N=0, while a
+  # plain-to-plain transition uses exactly N newlines at N>=1 (not N+1)
+  # and folds to a single space only at N=0.
   #
   # `lines` is a list of `{kind; text;}` per source line, in order, where
-  # `kind` is "blank" (a line that's empty once its whitespace is
-  # discarded), "plain" (content with no extra indentation beyond the
-  # block's base), or "more" (content with extra leading whitespace,
-  # preserved verbatim in `text`) -- tagged by the grammar itself (see
+  # `kind` is "blank" (empty once whitespace is discarded), "plain"
+  # (content with no extra indentation beyond the block's base), or
+  # "more" (content with extra leading whitespace, preserved verbatim in
+  # `text`) -- tagged by the grammar itself (see
   # BLOCK_LINE_BLANK/BLOCK_LINE_CONTENT below), not inferred from the
   # dedented string after the fact: a "more" line's text can itself be
-  # pure whitespace (e.g. two literal spaces of content), which is
-  # genuinely ambiguous to tell apart from a "blank" line by string
-  # content alone -- confirmed via PyYAML that these two cases behave
-  # differently (verified: a line with MORE leading whitespace than the
-  # block's base indent keeps its excess as literal content even if nothing
-  # follows it, while a line with the same-or-fewer whitespace is a true
-  # blank whose content is discarded). `folded` is true for `>` style,
-  # false for `|` (literal never folds, regardless of indentation);
+  # pure whitespace, which is genuinely ambiguous to tell apart from a
+  # "blank" line by string content alone (PyYAML: a line with MORE
+  # leading whitespace than the block's base indent keeps its excess as
+  # literal content even if nothing follows it, while a line with the
+  # same-or-fewer whitespace is a true blank whose content is discarded).
+  # `folded` is true for `>` style, false for `|` (literal never folds);
   # `chomp` is "clip" (default), "strip" (`-`), or "keep" (`+`).
   foldBlockScalar =
     {
@@ -215,13 +198,10 @@ let
     # A mapping key/value separator ":" -- but only when followed by
     # whitespace, newline, or end-of-input, never consumed as part of a
     # bare colon-containing scalar. Without this check, a plain scalar
-    # like "http://example.com" (used as e.g. a sequence item) would get
-    # misparsed as a one-entry mapping {name="http"; value="//example.com";}
-    # -- PLAIN_KEY's regex has no reason to stop before a colon that isn't
-    # actually a separator. Real YAML has the same "colon needs following
-    # whitespace to be a separator" rule. `{and=...;}` is a zero-width
-    # lookahead: it doesn't consume the whitespace/newline itself, it's
-    # left for MAPPING_VALUE's own WS/EOL to consume normally.
+    # like "http://example.com" would get misparsed as a one-entry
+    # mapping. Real YAML has the same "colon needs following whitespace
+    # to be a separator" rule. `{and=...;}` is a zero-width lookahead: it
+    # leaves the whitespace/newline for MAPPING_VALUE's own WS/EOL.
     COLON_SEP = [
       { lit = ":"; }
       {
@@ -253,9 +233,8 @@ let
     # "end of line": an actual newline, OR end of input (the last line of
     # a file need not have a trailing newline). Consumes nothing in the
     # EOF case -- never `star`/`plus`-repeated directly (see BLANK_LINE
-    # below for why that would be unsafe). `{regex="(.)";}` matches any
-    # single character and fails only at end-of-input, so `!(.)` is a
-    # correct EOF test (confirmed: builtins.match "(.)" "" == null).
+    # below for why that would loop forever). `!(.)` is a correct EOF
+    # test since `{regex="(.)";}` fails only at end-of-input.
     LINE_END = {
       choice = [
         { regex = "(\r?\n)"; }

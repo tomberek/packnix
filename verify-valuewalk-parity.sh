@@ -4,16 +4,12 @@
 # (lib/valuewalk.nix schema over the ALREADY-PARSED value tree, via
 # builtins.fromJSON -- see that file's header comment) must agree on
 # every fixture: both accept it and produce byte-identical output, or
-# both reject it. This formalizes the "specialized == native" checks done
-# by hand throughout this conversation into something CI runs on every
-# push, the same way verify-fixtures.sh formalized the equivalent
-# fromJSON-comparison check for grammar/json.nix and grammar/flakelock.nix
-# itself.
+# both reject it.
 #
 # Fixtures list mirrors verify-fixtures.sh's flakelock-shaped subset
 # (excludes data/lock.json and data/lock-small.json, which are NOT
-# flake.lock-shaped -- confirmed by verify-fixtures.sh already reporting
-# "SKIP flakelock ... correctly rejected" for both).
+# flake.lock-shaped -- verify-fixtures.sh already reports "SKIP
+# flakelock ... correctly rejected" for both).
 #
 # Usage: ./verify-valuewalk-parity.sh
 set -uo pipefail

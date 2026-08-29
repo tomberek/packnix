@@ -22,44 +22,39 @@
 #   - TUPLE:       "(" (term ("," term)*)? ")"  -- an anonymous-
 #                  constructor application, syntactically identical to
 #                  APPL's arg list but with no Constructor prefix at
-#                  all. Confirmed real and load-bearing: every Nix
-#                  `.drv`'s outputs/inputDrvs/env entries are exactly
-#                  this (e.g. `("out","/nix/...","sha256","abc...")`),
-#                  not a Constructor-prefixed APPL -- this term kind is
-#                  NOT optional/theoretical for parsing real ATerm
-#                  documents. Real corpus check (500 real `.drv` files):
-#                  every observed tuple has exactly 2 or 4 elements,
-#                  never 0 or 1 -- but this grammar doesn't special-case
-#                  that, since nothing in the format itself forbids
-#                  other arities.
+#                  all. Real and load-bearing: every Nix `.drv`'s
+#                  outputs/inputDrvs/env entries are exactly this (e.g.
+#                  `("out","/nix/...","sha256","abc...")`), not a
+#                  Constructor-prefixed APPL. Real corpus check (500
+#                  real `.drv` files): every observed tuple has exactly
+#                  2 or 4 elements, never 0 or 1 -- but this grammar
+#                  doesn't special-case that, since nothing in the
+#                  format itself forbids other arities.
 #   - PLACEHOLDER: "<" term ">"  -- used by Stratego for pattern-holes;
 #                  not produced by ordinary term construction, but part
 #                  of the textual format.
 #   - BLOB is deliberately NOT modeled: it's a binary payload with no
-#     defined textual syntax in the spec (the textual format has no way
-#     to embed arbitrary bytes) -- every real textual-ATerm writer
-#     (including Nix's own) only ever produces the six kinds above.
+#     defined textual syntax in the spec -- every real textual-ATerm
+#     writer (including Nix's own) only ever produces the six kinds above.
 #
 # A Constructor is either a bare identifier ([A-Za-z_][A-Za-z0-9_]*) or
 # a quoted string (same syntax as a STRING term, but immediately
 # followed by "(" -- a bare quoted string with no trailing "(" is a
 # STRING term instead, not an APPL with zero args; the two are only
 # distinguished by that lookahead). Some ATerm literature documents a
-# lowercase-first Constructor as canonical (Stratego's own grammars
-# enforce this for terms IT generates), but real corpus evidence
+# lowercase-first Constructor as canonical, but real corpus evidence
 # contradicts a hard lowercase-first rule -- Nix's own `.drv` writer
 # emits `Derive`, confirmed uppercase-first in every real file sampled
 # -- so this grammar accepts either case.
 #
 # ANNOTATION ("{" term-list "}") can attach to any BasicTerm, tried once
-# after the term itself -- optional, so a term with no annotation parses
-# the same as before this existed.
+# after the term itself -- optional.
 #
-# String escapes (confirmed against Nix's own ATerm writer, which is
-# the one real producer available to test against -- see grammar/drv.nix's
-# corpus notes): `\"`, `\\`, `\n`, `\r`, `\t`. This grammar accepts
-# exactly that set for any ATerm document, not just Nix's own output --
-# the wider ATerm literature doesn't document a fuller escape set either.
+# String escapes (confirmed against Nix's own ATerm writer, the one real
+# producer available to test against): `\"`, `\\`, `\n`, `\r`, `\t`.
+# This grammar accepts exactly that set for any ATerm document, not just
+# Nix's own output -- the wider ATerm literature doesn't document a
+# fuller escape set either.
 let
   ws = {
     opt = {
@@ -79,14 +74,8 @@ let
     regex = "(-?[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?)";
   };
 
-  # `[A-Za-z_]` -- some ATerm literature restricts a bare Constructor to
-  # a lowercase-first identifier, but real output disagrees: Nix's own
-  # `.drv` writer emits `Derive`, uppercase-first (confirmed directly:
-  # every one of 500 real `.drv` files sampled starts with exactly this
-  # bare identifier). This grammar accepts any letter or underscore as
-  # the first character, matching what real ATerm producers actually
-  # write rather than the stricter subset one reading of the spec
-  # implies.
+  # `[A-Za-z_]` -- accepts any letter or underscore as the first
+  # character (see file header for why uppercase-first is allowed).
   identBody = {
     regex = "([A-Za-z_][A-Za-z0-9_]*)";
   };
