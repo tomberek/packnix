@@ -539,6 +539,37 @@ let
         ''
       );
 
+  # --- schemas/poetry-lock.nix: same "no packrat grammar" reasoning as
+  # cargoLockSchema above. Checked against data/example-poetry.lock,
+  # a small file built from real content (nixpkgs' rmfuse poetry.lock)
+  # covering the legacy lock-version 1.1 metadata.files hash layout, a
+  # git-sourced package with no fetch hash at all, and a dependencies
+  # table (deliberately unvalidated pass-through).
+  poetryLockSchema = import ./schemas/poetry-lock.nix;
+  poetryLockDoc = valuewalk.run {
+    grammar = poetryLockSchema;
+  } (builtins.fromTOML (builtins.readFile ./data/example-poetry.lock));
+  poetryLockChecksums = (import ./examples/poetry-lock-checksums.nix).hashesByPackageNameVersion (
+    builtins.readFile ./data/example-poetry.lock
+  );
+  poetryLockMissingOptionalDoc =
+    valuewalk.run
+      {
+        grammar = poetryLockSchema;
+      }
+      (
+        builtins.fromTOML ''
+          [[package]]
+          name = "foo"
+          version = "1.0.0"
+          description = ""
+          python-versions = "*"
+
+          [metadata]
+          lock-version = "2.0"
+        ''
+      );
+
   # Recursive schema via plain `rec` self-reference (no named-grammar
   # indirection at all) -- confirms lib/valuewalk.nix's `compile` (the
   # single-schema entry point, refs = {}) handles a self-referential
@@ -1107,6 +1138,20 @@ let
         }
       ];
     cargoLock_rejectsGitSourceWithChecksum = cargoLockInvalidDoc.DOCUMENT == null;
+    poetryLock_acceptsLegacyMetadataFilesLayout = poetryLockDoc.DOCUMENT != null;
+    poetryLock_extractsChecksumsFromMetadataFiles =
+      poetryLockChecksums == {
+        "anyio-2.2.0" = [
+          "aa3da546ed17f097ca876c78024dea380a3b7fa80759abfdda59f12176a3dac8"
+          "4a41c5b3a65ed92e469d51b6fba3779301850ea2e352afcf9e36c46f21ee14a9"
+        ];
+        "async-generator-1.10" = [
+          "01c7bf666359b4967d2cda0000cc2e4af16a0ae098cbffcb8472fb9e8ad6585b"
+          "6ebb3d106c12920aaae42ccb6f787ef5eefdcdd166ea3d628fa8476abe712144"
+        ];
+        "rmfuse-0.1.0" = [ ];
+      };
+    poetryLock_rejectsMissingRequiredOptionalField = poetryLockMissingOptionalDoc.DOCUMENT == null;
     valuewalk_recursiveSchemaMatchesNestedValue = rNestedValue == nestedValue;
     valuewalk_recursiveSchemaRejectsWrongType = rWrongTypeValue == null;
 

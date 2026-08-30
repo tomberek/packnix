@@ -76,6 +76,8 @@ other Nix parsing libraries.
 | `examples/flakelock-valuewalk.nix` | The `grammar/flakelock.nix` schema rewritten against `lib/valuewalk.nix`, over `builtins.fromJSON`'s output instead of string positions. |
 | `schemas/cargo-lock.nix` | A `lib/valuewalk.nix` schema for Rust's `Cargo.lock` (v3/v4) over `builtins.fromTOML`'s output — no `lib/packrat.nix` grammar counterpart at all, since Cargo.lock is plain TOML with nothing `fromTOML` can't already parse. See below for why this one has a real nixpkgs use case. |
 | `examples/cargo-lock-checksums.nix` | Extracts `{ "<crate>-<version>" = <sha256>; ... }` from a `Cargo.lock`'s `checksum` fields — the piece `importCargoLock` needs. See below. |
+| `schemas/poetry-lock.nix` | A `lib/valuewalk.nix` schema for Poetry's `poetry.lock`, over `builtins.fromTOML`'s output — same no-grammar reasoning as `cargo-lock.nix`. Handles both real hash-storage layouts confirmed against a real corpus (per-package `files`, and the older top-level `metadata.files`) — see its header for the corpus/source evidence, including why the oldest `metadata.hashes` generation is deliberately out of scope (no real sample exists to verify against). See below for why this one has a real nixpkgs use case. |
+| `examples/poetry-lock-checksums.nix` | Extracts `{ "<package>-<version>" = [<sha256> ...]; ... }` from a `poetry.lock`, checking both hash-storage locations. See below. |
 | `schemas/package-lock.nix` | A `lib/valuewalk.nix` schema for npm's `package-lock.json` (lockfileVersion 2/3), over `builtins.fromJSON`'s output — no `lib/packrat.nix` grammar counterpart, since `package-lock.json` is plain JSON with nothing bespoke `fromJSON` can't already parse. See below for why this one has a real nixpkgs use case. |
 | `examples/package-lock-checksums.nix` | Extracts `{ "<node_modules path>" = { url; hash; }; ... }` from a `package-lock.json`'s `resolved`/`integrity` pairs — the piece `importNpmLock` needs. See below. |
 | `schemas/uv-lock.nix` | A `lib/valuewalk.nix` schema for uv's `uv.lock` (schema version 1), over `builtins.fromTOML`'s output — no `lib/packrat.nix` grammar counterpart, same reasoning as `schemas/package-lock.nix`. See below for why this one has a real use case even though nixpkgs itself doesn't consume `uv.lock`. |
@@ -313,6 +315,45 @@ checkout (sizes 149B–225KB): every `[[package]]` has `name`+`version`;
 locks `bitflags` at both 1.3.2 and 2.4.1). See the schema's own header
 for the full field-presence breakdown, including the one corpus file
 with a `[[patch.unused]]` section (nixpkgs' own Rust sysroot lockfile).
+
+## poetry.lock: a real nixpkgs use case
+
+Same story as `Cargo.lock` above, for Python's Poetry package manager:
+poetry2nix's own `fetchFromPypi` (`pkgs/development/tools/poetry2nix/
+poetry2nix/lib.nix`) builds a fixed-output derivation with `outputHashAlgo
+= "sha256"; outputHash = hash;` — the raw lockfile hash, passed straight
+through with no conversion. A `poetry.lock` hash string is `"sha256:<hex
+digest>"`; stripping that prefix (not a base32 re-encode) is all
+`examples/poetry-lock-checksums.nix` needs to do before the hash is
+usable as `sha256`/`outputHash` directly.
+
+Unlike `Cargo.lock`, a real hash can live in EITHER of two structurally
+different places depending on the lockfile's `lock-version`: a package's
+own `files` field (current, confirmed via 2 of 5 real corpus files at
+`lock-version` 2.0/2.1), or a top-level `metadata.files.<name>` table
+(older, confirmed via 3 of 5 real corpus files at `lock-version` 1.1).
+Poetry's own `locker.py` source (`src/poetry/packages/locker.py`) reads
+BOTH itself — its own comment: *"Storing of package files and hashes has
+been through a few generations in the lockfile, we can read them all"* —
+and even documents a THIRD, older-still `metadata.hashes` layout (no
+filenames at all) that no real sample in this project's corpus uses, so
+`schemas/poetry-lock.nix` deliberately doesn't model it (see the schema's
+own header). `examples/poetry-lock-checksums.nix` checks both modeled
+layouts, preferring a package's own `files` when present — the same
+preference order `locker.py` itself uses.
+
+Confirmed against 5 real `poetry.lock` files (nixpkgs' `rmfuse`/`nixops`,
+poetry2nix's own vendored copy, and two more pulled from live source
+checkouts, screened for private/internal references before use):
+`name`/`version`/`description`/`optional`/`python-versions` are present
+on every package in every file (matching `locker.py`'s own unconditional
+reads); `category` (a bare string) and `groups` (a list of strings) are
+mutually exclusive per-file replacements for the same concept across
+lock-version generations; a `dependencies` table's values are
+heterogeneous (a bare constraint string, a `{version; markers;}` table,
+or a list of such tables for marker-gated alternatives) and deliberately
+left unvalidated, same scope call as `schemas/cargo-lock.nix`'s own
+`dependencies` field.
 
 ## package-lock.json: a real nixpkgs use case
 
