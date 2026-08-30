@@ -365,20 +365,23 @@ let
   packageLockChecksums = (import ./examples/package-lock-checksums.nix).hashesByPackagePath (
     builtins.readFile ./data/example-package-lock.json
   );
-  packageLockInvalidDoc = valuewalk.run {
-    grammar = packageLockSchema;
-  } {
-    packages = {
-      "node_modules/foo" = {
-        version = "1.0.0";
-        resolved = "https://registry.npmjs.org/foo/-/foo-1.0.0.tgz";
-        # Neither sha1- nor sha512-, so PACKAGE_ENTRY.integrity's pattern
-        # must reject this -- confirms `optional` fields are still
-        # type-checked when present, not just skipped when absent.
-        integrity = "md5-deadbeef";
+  packageLockInvalidDoc =
+    valuewalk.run
+      {
+        grammar = packageLockSchema;
+      }
+      {
+        packages = {
+          "node_modules/foo" = {
+            version = "1.0.0";
+            resolved = "https://registry.npmjs.org/foo/-/foo-1.0.0.tgz";
+            # Neither sha1- nor sha512-, so PACKAGE_ENTRY.integrity's pattern
+            # must reject this -- confirms `optional` fields are still
+            # type-checked when present, not just skipped when absent.
+            integrity = "md5-deadbeef";
+          };
+        };
       };
-    };
-  };
 
   # --- schemas/uv-lock.nix: same "no packrat grammar" reasoning as
   # schemas/cargo-lock.nix/schemas/poetry-lock.nix/schemas/package-lock.nix,
@@ -396,27 +399,30 @@ let
   uvLockChecksums = (import ./examples/uv-lock-checksums.nix).hashesByPackageNameVersion (
     builtins.readFile ./data/example-uv.lock
   );
-  uvLockInvalidDoc = valuewalk.run {
-    grammar = uvLockSchema;
-  } {
-    version = 1;
-    "requires-python" = ">=3.12";
-    package = [
+  uvLockInvalidDoc =
+    valuewalk.run
       {
-        name = "foo";
-        source = {
-          registry = "https://pypi.org/simple";
-        };
-        # Not "sha256:..." at all, so SDIST_ENTRY.hash's pattern must
-        # reject this -- same "optional fields are still type-checked
-        # when present" confirmation as packageLockInvalidDoc above.
-        sdist = {
-          url = "https://files.pythonhosted.org/packages/foo/foo-1.0.0.tar.gz";
-          hash = "md5:deadbeef";
-        };
+        grammar = uvLockSchema;
       }
-    ];
-  };
+      {
+        version = 1;
+        "requires-python" = ">=3.12";
+        package = [
+          {
+            name = "foo";
+            source = {
+              registry = "https://pypi.org/simple";
+            };
+            # Not "sha256:..." at all, so SDIST_ENTRY.hash's pattern must
+            # reject this -- same "optional fields are still type-checked
+            # when present" confirmation as packageLockInvalidDoc above.
+            sdist = {
+              url = "https://files.pythonhosted.org/packages/foo/foo-1.0.0.tar.gz";
+              hash = "md5:deadbeef";
+            };
+          }
+        ];
+      };
 
   # --- lib/valuewalk.nix: named-grammar API (run/compileGrammar),
   # mirroring lib/packrat.nix's grammar shape and bare-string
