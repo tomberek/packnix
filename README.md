@@ -74,6 +74,8 @@ other Nix parsing libraries.
 | `lib/regex-generate.nix` | Inverts a POSIX ERE pattern into a sample string it would accept; backs `generate`'s automatic `pattern`/`regex` synthesis. |
 | `lib/roundtrip.nix` | Generates N samples for a grammar/schema and confirms its own parser accepts every one — the fixpoint gate `verify-roundtrip.sh` runs. |
 | `examples/flakelock-valuewalk.nix` | The `grammar/flakelock.nix` schema rewritten against `lib/valuewalk.nix`, over `builtins.fromJSON`'s output instead of string positions. |
+| `schemas/cargo-lock.nix` | A `lib/valuewalk.nix` schema for Rust's `Cargo.lock` (v3/v4) over `builtins.fromTOML`'s output — no `lib/packrat.nix` grammar counterpart at all, since Cargo.lock is plain TOML with nothing `fromTOML` can't already parse. See below for why this one has a real nixpkgs use case. |
+| `examples/cargo-lock-checksums.nix` | Extracts `{ "<crate>-<version>" = <sha256>; ... }` from a `Cargo.lock`'s `checksum` fields — the piece `importCargoLock` needs. See below. |
 | `schemas/package-lock.nix` | A `lib/valuewalk.nix` schema for npm's `package-lock.json` (lockfileVersion 2/3), over `builtins.fromJSON`'s output — no `lib/packrat.nix` grammar counterpart, since `package-lock.json` is plain JSON with nothing bespoke `fromJSON` can't already parse. See below for why this one has a real nixpkgs use case. |
 | `examples/package-lock-checksums.nix` | Extracts `{ "<node_modules path>" = { url; hash; }; ... }` from a `package-lock.json`'s `resolved`/`integrity` pairs — the piece `importNpmLock` needs. See below. |
 | `schemas/uv-lock.nix` | A `lib/valuewalk.nix` schema for uv's `uv.lock` (schema version 1), over `builtins.fromTOML`'s output — no `lib/packrat.nix` grammar counterpart, same reasoning as `schemas/package-lock.nix`. See below for why this one has a real use case even though nixpkgs itself doesn't consume `uv.lock`. |
@@ -278,6 +280,39 @@ package names, multi-spec lines (both bare and double-quoted forms),
 `version`/`resolved`/`integrity` field byte/value-identical between the
 two. A Yarn Berry (v2+) lockfile — a different, YAML-based format
 entirely — correctly fails to parse rather than silently mis-parsing.
+
+## Cargo.lock: a real nixpkgs use case
+
+Today, vendoring a Rust crate's dependencies for a Nix build
+(`importCargoLock` — see `pkgs/build-support/rust/import-cargo-lock.nix`
+in nixpkgs) needs a fetch hash per registry-sourced crate. But a
+`Cargo.lock`'s own `checksum` field already IS that hash — nixpkgs'
+`importCargoLock` confirms this directly, passing the field straight
+through unmodified (`sha256 = checksum;`, no base32 re-encoding at all,
+simpler than `Gemfile.lock`'s hex-to-base32 step above). So for any
+`Cargo.lock`, the fetch hash `importCargoLock` needs is already sitting
+in the file — `schemas/cargo-lock.nix` plus
+`examples/cargo-lock-checksums.nix` reads it directly, no `cargo`, no
+network.
+
+Unlike every `grammar/*.nix` in this repo, `schemas/cargo-lock.nix` has
+no `lib/packrat.nix` grammar counterpart: `Cargo.lock` is plain TOML with
+no syntax `builtins.fromTOML` can't already parse, so a from-scratch
+packrat grammar would just re-parse text a native parser already
+handles, for no benefit (the same reasoning this repo's own [Why](#why)
+section gives for not competing with `builtins.fromJSON` on plain JSON).
+`schemas/cargo-lock.nix` only validates the shape of the value
+`fromTOML` already built.
+
+Confirmed against 100 real `Cargo.lock` files pulled from a nixpkgs
+checkout (sizes 149B–225KB): every `[[package]]` has `name`+`version`;
+`checksum` is present if and only if `source` is `registry+`/`sparse+`
+(git-sourced and local/workspace packages never have one); a
+`dependencies` list entry is a bare crate name, or `"name version"` when
+2+ versions of that name are locked at once (confirmed real — one file
+locks `bitflags` at both 1.3.2 and 2.4.1). See the schema's own header
+for the full field-presence breakdown, including the one corpus file
+with a `[[patch.unused]]` section (nixpkgs' own Rust sysroot lockfile).
 
 ## package-lock.json: a real nixpkgs use case
 
