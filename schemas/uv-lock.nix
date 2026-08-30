@@ -65,26 +65,22 @@
 #     `hash` is modeled `optional` on WHEEL_ENTRY/SDIST for that
 #     reason, matching `parseWheel`'s own `hash ? null`.
 #   - `dependencies`/`optional-dependencies.<name>`/
-#     `dev-dependencies.<name>` entries: `name` is the only REQUIRED
-#     field per `parseDependency`'s own signature; `marker` (a PEP 508
-#     marker string, confirmed real), `version` (present only when uv
-#     itself judged the edge AMBIGUOUS -- confirmed via
-#     schemas/poetry-lock.nix's own analogous "usually absent" pattern,
-#     here directly confirmed by `parseDependency`'s `version ? null`
-#     default), `source` (confirmed real, same SOURCE shape as a
-#     top-level package entry), and `extra` (a list of extra names
-#     gating this edge, confirmed real in 2 corpus files' `apache-
-#     airflow`/`fastapi`/`sqlalchemy` dependency entries) are all
-#     genuinely optional, matching `parseDependency`'s own defaults.
-#   - `[package.metadata]`'s `requires-dist`/`requires-dev.<group>`
-#     entries reuse this SAME heterogeneous shape (confirmed:
-#     `parseMetadata`'s own `parseRequires` reads the same `name`/
-#     `marker`/`url`/`path`/`directory`/`editable`/`git`/`specifier`/
-#     `extras` fields DEPENDENCY_ENTRY doesn't need but METADATA's own
-#     `requires-dist` does) -- deliberately modeled as its own,
-#     looser REQUIRES_ENTRY rather than reusing DEPENDENCY_ENTRY, since
-#     the two field sets only partially overlap and neither is a
-#     strict subset of the other.
+#     `dev-dependencies.<name>` entries (`parseDependency`) and
+#     `[package.metadata]`'s `requires-dist`/`requires-dev.<group>`
+#     entries (`parseMetadata`'s own `parseRequires`) both read `name`
+#     as the only REQUIRED field, plus a partially-overlapping set of
+#     optional ones: `marker` (a PEP 508 marker string, confirmed real
+#     on both), `version` (a dependency edge, present only when uv
+#     itself judged it AMBIGUOUS) vs `specifier`/`git`/`editable` (a
+#     metadata declaration's own fields), and `extra`/`extras` (a list
+#     of extra names, confirmed real in 2 corpus files' `apache-
+#     airflow`/`fastapi`/`sqlalchemy` dependency entries -- uv spells
+#     this singular on a dependency edge, plural on a metadata
+#     declaration). Modeled as ONE shared ENTRY covering the union of
+#     both field sets rather than two near-duplicate rules: since both
+#     are already `closed = false` (see below), a rule recognizing the
+#     other call site's fields validates no more, and no less, than
+#     two separate rules would.
 #   - `conflicts` (a list of lists of `{package; extra;}` OR
 #     `{package; group;}` tables, confirmed real via the `conflicts`
 #     fixture itself) and `[options]` (`exclude-newer`/
@@ -130,6 +126,12 @@
     };
   };
 
+  # Shared by WHEEL_ENTRY/SDIST_ENTRY -- see header for why `hash` is
+  # optional despite being present on every corpus file's entries.
+  HASH = {
+    pattern = "(sha256:.+)";
+  };
+
   WHEEL_ENTRY = {
     attrs = {
       closed = false;
@@ -139,9 +141,7 @@
         };
       };
       optional = {
-        hash = {
-          pattern = "(sha256:.+)";
-        };
+        hash = "HASH";
         size = {
           int = { };
         };
@@ -156,9 +156,7 @@
         url = {
           string = { };
         };
-        hash = {
-          pattern = "(sha256:.+)";
-        };
+        hash = "HASH";
         size = {
           int = { };
         };
@@ -167,8 +165,10 @@
   };
 
   # Shared shape for `dependencies`/`optional-dependencies.<name>`/
-  # `dev-dependencies.<name>` list entries.
-  DEPENDENCY_ENTRY = {
+  # `dev-dependencies.<name>` list entries AND `[package.metadata]`'s
+  # `requires-dist`/`requires-dev.<group>` entries -- see header for why
+  # one rule covers both call sites' (partially overlapping) fields.
+  ENTRY = {
     attrs = {
       closed = false;
       fields = {
@@ -188,25 +188,6 @@
           listOf = {
             string = { };
           };
-        };
-      };
-    };
-  };
-
-  # `[package.metadata]`'s `requires-dist`/`requires-dev.<group>`
-  # entries -- same PEP 508-ish shape as DEPENDENCY_ENTRY but a
-  # different, only-partially-overlapping field set (see header).
-  REQUIRES_ENTRY = {
-    attrs = {
-      closed = false;
-      fields = {
-        name = {
-          string = { };
-        };
-      };
-      optional = {
-        marker = {
-          string = { };
         };
         specifier = {
           string = { };
@@ -231,11 +212,11 @@
       closed = false;
       optional = {
         "requires-dist" = {
-          listOf = "REQUIRES_ENTRY";
+          listOf = "ENTRY";
         };
         "requires-dev" = {
           attrsOf = {
-            listOf = "REQUIRES_ENTRY";
+            listOf = "ENTRY";
           };
         };
         "provides-extras" = {
@@ -272,16 +253,16 @@
           listOf = "WHEEL_ENTRY";
         };
         dependencies = {
-          listOf = "DEPENDENCY_ENTRY";
+          listOf = "ENTRY";
         };
         "optional-dependencies" = {
           attrsOf = {
-            listOf = "DEPENDENCY_ENTRY";
+            listOf = "ENTRY";
           };
         };
         "dev-dependencies" = {
           attrsOf = {
-            listOf = "DEPENDENCY_ENTRY";
+            listOf = "ENTRY";
           };
         };
         metadata = "METADATA";

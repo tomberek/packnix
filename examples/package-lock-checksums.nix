@@ -48,26 +48,28 @@ let
     json:
     let
       doc = parse json;
+      isFetchable = pkg: pkg ? resolved && pkg ? integrity && isHttpUrl pkg.resolved;
+      fetchablePaths = builtins.filter (path: isFetchable doc.packages.${path}) (
+        builtins.attrNames doc.packages
+      );
     in
     if doc == null then
       throw "not a valid package-lock.json"
     else
       builtins.listToAttrs (
-        map (path: {
-          name = path;
-          value = {
-            url = doc.packages.${path}.resolved;
-            hash = doc.packages.${path}.integrity;
-          };
-        }) (
-          builtins.filter (
-            path:
-            let
-              pkg = doc.packages.${path};
-            in
-            pkg ? resolved && pkg ? integrity && isHttpUrl pkg.resolved
-          ) (builtins.attrNames doc.packages)
-        )
+        map (
+          path:
+          let
+            pkg = doc.packages.${path};
+          in
+          {
+            name = path;
+            value = {
+              url = pkg.resolved;
+              hash = pkg.integrity;
+            };
+          }
+        ) fetchablePaths
       );
 in
 {

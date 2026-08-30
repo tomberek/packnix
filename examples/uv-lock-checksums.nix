@@ -60,17 +60,21 @@ let
     toml:
     let
       doc = parse toml;
+      withEntries = map (pkg: {
+        inherit pkg;
+        entries = fetchableEntries pkg;
+      }) doc.package;
     in
     if doc == null then
       throw "not a valid uv.lock"
     else
       builtins.listToAttrs (
-        map (pkg: {
-          name = "${pkg.name}-${pkg.version or "0.0.0"}";
+        map (p: {
+          name = "${p.pkg.name}-${p.pkg.version or "0.0.0"}";
           value = map (e: {
             inherit (e) url hash;
-          }) (fetchableEntries pkg);
-        }) (builtins.filter (pkg: fetchableEntries pkg != [ ]) doc.package)
+          }) p.entries;
+        }) (builtins.filter (p: p.entries != [ ]) withEntries)
       );
 in
 {
