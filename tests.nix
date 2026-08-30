@@ -513,6 +513,32 @@ let
   };
   rNamedGrammarInvalid = valuewalk.run { grammar = namedGrammar; } namedGrammarInvalidDoc;
 
+  # --- schemas/cargo-lock.nix: fromTOML + valuewalk schema, no
+  # lib/packrat.nix grammar counterpart at all -- see that file's own
+  # header. Checked against data/example-Cargo.lock, a real (trimmed)
+  # Cargo.lock pulled from nixpkgs (pkgs/by-name/to/toml2nix), covering:
+  # a registry-sourced leaf package (serde), a registry-sourced package
+  # WITH a dependency (toml), and a local/workspace root package with
+  # neither `source` nor `checksum` (toml2nix itself).
+  cargoLockSchema = import ./schemas/cargo-lock.nix;
+  cargoLockDoc = valuewalk.run {
+    grammar = cargoLockSchema;
+  } (builtins.fromTOML (builtins.readFile ./data/example-Cargo.lock));
+  cargoLockInvalidDoc =
+    valuewalk.run
+      {
+        grammar = cargoLockSchema;
+      }
+      (
+        builtins.fromTOML ''
+          [[package]]
+          name = "foo"
+          version = "1.0.0"
+          source = "git+https://example.com/foo.git#abc123"
+          checksum = "0000000000000000000000000000000000000000000000000000000000000a"
+        ''
+      );
+
   # Recursive schema via plain `rec` self-reference (no named-grammar
   # indirection at all) -- confirms lib/valuewalk.nix's `compile` (the
   # single-schema entry point, refs = {}) handles a self-referential
@@ -1070,6 +1096,17 @@ let
 
     valuewalk_namedGrammarMatchesAndPreservesRealFalse = rNamedGrammar.DOCUMENT == namedGrammarValidDoc;
     valuewalk_namedGrammarRejectsWrongType = rNamedGrammarInvalid.DOCUMENT == null;
+    cargoLock_acceptsRealNixpkgsFile = cargoLockDoc.DOCUMENT != null;
+    cargoLock_extractsRegistryChecksums =
+      (builtins.filter (p: p.name == "serde") cargoLockDoc.DOCUMENT.package) == [
+        {
+          name = "serde";
+          version = "1.0.145";
+          source = "registry+https://github.com/rust-lang/crates.io-index";
+          checksum = "728eb6351430bccb993660dfffc5a72f91ccc1295abaa8ce19b27ebe4f75568b";
+        }
+      ];
+    cargoLock_rejectsGitSourceWithChecksum = cargoLockInvalidDoc.DOCUMENT == null;
     valuewalk_recursiveSchemaMatchesNestedValue = rNestedValue == nestedValue;
     valuewalk_recursiveSchemaRejectsWrongType = rWrongTypeValue == null;
 
