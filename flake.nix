@@ -1,5 +1,5 @@
 {
-  description = "A packrat/PEG parsing engine in pure Nix, plus grammars for JSON, YAML, TSV, nix flake.lock, ATerm/Nix .drv, PEP 508, Poetry version constraints, Ruby's Gemfile/Gemfile.lock/yarn.lock, and a fromJSON-based schema for package-lock.json.";
+  description = "A packrat/PEG parsing engine in pure Nix, plus grammars for JSON, YAML, TSV, nix flake.lock, ATerm/Nix .drv, PEP 508, Poetry version constraints, Ruby's Gemfile/Gemfile.lock/yarn.lock, and fromJSON/fromTOML-based schemas for package-lock.json and uv.lock.";
 
   # Deliberately no `nixpkgs` input: everything this flake exposes (the
   # library itself, and the one check below) is pure Nix-language
@@ -64,6 +64,7 @@
         # counterpart -- see schemas/package-lock.nix's own header for why.
         schemas = {
           packageLock = import ./schemas/package-lock.nix;
+          uvLock = import ./schemas/uv-lock.nix;
         };
       };
 

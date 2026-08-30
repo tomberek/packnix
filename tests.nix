@@ -380,6 +380,44 @@ let
     };
   };
 
+  # --- schemas/uv-lock.nix: same "no packrat grammar" reasoning as
+  # schemas/cargo-lock.nix/schemas/poetry-lock.nix/schemas/package-lock.nix,
+  # over builtins.fromTOML's output. Checked against data/example-uv.lock
+  # (uv2nix's own public "conflicts" test fixture, plus a git-sourced
+  # "hatchling" package spliced in from uv2nix's "git-subdirectory"
+  # fixture) covering an editable root package, two independently
+  # locked versions of the SAME registry package ("arpeggio", gated by
+  # `conflicts`), optional-dependencies/dev-dependencies, and a
+  # git-sourced package with no sdist/wheels at all.
+  uvLockSchema = import ./schemas/uv-lock.nix;
+  uvLockDoc = valuewalk.run {
+    grammar = uvLockSchema;
+  } (builtins.fromTOML (builtins.readFile ./data/example-uv.lock));
+  uvLockChecksums = (import ./examples/uv-lock-checksums.nix).hashesByPackageNameVersion (
+    builtins.readFile ./data/example-uv.lock
+  );
+  uvLockInvalidDoc = valuewalk.run {
+    grammar = uvLockSchema;
+  } {
+    version = 1;
+    "requires-python" = ">=3.12";
+    package = [
+      {
+        name = "foo";
+        source = {
+          registry = "https://pypi.org/simple";
+        };
+        # Not "sha256:..." at all, so SDIST_ENTRY.hash's pattern must
+        # reject this -- same "optional fields are still type-checked
+        # when present" confirmation as packageLockInvalidDoc above.
+        sdist = {
+          url = "https://files.pythonhosted.org/packages/foo/foo-1.0.0.tar.gz";
+          hash = "md5:deadbeef";
+        };
+      }
+    ];
+  };
+
   # --- lib/valuewalk.nix: named-grammar API (run/compileGrammar),
   # mirroring lib/packrat.nix's grammar shape and bare-string
   # nonterminal-reference syntax over an already-parsed value tree
@@ -997,6 +1035,32 @@ let
         };
       };
     packageLock_rejectsMalformedIntegrityPattern = packageLockInvalidDoc.DOCUMENT == null;
+
+    uvLock_acceptsRealUvLockfile = uvLockDoc.DOCUMENT != null;
+    uvLock_extractsChecksumsForFetchableRegistryDeps =
+      uvLockChecksums == {
+        "arpeggio-2.0.0" = [
+          {
+            hash = "sha256:d6b03839019bb8a68785f9292ee6a36b1954eb84b925b84a6b8a5e1e26d3ed3d";
+            url = "https://files.pythonhosted.org/packages/3d/ed/53c315e680fdf58818c0938f6c132df4342c95fc68977001244403fee476/Arpeggio-2.0.0.tar.gz";
+          }
+          {
+            hash = "sha256:448e332deb0e9ccd04046f1c6c14529d197f41bc2fdb3931e43fc209042fbdd3";
+            url = "https://files.pythonhosted.org/packages/7a/b7/62898ef180bbfea60d28678040ddbb50e36c180d5c56e9cc62b7944c4623/Arpeggio-2.0.0-py2.py3-none-any.whl";
+          }
+        ];
+        "arpeggio-2.0.1" = [
+          {
+            hash = "sha256:8dfee59d546e0192e3c47f630f08f12ba7cf542caf157c58d516a193e3bfb854";
+            url = "https://files.pythonhosted.org/packages/66/a5/4e39a94abf59bff8c9dde4880039172e0efe874453443e1e13651b6bd149/Arpeggio-2.0.1.tar.gz";
+          }
+          {
+            hash = "sha256:5372cf9daee84bd695e99f17371c844504ead3b1d96c70b95dfc54f957fe69de";
+            url = "https://files.pythonhosted.org/packages/02/1f/01b7e8d3dec71b52a149ac04f48fcc8e559bda065bcb1b39d32a4f1da474/Arpeggio-2.0.1-py2.py3-none-any.whl";
+          }
+        ];
+      };
+    uvLock_rejectsMalformedHashPattern = uvLockInvalidDoc.DOCUMENT == null;
 
     valuewalk_namedGrammarMatchesAndPreservesRealFalse = rNamedGrammar.DOCUMENT == namedGrammarValidDoc;
     valuewalk_namedGrammarRejectsWrongType = rNamedGrammarInvalid.DOCUMENT == null;

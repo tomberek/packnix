@@ -76,6 +76,8 @@ other Nix parsing libraries.
 | `examples/flakelock-valuewalk.nix` | The `grammar/flakelock.nix` schema rewritten against `lib/valuewalk.nix`, over `builtins.fromJSON`'s output instead of string positions. |
 | `schemas/package-lock.nix` | A `lib/valuewalk.nix` schema for npm's `package-lock.json` (lockfileVersion 2/3), over `builtins.fromJSON`'s output — no `lib/packrat.nix` grammar counterpart, since `package-lock.json` is plain JSON with nothing bespoke `fromJSON` can't already parse. See below for why this one has a real nixpkgs use case. |
 | `examples/package-lock-checksums.nix` | Extracts `{ "<node_modules path>" = { url; hash; }; ... }` from a `package-lock.json`'s `resolved`/`integrity` pairs — the piece `importNpmLock` needs. See below. |
+| `schemas/uv-lock.nix` | A `lib/valuewalk.nix` schema for uv's `uv.lock` (schema version 1), over `builtins.fromTOML`'s output — no `lib/packrat.nix` grammar counterpart, same reasoning as `schemas/package-lock.nix`. See below for why this one has a real use case even though nixpkgs itself doesn't consume `uv.lock`. |
+| `examples/uv-lock-checksums.nix` | Extracts `{ "<name>-<version>" = [ { url; hash; } ... ]; ... }` from a `uv.lock`'s `sdist`/`wheels` entries — the piece `uv2nix` needs. See below. |
 | `default.nix` | Thin wrapper: `pack ./somefile.json` parses a file with the JSON grammar. |
 | `tests.nix` | Standalone combinator test suite (cut-operator semantics, star/regex edge cases, etc). |
 | `bench/` | Fixture generators, measurement scripts, `comparison-report.md`, `arcnmx-json-comparison.md`. |
@@ -315,6 +317,47 @@ itself) is deliberately out of scope, the same "confirmed corpus facts,
 not aspirational spec coverage" convention as every other schema/grammar
 in this repo. See the schema's own header for the full field-presence
 breakdown.
+
+## uv.lock: a real use case (via uv2nix, not nixpkgs itself)
+
+Unlike `Cargo.lock`/`poetry.lock`/`package-lock.json`, nixpkgs itself has
+no `uv.lock` consumer — the real one is the external
+[`uv2nix`](https://github.com/pyproject-nix/uv2nix) project. Its own
+`lib/build.nix` fetches every registry-sourced package via `fetchurl {
+url = package.source.url or package.sdist.url; inherit (package.sdist)
+hash; }` for an sdist, or `fetchurl { inherit (wheel) url hash; }` per
+wheel — confirmed directly from that file. A `uv.lock` hash string is
+already `"sha256:<hex>"`, the exact format `fetchurl`'s `hash` argument
+accepts with zero conversion — the same zero-conversion case as
+`package-lock.json`'s SRI `integrity` above, simpler than `poetry.lock`'s
+own prefix-strip. So for any `uv.lock`, the fetch info `uv2nix` needs is
+already sitting in the file — `schemas/uv-lock.nix` plus
+`examples/uv-lock-checksums.nix` reads it directly, no `uv`, no network.
+
+Unlike the other three lockfiles, a `uv.lock` package can have BOTH an
+`sdist` AND multiple `wheels` (one per platform/Python tag), each with
+its own hash — `examples/uv-lock-checksums.nix` extracts every hash-
+bearing one, matching `poetry-lock-checksums.nix`'s own "a package can
+have multiple published artifacts" list shape. A git-sourced, editable,
+or virtual package (a local project, not a registry fetch) has neither
+`sdist` nor `wheels` — nothing to extract, so it's simply absent from
+the result.
+
+Confirmed against uv2nix's own public test fixtures (`lib/fixtures/
+{conflicts,workspace,dependency-groups,git-subdirectory,with-supported-
+environments,dynamic-version,virtual,only-wheels,local-index-sdist}/
+uv.lock` — small, MIT-licensed, and safe to vendor directly:
+`data/example-uv.lock` is uv2nix's own `conflicts` fixture, with a
+git-sourced `hatchling` package spliced in from its `git-subdirectory`
+fixture) plus uv2nix's own `lib/lock1.nix` source (`parseLock`/
+`parsePackage`) read directly to confirm schema-version guarantees:
+`version`/`requires-python` are the only required top-level fields;
+`name`/`source` are the only required per-package fields, with
+`version` itself optional (absent for a build-time-dynamic version,
+confirmed real in the `dynamic-version` fixture); `source` is a
+discriminated attrset (`registry`/`git`/`editable`/`virtual` confirmed
+real in this corpus). See the schema's own header for the full
+field-presence breakdown.
 
 ## Benchmarks
 
