@@ -74,6 +74,8 @@ other Nix parsing libraries.
 | `lib/regex-generate.nix` | Inverts a POSIX ERE pattern into a sample string it would accept; backs `generate`'s automatic `pattern`/`regex` synthesis. |
 | `lib/roundtrip.nix` | Generates N samples for a grammar/schema and confirms its own parser accepts every one — the fixpoint gate `verify-roundtrip.sh` runs. |
 | `examples/flakelock-valuewalk.nix` | The `grammar/flakelock.nix` schema rewritten against `lib/valuewalk.nix`, over `builtins.fromJSON`'s output instead of string positions. |
+| `schemas/package-lock.nix` | A `lib/valuewalk.nix` schema for npm's `package-lock.json` (lockfileVersion 2/3), over `builtins.fromJSON`'s output — no `lib/packrat.nix` grammar counterpart, since `package-lock.json` is plain JSON with nothing bespoke `fromJSON` can't already parse. See below for why this one has a real nixpkgs use case. |
+| `examples/package-lock-checksums.nix` | Extracts `{ "<node_modules path>" = { url; hash; }; ... }` from a `package-lock.json`'s `resolved`/`integrity` pairs — the piece `importNpmLock` needs. See below. |
 | `default.nix` | Thin wrapper: `pack ./somefile.json` parses a file with the JSON grammar. |
 | `tests.nix` | Standalone combinator test suite (cut-operator semantics, star/regex edge cases, etc). |
 | `bench/` | Fixture generators, measurement scripts, `comparison-report.md`, `arcnmx-json-comparison.md`. |
@@ -274,6 +276,45 @@ package names, multi-spec lines (both bare and double-quoted forms),
 `version`/`resolved`/`integrity` field byte/value-identical between the
 two. A Yarn Berry (v2+) lockfile — a different, YAML-based format
 entirely — correctly fails to parse rather than silently mis-parsing.
+
+## package-lock.json: a real nixpkgs use case
+
+Today, `importNpmLock` (see `pkgs/build-support/node/import-npm-lock/
+default.nix` in nixpkgs) fetches every registry-sourced npm package via
+`fetchurl { url = module.resolved; hash = module.integrity; }` — confirmed
+directly from that function's own `fetchModule` helper. A
+`package-lock.json`'s `integrity` field is *already* the exact SRI string
+(`sha512-<base64>`) `fetchurl`'s `hash` argument accepts, with zero
+conversion needed — simpler than `Cargo.lock`'s hex `checksum` (used
+as-is) or `poetry.lock`'s `"sha256:<hex>"` (prefix stripped), and the
+same SRI format `grammar/yarn-lock.nix`'s own `integrity` field already
+handles for Yarn. So for any `package-lock.json`, the fetch info
+`importNpmLock` needs is already sitting in the file —
+`schemas/package-lock.nix` plus `examples/package-lock-checksums.nix`
+reads it directly, no `npm`, no network.
+
+Unlike `Cargo.lock`/`poetry.lock`, `resolved`+`integrity` are not a
+reliable pair: a git-sourced package (`resolved` is a `git+ssh://...#<rev>`
+URL) has no `integrity` at all — nothing for npm's registry to have
+hashed — and a bundled dependency (ships inside its parent's own tarball)
+or monorepo workspace member (a local package, not a `node_modules/`
+fetch) has neither field. `examples/package-lock-checksums.nix` only
+extracts entries where both are present and `resolved` is an `http(s)`
+URL, the one case `importNpmLock`'s own `fetchModule` handles via
+`fetchurl` (a git-sourced `resolved` goes through `fetchGit` instead).
+
+Confirmed against 43 real `package-lock.json` files pulled from a
+nixpkgs checkout, screened for private/internal references before use:
+`packages` (lockfileVersion 2/3's shape) is keyed by `node_modules/`
+path, not package name — the SAME package name+version can legitimately
+appear at multiple different paths in one file (confirmed real:
+`data/example-package-lock.json`'s own `minimist`, locked separately at
+the top level and nested under `mocha`); `lockfileVersion` 1 (the legacy
+flat `dependencies` tree, no `packages` key at all, deprecated by npm
+itself) is deliberately out of scope, the same "confirmed corpus facts,
+not aspirational spec coverage" convention as every other schema/grammar
+in this repo. See the schema's own header for the full field-presence
+breakdown.
 
 ## Benchmarks
 

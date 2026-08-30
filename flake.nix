@@ -1,5 +1,5 @@
 {
-  description = "A packrat/PEG parsing engine in pure Nix, plus grammars for JSON, YAML, TSV, nix flake.lock, ATerm/Nix .drv, PEP 508, Poetry version constraints, and Ruby's Gemfile/Gemfile.lock/yarn.lock.";
+  description = "A packrat/PEG parsing engine in pure Nix, plus grammars for JSON, YAML, TSV, nix flake.lock, ATerm/Nix .drv, PEP 508, Poetry version constraints, Ruby's Gemfile/Gemfile.lock/yarn.lock, and a fromJSON-based schema for package-lock.json.";
 
   # Deliberately no `nixpkgs` input: everything this flake exposes (the
   # library itself, and the one check below) is pure Nix-language
@@ -59,6 +59,11 @@
           pep508 = import ./grammar/pep508.nix;
           yarnLock = import ./grammar/yarn-lock.nix;
           poetrySemver = import ./grammar/poetry-semver.nix;
+        };
+        # Schemas for lib/valuewalk.nix with no lib/packrat.nix
+        # counterpart -- see schemas/package-lock.nix's own header for why.
+        schemas = {
+          packageLock = import ./schemas/package-lock.nix;
         };
       };
 

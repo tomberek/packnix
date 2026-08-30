@@ -349,6 +349,37 @@ let
     };
   };
 
+  # --- schemas/package-lock.nix: same "no packrat grammar" reasoning as
+  # schemas/cargo-lock.nix/schemas/poetry-lock.nix, but over
+  # builtins.fromJSON's output instead of fromTOML's. Checked against
+  # data/example-package-lock.json, a real npm-generated lockfile
+  # (git-run 0.5.5) covering the root ("") entry, a plain registry
+  # dependency with a nested dependency of its own, a git-sourced
+  # dependency (resolved but no integrity), and two independently
+  # locked node_modules/ paths for the SAME package name+version
+  # (minimist, at the top level and nested under mocha).
+  packageLockSchema = import ./schemas/package-lock.nix;
+  packageLockDoc = valuewalk.run {
+    grammar = packageLockSchema;
+  } (builtins.fromJSON (builtins.readFile ./data/example-package-lock.json));
+  packageLockChecksums = (import ./examples/package-lock-checksums.nix).hashesByPackagePath (
+    builtins.readFile ./data/example-package-lock.json
+  );
+  packageLockInvalidDoc = valuewalk.run {
+    grammar = packageLockSchema;
+  } {
+    packages = {
+      "node_modules/foo" = {
+        version = "1.0.0";
+        resolved = "https://registry.npmjs.org/foo/-/foo-1.0.0.tgz";
+        # Neither sha1- nor sha512-, so PACKAGE_ENTRY.integrity's pattern
+        # must reject this -- confirms `optional` fields are still
+        # type-checked when present, not just skipped when absent.
+        integrity = "md5-deadbeef";
+      };
+    };
+  };
+
   # --- lib/valuewalk.nix: named-grammar API (run/compileGrammar),
   # mirroring lib/packrat.nix's grammar shape and bare-string
   # nonterminal-reference syntax over an already-parsed value tree
@@ -944,6 +975,28 @@ let
       !(builtins.tryEval (jsonTomlSafety.checkGrammarSafety unsafeJsonInCutSeqE1)).success;
     jsonSafety_acceptsCutSeqE2OfCommittedLastBranch =
       (builtins.tryEval (jsonTomlSafety.checkGrammarSafety safeJsonInCutSeqE2OfLastBranch)).success;
+
+    packageLock_acceptsRealNpmLockfile = packageLockDoc.DOCUMENT != null;
+    packageLock_extractsChecksumsForFetchableRegistryDeps =
+      packageLockChecksums == {
+        "node_modules/async" = {
+          hash = "sha512-mzo5dfJYwAn29PeiJ0zvwTo04zj8HDJj0Mn8TD7sno7q12prdbnasKJHhkm2c1LgrhlJ0teaea8860oxi51mGA==";
+          url = "https://registry.npmjs.org/async/-/async-2.6.4.tgz";
+        };
+        "node_modules/lodash" = {
+          hash = "sha512-v2kDEe57lecTulaDIuNTPy3Ry4-tp8IN4WGE22mVFhKUxvqDzeQhZFDGeQ7RQoWJq9nBSRSl2iJm5ffTgLdrbg==";
+          url = "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz";
+        };
+        "node_modules/minimist" = {
+          hash = "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==";
+          url = "https://registry.npmjs.org/minimist/-/minimist-1.2.8.tgz";
+        };
+        "node_modules/mocha/node_modules/minimist" = {
+          hash = "sha512-miQKw5Hv4NS1Psg2517mV4e4dYNaO3++hjAvLOAzKqZ61rH8NS1SK+vbfBWZ5PY/Me/bEWhUwqMghEW5Fb9T7Q==";
+          url = "https://registry.npmjs.org/minimist/-/minimist-0.0.8.tgz";
+        };
+      };
+    packageLock_rejectsMalformedIntegrityPattern = packageLockInvalidDoc.DOCUMENT == null;
 
     valuewalk_namedGrammarMatchesAndPreservesRealFalse = rNamedGrammar.DOCUMENT == namedGrammarValidDoc;
     valuewalk_namedGrammarRejectsWrongType = rNamedGrammarInvalid.DOCUMENT == null;
