@@ -505,6 +505,26 @@ let
     handlers = gemfileLockGrammar.handlers;
   } 0 "not a gemfile lock at all\njust random text\n";
 
+  # A SECOND, independent real Gemfile.lock fixture (nixpkgs'
+  # anystyle-cli package, unmodified) covering three facts
+  # data/example-Gemfile.lock alone never exercises: a real GIT block
+  # (with `revision:`), a real PATH block (`remote: .`), and `!`-pinned
+  # dependencies -- data/example-Gemfile.lock is GEM-only, hand-built
+  # with placeholder CHECKSUMS, not real machine-generated output.
+  # This file ALSO has no CHECKSUMS section at all (pre-Bundler-2.7),
+  # confirming examples/gemfile-lock-checksums.nix's own documented
+  # "throws a friendly error, not a crash" path against a real file
+  # instead of only a hand-built "not a gemfile lock" string.
+  gemfileLockDoc2 = packrat.run {
+    grammar = gemfileLockGrammar.grammar;
+    handlers = gemfileLockGrammar.handlers;
+  } 0 (builtins.readFile ./data/example2-Gemfile.lock);
+  gemfileLockNoChecksumsResult = builtins.tryEval (
+    (import ./examples/gemfile-lock-checksums.nix).hashesByGemName (
+      builtins.readFile ./data/example2-Gemfile.lock
+    )
+  );
+
   # --- grammar/gemfile.nix: a real (subset of) Ruby Bundler Gemfile --
   # NOT the lockfile, recovers Bundler *group* membership per gem (see
   # that file's header for exact scope, confirmed against a 136-file
@@ -790,6 +810,18 @@ let
     handlers = yarnLockGrammar.handlers;
   } 0 "__metadata:\n  version: 6\n";
 
+  # A SECOND, independent real yarn.lock fixture (trimmed from nixpkgs'
+  # awk-language-server package) covering a real `sha1-<base64>`
+  # integrity value AND a `resolved` URL with a `#<commit-ish>`
+  # fragment -- data/example-yarn.lock only ever has sha512- entries
+  # (this schema's own header documents sha1- as real but no fixture
+  # exercised it), and yarn-lock-checksums.nix's own hashesByGemName-
+  # equivalent has never been checked against a real sha1- value.
+  yarnLockDoc2 = packrat.run {
+    grammar = yarnLockGrammar.grammar;
+    handlers = yarnLockGrammar.handlers;
+  } 0 (builtins.readFile ./data/example2-yarn.lock);
+
   # --- schemas/package-lock.nix: same "no packrat grammar" reasoning as
   # schemas/cargo-lock.nix/schemas/poetry-lock.nix, but over
   # builtins.fromJSON's output instead of fromTOML's. Checked against
@@ -843,6 +875,20 @@ let
           };
         };
       };
+
+  # A SECOND, independent real package-lock.json fixture (trimmed from
+  # nixpkgs' own browser-sync package, a real lockfileVersion 2 file --
+  # data/example-package-lock.json is lockfileVersion 3, so this schema
+  # had never actually been checked against a real v2 document, only
+  # documented as "3 of 43 corpus files" in its own header). Also
+  # confirms a REAL sha1- integrity value (packageLockSha1Doc above is
+  # hand-built) alongside a real sha512- one on a scoped package name.
+  packageLockDoc2 = valuewalk.run {
+    grammar = packageLockSchema;
+  } (builtins.fromJSON (builtins.readFile ./data/example2-package-lock.json));
+  packageLockChecksums2 = (import ./examples/package-lock-checksums.nix).hashesByPackagePath (
+    builtins.readFile ./data/example2-package-lock.json
+  );
 
   # --- schemas/uv-lock.nix: same "no packrat grammar" reasoning as
   # schemas/cargo-lock.nix/schemas/poetry-lock.nix/schemas/package-lock.nix,
@@ -910,6 +956,16 @@ let
           source = { virtual = "." }
         ''
       );
+
+  # A SECOND, independent real uv.lock fixture (uv2nix's own public
+  # "with-supported-environments" test fixture, unmodified) covering
+  # `resolution-markers`/`supported-markers` (top-level fields) and a
+  # `marker` on a dependency edge -- none exercised by
+  # data/example-uv.lock (built from uv2nix's "conflicts" fixture
+  # instead), and never referenced anywhere else in this repo.
+  uvLockDoc2 = valuewalk.run {
+    grammar = uvLockSchema;
+  } (builtins.fromTOML (builtins.readFile ./data/example2-uv.lock));
 
   # --- lib/valuewalk.nix: named-grammar API (run/compileGrammar),
   # mirroring lib/packrat.nix's grammar shape and bare-string
@@ -1058,6 +1114,23 @@ let
         ''
       );
 
+  # A SECOND, independent real Cargo.lock fixture (trimmed from a real,
+  # public nix-ninja checkout -- github.com/pdtpartners/nix-ninja),
+  # covering two corpus facts data/example-Cargo.lock alone never
+  # exercises: a git-sourced package (harmonia-store-aterm, confirmed
+  # real per this schema's own header -- git-sourced packages never
+  # carry `checksum`) and a `"name version"` disambiguated dependency
+  # entry (thiserror/thiserror-impl, EACH locked at two real versions
+  # simultaneously -- the exact shape this schema's header cites
+  # `bitflags` as its original example of, never itself checked by any
+  # fixture in this repo).
+  cargoLockDoc2 = valuewalk.run {
+    grammar = cargoLockSchema;
+  } (builtins.fromTOML (builtins.readFile ./data/example2-Cargo.lock));
+  cargoLockChecksums2 = (import ./examples/cargo-lock-checksums.nix).hashesByCrateNameVersion (
+    builtins.readFile ./data/example2-Cargo.lock
+  );
+
   # --- schemas/poetry-lock.nix: same "no packrat grammar" reasoning as
   # cargoLockSchema above. Checked against data/example-poetry.lock,
   # a small file built from real content (nixpkgs' rmfuse poetry.lock)
@@ -1114,6 +1187,21 @@ let
           lock-version = "2.1"
         ''
       );
+
+  # A SECOND, independent real poetry.lock fixture (trimmed from a real
+  # public nixpkgs source checkout, `docformatter`'s own poetry.lock --
+  # the SAME kind of source data/example-poetry.lock's own header cites
+  # for the original fixture): the modern lock-version 2.1 per-package
+  # `files` layout with a REAL `groups` field (as opposed to
+  # poetryLockGroupsDoc's hand-built minimal case above), confirming the
+  # schema and examples/poetry-lock-checksums.nix agree on real,
+  # machine-generated content, not just a synthesized shape.
+  poetryLockDoc2 = valuewalk.run {
+    grammar = poetryLockSchema;
+  } (builtins.fromTOML (builtins.readFile ./data/example2-poetry.lock));
+  poetryLockChecksums2 = (import ./examples/poetry-lock-checksums.nix).hashesByPackageNameVersion (
+    builtins.readFile ./data/example2-poetry.lock
+  );
 
   # Recursive schema via plain `rec` self-reference (no named-grammar
   # indirection at all) -- confirms lib/valuewalk.nix's `compile` (the
@@ -1614,6 +1702,37 @@ let
 
     gemfileLock_acceptsRealNixpkgsFixture = gemfileLockValidResult.DOCUMENT != packrat.NO_MATCH;
     gemfileLock_rejectsPlainProse = gemfileLockInvalidResult.DOCUMENT == packrat.NO_MATCH;
+    gemfileLock_acceptsRealGitAndPathSources =
+      gemfileLockDoc2.DOCUMENT != null
+      &&
+        (builtins.map (s: s.type) gemfileLockDoc2.DOCUMENT.sources) == [
+          "git"
+          "path"
+          "gem"
+        ]
+      &&
+        (builtins.elemAt gemfileLockDoc2.DOCUMENT.sources 0).revision
+        == "c6f5fb2fa6e8ce9456ad1e1e88d6bba5f3d7731d";
+    gemfileLock_acceptsPinnedDependencies =
+      gemfileLockDoc2.DOCUMENT.dependencies == [
+        {
+          constraint = null;
+          name = "anystyle";
+          pinned = true;
+        }
+        {
+          constraint = null;
+          name = "anystyle-cli";
+          pinned = true;
+        }
+        {
+          constraint = null;
+          name = "debug";
+          pinned = false;
+        }
+      ];
+    gemfileLock_checksumsExampleThrowsFriendlyErrorOnRealNoChecksumsFile =
+      !gemfileLockNoChecksumsResult.success;
 
     gemfile_acceptsGroupBlockAndInlineKwarg =
       gemfileValidResult.DOCUMENT == [
@@ -1790,6 +1909,37 @@ let
 
     yarnLock_acceptsRealFixture = yarnLockValidResult.DOCUMENT != packrat.NO_MATCH;
     yarnLock_rejectsYarnBerryHeader = yarnLockInvalidResult.DOCUMENT == packrat.NO_MATCH;
+    yarnLock_acceptsRealSha1IntegrityAndResolvedFragment =
+      yarnLockDoc2.DOCUMENT != null
+      &&
+        yarnLockDoc2.DOCUMENT == [
+          {
+            dependencies = [ ];
+            integrity = "sha1-x57Zf380y48robyXkLzDZkdLS3k=";
+            optionalDependencies = [ ];
+            resolved = "https://registry.yarnpkg.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79";
+            specs = [
+              {
+                name = "asynckit";
+                range = "^0.4.0";
+              }
+            ];
+            version = "0.4.0";
+          }
+          {
+            dependencies = [ ];
+            integrity = "sha1-bqa989hTrlTMuOR7+gvz+QMfsYQ=";
+            optionalDependencies = [ ];
+            resolved = "https://registry.yarnpkg.com/co/-/co-4.6.0.tgz#6ea6bdf3d853ae54ccb8e47bfa0bf3f9031fb184";
+            specs = [
+              {
+                name = "co";
+                range = "^4.6.0";
+              }
+            ];
+            version = "4.6.0";
+          }
+        ];
 
     cutMain_parsesFullString = cutMainResult.M != packrat.NO_MATCH;
     cutMain_correctValue =
@@ -1900,6 +2050,19 @@ let
       &&
         packageLockSha1Doc.DOCUMENT.packages."node_modules/foo".integrity
         == "sha1-1234567890abcdef1234567890abcdef12345678";
+    packageLock_acceptsRealLockfileVersion2File =
+      packageLockDoc2.DOCUMENT != null && packageLockDoc2.DOCUMENT.lockfileVersion == 2;
+    packageLock_extractsBothRealHashFormatsFromLockfileVersion2 =
+      packageLockChecksums2 == {
+        "node_modules/accepts" = {
+          hash = "sha1-63d99gEXI6OxTopywIBcjoZ0a9I=";
+          url = "https://registry.npmjs.org/accepts/-/accepts-1.3.5.tgz";
+        };
+        "node_modules/@socket.io/component-emitter" = {
+          hash = "sha512-+9jVqKhRSpsc591z5vX+X5Yyw+he/HCB4iQ/RYxw35CEPaY1gnsNE43nf9n9AaYjAQrTiI/mOwKUKdUs9vf7Xg==";
+          url = "https://registry.npmjs.org/@socket.io/component-emitter/-/component-emitter-3.1.0.tgz";
+        };
+      };
 
     uvLock_acceptsRealUvLockfile = uvLockDoc.DOCUMENT != null;
     uvLock_extractsChecksumsForFetchableRegistryDeps =
@@ -1931,6 +2094,20 @@ let
         pkg = builtins.elemAt uvLockVirtualDoc.DOCUMENT.package 0;
       in
       uvLockVirtualDoc.DOCUMENT != null && pkg.source == { virtual = "."; } && !(pkg ? version);
+    uvLock_acceptsResolutionAndSupportedMarkers =
+      uvLockDoc2.DOCUMENT != null
+      &&
+        uvLockDoc2.DOCUMENT."resolution-markers" == [
+          "sys_platform == 'darwin'"
+          "sys_platform == 'linux'"
+        ]
+      && uvLockDoc2.DOCUMENT."supported-markers" == uvLockDoc2.DOCUMENT."resolution-markers";
+    uvLock_acceptsMarkerOnDependencyEdge =
+      let
+        pkg = builtins.elemAt uvLockDoc2.DOCUMENT.package 1;
+      in
+      (builtins.elemAt pkg.dependencies 0).marker
+      == "sys_platform == 'darwin' or sys_platform == 'linux'";
 
     valuewalk_namedGrammarMatchesAndPreservesRealFalse = rNamedGrammar.DOCUMENT == namedGrammarValidDoc;
     valuewalk_namedGrammarRejectsWrongType = rNamedGrammarInvalid.DOCUMENT == null;
@@ -1959,6 +2136,30 @@ let
         "serde-1.0.145" = "728eb6351430bccb993660dfffc5a72f91ccc1295abaa8ce19b27ebe4f75568b";
         "toml-0.4.10" = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f";
       };
+    cargoLock_acceptsGitSourceWithNoChecksum =
+      cargoLockDoc2.DOCUMENT != null
+      &&
+        (builtins.head (
+          builtins.filter (p: p.name == "harmonia-store-aterm") cargoLockDoc2.DOCUMENT.package
+        )).checksum or null == null;
+    cargoLock_disambiguatesNameVersionCollisionInDependencies =
+      let
+        nixNinja = builtins.head (
+          builtins.filter (p: p.name == "nix-ninja") cargoLockDoc2.DOCUMENT.package
+        );
+        aterm = builtins.head (
+          builtins.filter (p: p.name == "harmonia-store-aterm") cargoLockDoc2.DOCUMENT.package
+        );
+      in
+      nixNinja.dependencies == [ "thiserror 2.0.19" ] && aterm.dependencies == [ "thiserror 1.0.69" ];
+    cargoLock_extractsChecksumsForBothCollidingVersions =
+      cargoLockChecksums2."thiserror-1.0.69"
+      == "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
+      &&
+        cargoLockChecksums2."thiserror-2.0.19"
+        == "09a43598840e33d5b0331f38c5e30d13bb11c11210a4b58f0d9b18a5a5eefcd9"
+      && !(cargoLockChecksums2 ? "harmonia-store-aterm-0.0.0-alpha.0")
+      && !(cargoLockChecksums2 ? "nix-ninja-0.1.0");
     poetryLock_acceptsLegacyMetadataFilesLayout = poetryLockDoc.DOCUMENT != null;
     poetryLock_extractsChecksumsFromMetadataFiles =
       poetryLockChecksums == {
@@ -1980,6 +2181,26 @@ let
           "dev"
           "testing"
         ];
+    poetryLock_acceptsRealGroupsField =
+      poetryLockDoc2.DOCUMENT != null
+      && (builtins.elemAt poetryLockDoc2.DOCUMENT.package 0).groups == [ "dev" ]
+      && (builtins.elemAt poetryLockDoc2.DOCUMENT.package 1).groups == [ "linting" ];
+    poetryLock_extractsChecksumsFromRealPerPackageFiles =
+      poetryLockChecksums2 == {
+        "alabaster-0.7.16" = [
+          "b46733c07dce03ae4e150330b975c75737fa60f0a7c591b6c8bf4928a28e2c92"
+          "75a8b99c28a5dad50dd7f8ccdd447a121ddb3892da9e53d1ca5cca3106d58d65"
+        ];
+        "annotated-types-0.7.0" = [
+          "1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53"
+          "aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89"
+        ];
+        "autopep8-2.3.2" = [
+          "ce8ad498672c845a0c3de2629c15b635ec2b05ef8177a6e7c91c74f3e9b51128"
+          "89440a4f969197b69a995e4ce0661b031f455a9f776d2c5ba3dbd83466931758"
+        ];
+      };
+
     valuewalk_recursiveSchemaMatchesNestedValue = rNestedValue == nestedValue;
     valuewalk_recursiveSchemaRejectsWrongType = rWrongTypeValue == null;
 
