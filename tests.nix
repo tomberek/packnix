@@ -672,6 +672,9 @@ let
   cargoLockDoc = valuewalk.run {
     grammar = cargoLockSchema;
   } (builtins.fromTOML (builtins.readFile ./data/example-Cargo.lock));
+  cargoLockChecksums = (import ./examples/cargo-lock-checksums.nix).hashesByCrateNameVersion (
+    builtins.readFile ./data/example-Cargo.lock
+  );
   cargoLockInvalidDoc =
     valuewalk.run
       {
@@ -1371,6 +1374,11 @@ let
         }
       ];
     cargoLock_rejectsGitSourceWithChecksum = cargoLockInvalidDoc.DOCUMENT == null;
+    cargoLock_extractsChecksumsForRegistryPackages =
+      cargoLockChecksums == {
+        "serde-1.0.145" = "728eb6351430bccb993660dfffc5a72f91ccc1295abaa8ce19b27ebe4f75568b";
+        "toml-0.4.10" = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f";
+      };
     poetryLock_acceptsLegacyMetadataFilesLayout = poetryLockDoc.DOCUMENT != null;
     poetryLock_extractsChecksumsFromMetadataFiles =
       poetryLockChecksums == {
