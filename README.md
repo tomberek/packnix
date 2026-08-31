@@ -283,157 +283,60 @@ package names, multi-spec lines (both bare and double-quoted forms),
 two. A Yarn Berry (v2+) lockfile — a different, YAML-based format
 entirely — correctly fails to parse rather than silently mis-parsing.
 
-## Cargo.lock: a real nixpkgs use case
+## Cargo.lock, poetry.lock, package-lock.json, uv.lock: real fetch-hash use cases
 
-Today, vendoring a Rust crate's dependencies for a Nix build
-(`importCargoLock` — see `pkgs/build-support/rust/import-cargo-lock.nix`
-in nixpkgs) needs a fetch hash per registry-sourced crate. But a
-`Cargo.lock`'s own `checksum` field already IS that hash — nixpkgs'
-`importCargoLock` confirms this directly, passing the field straight
-through unmodified (`sha256 = checksum;`, no base32 re-encoding at all,
-simpler than `Gemfile.lock`'s hex-to-base32 step above). So for any
-`Cargo.lock`, the fetch hash `importCargoLock` needs is already sitting
-in the file — `schemas/cargo-lock.nix` plus
-`examples/cargo-lock-checksums.nix` reads it directly, no `cargo`, no
-network.
+Four ecosystems' package managers write a lockfile that already contains
+every fetch hash their Nix build tooling would otherwise need to
+recompute over the network. Each `schemas/*.nix` here is a
+`lib/valuewalk.nix` schema over `fromTOML`/`fromJSON`'s output, not a
+`lib/packrat.nix` grammar — none of the four formats has any syntax a
+native parser can't already handle, so a from-scratch packrat grammar
+would just re-parse text for no benefit (the same reasoning this repo's
+own [Why](#why) section gives for not competing with `builtins.fromJSON`
+on plain JSON). Each `examples/*-checksums.nix` extracts the hashes; each
+schema's own header has the full field-presence breakdown.
 
-Unlike every `grammar/*.nix` in this repo, `schemas/cargo-lock.nix` has
-no `lib/packrat.nix` grammar counterpart: `Cargo.lock` is plain TOML with
-no syntax `builtins.fromTOML` can't already parse, so a from-scratch
-packrat grammar would just re-parse text a native parser already
-handles, for no benefit (the same reasoning this repo's own [Why](#why)
-section gives for not competing with `builtins.fromJSON` on plain JSON).
-`schemas/cargo-lock.nix` only validates the shape of the value
-`fromTOML` already built.
+| Lockfile | Consumer | Hash field → Nix `hash`/`sha256` | Corpus |
+|---|---|---|---|
+| `Cargo.lock` | nixpkgs' `importCargoLock` (`pkgs/build-support/rust/import-cargo-lock.nix`) | `checksum`, used as-is (`sha256 = checksum;`, no re-encoding) | 100 real files from a nixpkgs checkout (149B–225KB) |
+| `poetry.lock` | poetry2nix's `fetchFromPypi` (`pkgs/development/tools/poetry2nix/poetry2nix/lib.nix`) | `"sha256:<hex>"`, strip the prefix (not a base32 re-encode) | 5 real files (nixpkgs' `rmfuse`/`nixops`, poetry2nix's own vendored copy, two more from live checkouts) |
+| `package-lock.json` | nixpkgs' `importNpmLock` (`pkgs/build-support/node/import-npm-lock/default.nix`) | `integrity`, already SRI (`sha512-<base64>`), zero conversion | 43 real files from a nixpkgs checkout |
+| `uv.lock` | the external [`uv2nix`](https://github.com/pyproject-nix/uv2nix) project's `lib/build.nix` — nixpkgs itself has no `uv.lock` consumer | `"sha256:<hex>"` on `sdist`/each `wheels[]` entry, zero conversion | uv2nix's own public MIT-licensed test fixtures (`lib/fixtures/*/uv.lock`) |
 
-Confirmed against 100 real `Cargo.lock` files pulled from a nixpkgs
-checkout (sizes 149B–225KB): every `[[package]]` has `name`+`version`;
-`checksum` is present if and only if `source` is `registry+`/`sparse+`
-(git-sourced and local/workspace packages never have one); a
-`dependencies` list entry is a bare crate name, or `"name version"` when
-2+ versions of that name are locked at once (confirmed real — one file
-locks `bitflags` at both 1.3.2 and 2.4.1). See the schema's own header
-for the full field-presence breakdown, including the one corpus file
-with a `[[patch.unused]]` section (nixpkgs' own Rust sysroot lockfile).
+Format-specific complications each schema/example handles:
 
-## poetry.lock: a real nixpkgs use case
-
-Same story as `Cargo.lock` above, for Python's Poetry package manager:
-poetry2nix's own `fetchFromPypi` (`pkgs/development/tools/poetry2nix/
-poetry2nix/lib.nix`) builds a fixed-output derivation with `outputHashAlgo
-= "sha256"; outputHash = hash;` — the raw lockfile hash, passed straight
-through with no conversion. A `poetry.lock` hash string is `"sha256:<hex
-digest>"`; stripping that prefix (not a base32 re-encode) is all
-`examples/poetry-lock-checksums.nix` needs to do before the hash is
-usable as `sha256`/`outputHash` directly.
-
-Unlike `Cargo.lock`, a real hash can live in EITHER of two structurally
-different places depending on the lockfile's `lock-version`: a package's
-own `files` field (current, confirmed via 2 of 5 real corpus files at
-`lock-version` 2.0/2.1), or a top-level `metadata.files.<name>` table
-(older, confirmed via 3 of 5 real corpus files at `lock-version` 1.1).
-Poetry's own `locker.py` source (`src/poetry/packages/locker.py`) reads
-BOTH itself — its own comment: *"Storing of package files and hashes has
-been through a few generations in the lockfile, we can read them all"* —
-and even documents a THIRD, older-still `metadata.hashes` layout (no
-filenames at all) that no real sample in this project's corpus uses, so
-`schemas/poetry-lock.nix` deliberately doesn't model it (see the schema's
-own header). `examples/poetry-lock-checksums.nix` checks both modeled
-layouts, preferring a package's own `files` when present — the same
-preference order `locker.py` itself uses.
-
-Confirmed against 5 real `poetry.lock` files (nixpkgs' `rmfuse`/`nixops`,
-poetry2nix's own vendored copy, and two more pulled from live source
-checkouts, screened for private/internal references before use):
-`name`/`version`/`description`/`optional`/`python-versions` are present
-on every package in every file (matching `locker.py`'s own unconditional
-reads); `category` (a bare string) and `groups` (a list of strings) are
-mutually exclusive per-file replacements for the same concept across
-lock-version generations; a `dependencies` table's values are
-heterogeneous (a bare constraint string, a `{version; markers;}` table,
-or a list of such tables for marker-gated alternatives) and deliberately
-left unvalidated, same scope call as `schemas/cargo-lock.nix`'s own
-`dependencies` field.
-
-## package-lock.json: a real nixpkgs use case
-
-Today, `importNpmLock` (see `pkgs/build-support/node/import-npm-lock/
-default.nix` in nixpkgs) fetches every registry-sourced npm package via
-`fetchurl { url = module.resolved; hash = module.integrity; }` — confirmed
-directly from that function's own `fetchModule` helper. A
-`package-lock.json`'s `integrity` field is *already* the exact SRI string
-(`sha512-<base64>`) `fetchurl`'s `hash` argument accepts, with zero
-conversion needed — simpler than `Cargo.lock`'s hex `checksum` (used
-as-is) or `poetry.lock`'s `"sha256:<hex>"` (prefix stripped), and the
-same SRI format `grammar/yarn-lock.nix`'s own `integrity` field already
-handles for Yarn. So for any `package-lock.json`, the fetch info
-`importNpmLock` needs is already sitting in the file —
-`schemas/package-lock.nix` plus `examples/package-lock-checksums.nix`
-reads it directly, no `npm`, no network.
-
-Unlike `Cargo.lock`/`poetry.lock`, `resolved`+`integrity` are not a
-reliable pair: a git-sourced package (`resolved` is a `git+ssh://...#<rev>`
-URL) has no `integrity` at all — nothing for npm's registry to have
-hashed — and a bundled dependency (ships inside its parent's own tarball)
-or monorepo workspace member (a local package, not a `node_modules/`
-fetch) has neither field. `examples/package-lock-checksums.nix` only
-extracts entries where both are present and `resolved` is an `http(s)`
-URL, the one case `importNpmLock`'s own `fetchModule` handles via
-`fetchurl` (a git-sourced `resolved` goes through `fetchGit` instead).
-
-Confirmed against 43 real `package-lock.json` files pulled from a
-nixpkgs checkout, screened for private/internal references before use:
-`packages` (lockfileVersion 2/3's shape) is keyed by `node_modules/`
-path, not package name — the SAME package name+version can legitimately
-appear at multiple different paths in one file (confirmed real:
-`data/example-package-lock.json`'s own `minimist`, locked separately at
-the top level and nested under `mocha`); `lockfileVersion` 1 (the legacy
-flat `dependencies` tree, no `packages` key at all, deprecated by npm
-itself) is deliberately out of scope, the same "confirmed corpus facts,
-not aspirational spec coverage" convention as every other schema/grammar
-in this repo. See the schema's own header for the full field-presence
-breakdown.
-
-## uv.lock: a real use case (via uv2nix, not nixpkgs itself)
-
-Unlike `Cargo.lock`/`poetry.lock`/`package-lock.json`, nixpkgs itself has
-no `uv.lock` consumer — the real one is the external
-[`uv2nix`](https://github.com/pyproject-nix/uv2nix) project. Its own
-`lib/build.nix` fetches every registry-sourced package via `fetchurl {
-url = package.source.url or package.sdist.url; inherit (package.sdist)
-hash; }` for an sdist, or `fetchurl { inherit (wheel) url hash; }` per
-wheel — confirmed directly from that file. A `uv.lock` hash string is
-already `"sha256:<hex>"`, the exact format `fetchurl`'s `hash` argument
-accepts with zero conversion — the same zero-conversion case as
-`package-lock.json`'s SRI `integrity` above, simpler than `poetry.lock`'s
-own prefix-strip. So for any `uv.lock`, the fetch info `uv2nix` needs is
-already sitting in the file — `schemas/uv-lock.nix` plus
-`examples/uv-lock-checksums.nix` reads it directly, no `uv`, no network.
-
-Unlike the other three lockfiles, a `uv.lock` package can have BOTH an
-`sdist` AND multiple `wheels` (one per platform/Python tag), each with
-its own hash — `examples/uv-lock-checksums.nix` extracts every hash-
-bearing one, matching `poetry-lock-checksums.nix`'s own "a package can
-have multiple published artifacts" list shape. A git-sourced, editable,
-or virtual package (a local project, not a registry fetch) has neither
-`sdist` nor `wheels` — nothing to extract, so it's simply absent from
-the result.
-
-Confirmed against uv2nix's own public test fixtures (`lib/fixtures/
-{conflicts,workspace,dependency-groups,git-subdirectory,with-supported-
-environments,dynamic-version,virtual,only-wheels,local-index-sdist}/
-uv.lock` — small, MIT-licensed, and safe to vendor directly:
-`data/example-uv.lock` is uv2nix's own `conflicts` fixture, with a
-git-sourced `hatchling` package spliced in from its `git-subdirectory`
-fixture) plus uv2nix's own `lib/lock1.nix` source (`parseLock`/
-`parsePackage`) read directly to confirm schema-version guarantees:
-`version`/`requires-python` are the only required top-level fields;
-`name`/`source` are the only required per-package fields, with
-`version` itself optional (absent for a build-time-dynamic version,
-confirmed real in the `dynamic-version` fixture); `source` is a
-discriminated attrset (`registry`/`git`/`editable`/`virtual` confirmed
-real in this corpus). See the schema's own header for the full
-field-presence breakdown.
+- **Cargo.lock**: `checksum` is present *iff* `source` is
+  `registry+`/`sparse+` (git-sourced/workspace packages never have one,
+  confirmed zero exceptions in the corpus); a `dependencies` entry is a
+  bare crate name, or `"name version"` when 2+ versions of that name are
+  locked at once (one corpus file locks `bitflags` at both 1.3.2 and
+  2.4.1); one corpus file has a `[[patch.unused]]` section (nixpkgs' own
+  Rust sysroot lockfile).
+- **poetry.lock**: a real hash can live in EITHER of two places
+  depending on `lock-version` — a package's own `files` field (current)
+  or a top-level `metadata.files.<name>` table (older) — confirmed via
+  Poetry's own `locker.py` (`src/poetry/packages/locker.py`), which reads
+  both itself and documents a third, filename-less `metadata.hashes`
+  layout with no real sample in this corpus to verify against, so it's
+  out of scope. `examples/poetry-lock-checksums.nix` checks both,
+  preferring `files` when present, matching `locker.py`'s own order.
+- **package-lock.json**: `resolved`+`integrity` are NOT a reliable pair
+  — a git-sourced package has `resolved` but no `integrity` (nothing for
+  npm's registry to hash), and a bundled/workspace package has neither.
+  `packages` is keyed by `node_modules/` path, not name — the same
+  name+version can legitimately recur at multiple paths (confirmed real:
+  `data/example-package-lock.json`'s own `minimist`, locked at the top
+  level and nested under `mocha`). Legacy `lockfileVersion` 1 (flat
+  `dependencies` tree, no `packages` key) is out of scope.
+- **uv.lock**: a package can have BOTH an `sdist` and multiple `wheels`
+  (one per platform/Python tag), each independently hashed —
+  `examples/uv-lock-checksums.nix` extracts every hash-bearing one. A
+  git-sourced, editable, or virtual package has neither, so it's simply
+  absent from the result. `source` is a discriminated attrset
+  (`registry`/`git`/`editable`/`virtual` confirmed real); `version`
+  itself is optional, absent for a build-time-dynamic version (confirmed
+  real in the `dynamic-version` fixture) — confirmed against uv2nix's own
+  `lib/lock1.nix` (`parseLock`/`parsePackage`) read directly.
 
 ## Benchmarks
 
