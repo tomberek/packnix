@@ -74,6 +74,16 @@
 #                              semantics only matter when PARSING an
 #                              existing string, not when generating one
 #                              that e1-then-e2 would accept.
+#   { eof = {}; }           -> "" when this occurrence is PROVABLY the
+#                              last thing generated in the whole
+#                              document (see ISLAND/ISLAST below);
+#                              otherwise excluded as an ineligible
+#                              `choice` branch (see DEPTH CONTROL below
+#                              for the analogous maxDepth exclusion) --
+#                              NEVER generated as "" at a non-last
+#                              position, which would be unsound (the
+#                              real `eof` combinator would then fail to
+#                              accept the round-tripped result).
 #
 # SHARED forms (same semantics in both domains):
 #   { choice = [...]; }     -> picks one branch (seed-derived index,
@@ -105,10 +115,29 @@
 #                              particular would require synthesizing a
 #                              value that satisfies "schema `e` does NOT
 #                              match" -- genuinely harder, not attempted.
-#                              ONE exception: `{ not = { regex = "(.)"; }; }`
-#                              (the "assert end of input" idiom, e.g.
-#                              grammar/aterm.nix's DOCUMENT) generates as
-#                              "" -- see the `generateWith` case below.
+#                              ONE exception: `{ not = { regex = "(.)"; }; }`,
+#                              a "(.)"-negated-lookahead spelling of "assert
+#                              end of input" that predates `{ eof = {}; }`
+#                              (no grammar in this repo still uses it --
+#                              all migrated, see lib/packrat.nix's own
+#                              `eof` primitive -- kept only for external
+#                              grammars built against the same DSL). Same
+#                              provably-last-in-document gating as `eof`
+#                              itself -- see the `generateWith` case below.
+#
+# ISLAST (a per-occurrence, NOT per-expr, positional fact): `{ eof = {}; }`
+# and its `not`-regex predecessor above are only sound to generate as ""
+# when the occurrence is the actual last thing emitted in the WHOLE
+# document, not merely "last element of its own immediate enclosing
+# sequence" -- a `choice` (e.g. grammar/gemfile-lock.nix's/grammar/yarn-
+# lock.nix's shared `lineEnd = { choice = [ regex; eof; ]; }`) can itself
+# be a non-terminal element of some enclosing sequence, with real content
+# generated after it. `generateWith`'s `isLast` parameter tracks this,
+# threaded the same way `depth` already is; `choice`'s own branch-
+# eligibility filter (mirroring its existing `depth`/`maxDepth` filter)
+# excludes an eof-like branch whenever `isLast` is false, so an unsound ""
+# is never actually generated -- the sound alternative branch is picked
+# instead.
 #
 # PATTERN/REGEX GENERATION: both `{ pattern = "..."; }` (lib/valuewalk.nix)
 # and `{ regex = "..."; }` (lib/packrat.nix; its `maxLen` option is a
@@ -304,6 +333,12 @@ rec {
 
   isTerminal = grammar: expr: !(isRecursiveExpr grammar [ ] expr);
 
+  # Identifies exprs `generateWith`'s `eof`/`not`-regex cases treat as
+  # eof-like -- see this file's header (ISLAST) for why this matters:
+  # `choice`'s own branch-eligibility filter uses this to exclude an
+  # eof-like branch whenever it's not provably in trailing position.
+  isEofLike = expr: (expr ? eof) || (expr ? not && (expr.not ? regex) && expr.not.regex == "(.)");
+
   # A generic "any JSON value" schema, in lib/valuewalk.nix's OWN DSL --
   # reused to generate for `{ json = {}; }` (see generateWith's `expr ?
   # json` case below) by generating a Nix value with THIS schema, then
@@ -322,7 +357,13 @@ rec {
     ];
   };
   generateAnyJsonValue =
-    seed: depth: generateWith { } { } { } { } 3 anyJsonValueSchema (seed + "/json-value") depth;
+    seed: depth:
+    # `isLast = false`: anyJsonValueSchema is a lib/valuewalk.nix-DSL
+    # schema with no `eof`/`not`-regex forms at all (JSON's own grammar
+    # has no such combinator), so `isLast` can never actually matter
+    # here -- passed as a fixed `false` only because generateWith's
+    # signature now requires SOME value.
+    generateWith { } { } { } { } 3 anyJsonValueSchema (seed + "/json-value") depth false;
 
   # --- Generation ---------------------------------------------------------
   # `refs`: lazily self-referential attrset of `{ <RuleName> = seed:
@@ -335,9 +376,20 @@ rec {
   # needs no equivalent override. `maxDepth`: hard backstop even with
   # terminal-branch detection, since `choice` can pick a non-terminal
   # branch repeatedly before exhausting depth even when a terminal IS
-  # reachable.
+  # reachable. `isLast`: true iff nothing will be generated after THIS
+  # expr in the whole document -- true at the top-level entry point
+  # (`generate`/`generateFromSchema` below), and propagated through
+  # exactly those cases where "the last element I generate is the last
+  # thing in the document" holds (a sequence's own final element, a
+  # `star`/`plus`'s own final repetition once no more are generated,
+  # `choice`'s chosen branch, `opt`'s body when chosen, `action`'s `e`,
+  # `cutSeq` degrading to a sequence) -- false everywhere something is
+  # generated afterward (every non-final sequence element, every
+  # non-final repetition, `listOf`/`attrsOf`/`attrs`' own elements, since
+  # each one has siblings or a closing structure after it). See
+  # `isEofLike` above for what this actually gates.
   generateWith =
-    grammar: refs: patternGenerators: builtinParserGenerators: maxDepth: expr: seed: depth:
+    grammar: refs: patternGenerators: builtinParserGenerators: maxDepth: expr: seed: depth: isLast:
     let
       generate = generateWith grammar refs patternGenerators builtinParserGenerators maxDepth;
     in
@@ -351,7 +403,7 @@ rec {
       if !(refs ? ${expr}) then
         throw "generate: no such rule \"${expr}\" in grammar"
       else
-        refs.${expr} seed (depth + 1)
+        refs.${expr} seed (depth + 1) isLast
     else if expr ? string then
       genString seed
     else if expr ? int then
@@ -362,13 +414,21 @@ rec {
       expr.lit
     else if expr ? eof then
       # { eof = {}; } (lib/packrat.nix): a plain leaf, not a lookahead --
-      # sound to generate as "" under the same convention as the
-      # not+regex EOF idiom below: it's only ever used as the trailing
-      # element of a sequence with nothing generated after it, so
-      # whatever the rest of the sequence produces IS, by construction,
-      # the full generated document, and the real `eof` combinator will
-      # find no input remaining when the parser reaches this point.
-      ""
+      # sound to generate as "" ONLY when `isLast` holds (see this
+      # file's header and `isEofLike` above for why): whatever the rest
+      # of the document produced up to this point IS, by construction,
+      # the entire generated document, so the real `eof` combinator
+      # will find no input remaining when the parser reaches this
+      # point. When `isLast` is false, something real is generated
+      # after this occurrence, so "" would be UNSOUND -- `choice`'s own
+      # branch-eligibility filter below is what keeps a non-last `eof`
+      # branch from ever being chosen in the first place, so reaching
+      # this case with `isLast = false` would be this file's own bug,
+      # not a schema issue -- hence a throw, not a silent "".
+      if isLast then
+        ""
+      else
+        throw "generate: internal error -- { eof = {}; } reached with isLast = false (should have been filtered by choice's eligibility check)"
     else if expr ? range then
       let
         start = builtins.elemAt expr.range 0;
@@ -402,24 +462,41 @@ rec {
       let
         branches = expr.choice;
         n = builtins.length branches;
-        eligible =
+        # An eof-like branch is only a legitimate choice when THIS choice
+        # itself is in trailing position -- excluding it otherwise (rather
+        # than picking it and generating an unsound "") is what actually
+        # fixes generation for grammar/gemfile-lock.nix's/grammar/yarn-
+        # lock.nix's shared `lineEnd` idiom: their `eof` branch is never
+        # reachable there (a real trailing `{ eof = {}; }` already exists
+        # separately, at the true end of DOCUMENT), so excluding it here
+        # simply leaves the sound `regex` branch as the only real option.
+        depthEligible =
           if depth < maxDepth then
             builtins.genList (i: i) n
           else
             builtins.filter (i: isTerminal grammar (builtins.elemAt branches i)) (builtins.genList (i: i) n);
+        eligible =
+          if isLast then
+            depthEligible
+          else
+            builtins.filter (i: !(isEofLike (builtins.elemAt branches i))) depthEligible;
       in
       if eligible == [ ] then
-        throw "generate: choice has no terminal branch to bottom out at maxDepth (schema is unconditionally recursive)"
+        throw "generate: choice has no terminal branch to bottom out at maxDepth (schema is unconditionally recursive), or every non-maxDepth-excluded branch is eof-like at a non-trailing position"
       else
         let
           chosen = builtins.elemAt eligible (seedToIndex (builtins.length eligible) (seed + "/choice"));
         in
-        generate (builtins.elemAt branches chosen) (seed + "/branch${builtins.toString chosen}") depth
+        generate (builtins.elemAt branches chosen) (
+          seed + "/branch${builtins.toString chosen}"
+        ) depth isLast
     else if expr ? listOf then
       let
         len = if depth < maxDepth then seedToIndex 5 (seed + "/len") else 0;
       in
-      builtins.genList (i: generate expr.listOf (seed + "/elem${builtins.toString i}") (depth + 1)) len
+      builtins.genList (
+        i: generate expr.listOf (seed + "/elem${builtins.toString i}") (depth + 1) false
+      ) len
     else if expr ? attrsOf then
       let
         len = if depth < maxDepth then seedToIndex 5 (seed + "/len") else 0;
@@ -432,7 +509,7 @@ rec {
       builtins.listToAttrs (
         map (i: {
           name = builtins.elemAt uniqueKeys i;
-          value = generate expr.attrsOf (seed + "/val${builtins.toString i}") (depth + 1);
+          value = generate expr.attrsOf (seed + "/val${builtins.toString i}") (depth + 1) false;
         }) (builtins.genList (i: i) len)
       )
     else if expr ? attrs then
@@ -444,7 +521,7 @@ rec {
         reqResult = builtins.listToAttrs (
           map (name: {
             inherit name;
-            value = generate required.${name} (seed + "/f-${name}") depth;
+            value = generate required.${name} (seed + "/f-${name}") depth false;
           }) reqNames
         );
         includedOptNames = builtins.filter (
@@ -453,7 +530,7 @@ rec {
         optResult = builtins.listToAttrs (
           map (name: {
             inherit name;
-            value = generate optional.${name} (seed + "/f-${name}") depth;
+            value = generate optional.${name} (seed + "/f-${name}") depth false;
           }) includedOptNames
         );
       in
@@ -461,17 +538,28 @@ rec {
     else if builtins.isList expr then
       # Sequence: generate each sub-expr in order and concatenate --
       # packrat.nix-only (no valuewalk.nix form is ever a bare Nix list).
+      # `isLast` only ever propagates to the FINAL element -- every
+      # earlier element has real content generated after it in this
+      # same sequence, so it can never be the document's own last thing.
+      let
+        len = builtins.length expr;
+      in
       builtins.concatStringsSep "" (
-        map (i: generate (builtins.elemAt expr i) (seed + "/seq${builtins.toString i}") depth) (
-          builtins.genList (i: i) (builtins.length expr)
-        )
+        map (
+          i:
+          generate (builtins.elemAt expr i) (seed + "/seq${builtins.toString i}") depth (
+            isLast && i == len - 1
+          )
+        ) (builtins.genList (i: i) len)
       )
     else if expr ? star then
       let
         count = if depth < maxDepth then seedToIndex 5 (seed + "/count") else 0;
       in
       builtins.concatStringsSep "" (
-        builtins.genList (i: generate expr.star (seed + "/rep${builtins.toString i}") (depth + 1)) count
+        builtins.genList (
+          i: generate expr.star (seed + "/rep${builtins.toString i}") (depth + 1) (isLast && i == count - 1)
+        ) count
       )
     else if expr ? plus then
       # Desugars to [ e { star = e; } ], same as packrat.nix's own
@@ -480,21 +568,21 @@ rec {
       generate [
         expr.plus
         { star = expr.plus; }
-      ] seed depth
+      ] seed depth isLast
     else if expr ? opt then
       if depth < maxDepth && seedToBool (seed + "/opt") then
-        generate expr.opt (seed + "/opt-body") depth
+        generate expr.opt (seed + "/opt-body") depth isLast
       else
         ""
     else if expr ? cutSeq then
       # Degrades to a plain sequence for GENERATION -- see this file's
       # header comment for why cut/commit semantics don't apply here.
-      generate expr.cutSeq seed depth
+      generate expr.cutSeq seed depth isLast
     else if expr ? action then
       # `f` transforms E's matched value on success, operating on what
       # parsing produced. Generation never parses, so `f` never runs --
       # generate whatever `e` itself would accept and ignore `f`.
-      generate expr.action.e seed depth
+      generate expr.action.e seed depth isLast
     else if expr ? json then
       # `{ json = {}; }` accepts ANY JSON-shaped string here -- generate
       # an arbitrary Nix value via a small self-referential valuewalk
@@ -523,22 +611,16 @@ rec {
         builtins.seq verified candidate
     else if expr ? not && (expr.not ? regex) && expr.not.regex == "(.)" then
       # Special case: `{ not = { regex = "(.)"; }; }` is the "assert end
-      # of input" idiom (see grammar/aterm.nix's DOCUMENT for the
-      # canonical example) -- a single-char negated-regex lookahead used
-      # as the trailing element of a top-level sequence, with nothing
-      # generated after it. This is provably sound to generate as "",
-      # NOT a heuristic: since nothing is emitted following this point,
-      # whatever string the enclosing sequence produces IS, by
-      # construction, the entire generated document -- feeding it back
-      # into the real, unmodified lib/packrat.nix, the parse position at
-      # this point necessarily equals the string's length, so the actual
-      # `not = { regex = "(.)"; };` combinator will find no character to
-      # match and succeed for real. No negation-synthesis is needed
-      # because the assertion becomes trivially true by the very fact
-      # that generation stops here. This does NOT generalize to `not`
-      # over an arbitrary pattern, or to `and` at all -- see the `throw`
-      # below for those.
-      ""
+      # of input" idiom -- no grammar currently shipped in this repo
+      # still uses it (all migrated to `{ eof = {}; }`, see
+      # lib/packrat.nix's own `eof` primitive), but the case is kept for
+      # any external grammar built against the same DSL. Same `isLast`
+      # gating as the `eof` case above, for the identical reason: sound
+      # only when nothing is generated after this point.
+      if isLast then
+        ""
+      else
+        throw "generate: internal error -- { not = { regex = \"(.)\"; }; } reached with isLast = false (should have been filtered by choice's eligibility check)"
     else if expr ? and || expr ? not then
       throw "generate: { and = ...; }/{ not = ...; } (lookahead) has no general generation strategy -- especially `not`, which would require negation-synthesis"
     else
@@ -550,8 +632,9 @@ rec {
     patternGenerators: builtinParserGenerators: maxDepth: grammar:
     let
       compiled = builtins.mapAttrs (
-        _: expr: seed: depth:
+        _: expr: seed: depth: isLast:
         generateWith grammar compiled patternGenerators builtinParserGenerators maxDepth expr seed depth
+          isLast
       ) grammar;
     in
     compiled;
@@ -575,7 +658,9 @@ rec {
     if !(compiled ? ${ruleName}) then
       throw "generate: no such rule \"${ruleName}\" in grammar"
     else
-      compiled.${ruleName} seed 0;
+      # isLast = true: `ruleName` is the top-level entry point -- by
+      # definition, nothing else is generated after it.
+      compiled.${ruleName} seed 0 true;
 
   # Convenience entry point for a single, UNNAMED schema (no grammar
   # attrset, no rule references possible) -- mirrors lib/valuewalk.nix's
@@ -588,5 +673,6 @@ rec {
       builtinParserGenerators ? { },
       maxDepth ? 5,
     }:
-    generateWith { } { } patternGenerators builtinParserGenerators maxDepth schema seed 0;
+    # isLast = true: `schema` is the top-level entry point.
+    generateWith { } { } patternGenerators builtinParserGenerators maxDepth schema seed 0 true;
 }
