@@ -527,6 +527,54 @@ let
       handlers = gemfileGrammar.handlers;
     } 0 "group :test do\n  gem \"x\"\n").DOCUMENT;
 
+  # data/example.Gemfile alone doesn't exercise the rest of this
+  # grammar's own documented, corpus-confirmed scope (see that file's
+  # header): the `groups: [:x, :y]` list-form kwarg (a third real
+  # spelling alongside bare `group:`), `unless ... end`, `if ... else
+  # ... end` (both branches' gems collected -- a union, not a choice of
+  # one), nested `group` blocks, a `group` block's trailing `, optional:
+  # true` (ignored), and OPAQUE_BLOCK (a top-level `def`/`class`/
+  # `module`/`begin`/`case`, matched only by its opening keyword and
+  # balanced closing `end`, contents discarded, purely so the `end`
+  # doesn't get mistaken for a dangling GROUP_BLOCK/IF_BLOCK
+  # terminator).
+  gemfileGroupsListForm = packrat.run {
+    grammar = gemfileGrammar.grammar;
+    handlers = gemfileGrammar.handlers;
+  } 0 "gem \"foo\", groups: [:dev, :test]\n";
+  gemfileUnlessBlock = packrat.run {
+    grammar = gemfileGrammar.grammar;
+    handlers = gemfileGrammar.handlers;
+  } 0 "unless RUBY_VERSION < \"3.0\"\n  gem \"foo\"\nend\n";
+  gemfileIfElseBlock = packrat.run {
+    grammar = gemfileGrammar.grammar;
+    handlers = gemfileGrammar.handlers;
+  } 0 "if RUBY_VERSION >= \"3.0\"\n  gem \"foo\"\nelse\n  gem \"bar\"\nend\n";
+  gemfileNestedGroups = packrat.run {
+    grammar = gemfileGrammar.grammar;
+    handlers = gemfileGrammar.handlers;
+  } 0 "group :test do\n  group :ci do\n    gem \"foo\"\n  end\nend\n";
+  gemfileGroupWithOptionalTrue = packrat.run {
+    grammar = gemfileGrammar.grammar;
+    handlers = gemfileGrammar.handlers;
+  } 0 "group :test, optional: true do\n  gem \"foo\"\nend\n";
+  gemfileOpaqueBlock = packrat.run {
+    grammar = gemfileGrammar.grammar;
+    handlers = gemfileGrammar.handlers;
+  } 0 "def rails_master?\n  true\nend\ngem \"foo\"\n";
+  # A generic `<arbitrary-expr> do [|args|] ... end` opener (e.g.
+  # redmine's real `Dir.glob(...).each do |file|`) is deliberately NOT
+  # recognized as OPAQUE_BLOCK (see OPAQUE_OPENER_LINE's own header
+  # comment for why) -- its `end` is mistaken for a dangling
+  # GROUP_BLOCK/IF_BLOCK terminator, causing the WHOLE document to
+  # reject rather than just this one construct being unrecognized.
+  # Locked in here as the documented, intentional consequence of that
+  # scope choice, not a bug.
+  gemfileUnrecognizedDoOpenerRejectsWholeDoc = packrat.run {
+    grammar = gemfileGrammar.grammar;
+    handlers = gemfileGrammar.handlers;
+  } 0 "Dir.glob(\"*.gemfile\").each do |file|\n  eval_gemfile file\nend\ngem \"foo\"\n";
+
   # --- grammar/pep508.nix: Python's PEP 508 dependency-specification
   # format, transcribed from PEP 508's own formal grammar and verified
   # against 2126 real Requires-Dist specifiers (see that file's header).
@@ -1602,6 +1650,67 @@ let
         }
       ];
     gemfile_degradesGracefullyOnMalformedGroupBlock = gemfileMalformedGroupResult != packrat.NO_MATCH;
+    gemfile_acceptsGroupsListFormKwarg =
+      gemfileGroupsListForm.DOCUMENT == [
+        {
+          kind = "gem";
+          name = "foo";
+          groups = [
+            "dev"
+            "test"
+          ];
+        }
+      ];
+    gemfile_acceptsUnlessBlock =
+      gemfileUnlessBlock.DOCUMENT == [
+        {
+          kind = "gem";
+          name = "foo";
+          groups = [ ];
+        }
+      ];
+    gemfile_ifElseCollectsBothBranches =
+      gemfileIfElseBlock.DOCUMENT == [
+        {
+          kind = "gem";
+          name = "foo";
+          groups = [ ];
+        }
+        {
+          kind = "gem";
+          name = "bar";
+          groups = [ ];
+        }
+      ];
+    gemfile_acceptsNestedGroupBlocks =
+      gemfileNestedGroups.DOCUMENT == [
+        {
+          kind = "gem";
+          name = "foo";
+          groups = [
+            "ci"
+            "test"
+          ];
+        }
+      ];
+    gemfile_ignoresGroupOptionalTrueSuffix =
+      gemfileGroupWithOptionalTrue.DOCUMENT == [
+        {
+          kind = "gem";
+          name = "foo";
+          groups = [ "test" ];
+        }
+      ];
+    gemfile_recognizesOpaqueBlockAndSkipsContents =
+      gemfileOpaqueBlock.DOCUMENT == [
+        {
+          kind = "gem";
+          name = "foo";
+          groups = [ ];
+        }
+      ];
+    gemfile_unrecognizedDoOpenerRejectsWholeDocument =
+      gemfileUnrecognizedDoOpenerRejectsWholeDoc.DOCUMENT == packrat.NO_MATCH;
 
     pep508_acceptsVersionedNameReqWithAndMarker = pep508ValidResult.SPECIFICATION != packrat.NO_MATCH;
     pep508_rejectsUnclosedVersionSpecList = pep508InvalidResult.SPECIFICATION == packrat.NO_MATCH;
