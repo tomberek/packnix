@@ -495,8 +495,17 @@ rec {
   # (`*`, `+`, `{m,}`) -- an arbitrary, documented small constant. `*`/`?`
   # get min=0, `+` gets min=1, `{m,}` keeps whatever `m` the pattern gave;
   # in every case the generated count is min + a small random extra, never
-  # exhaustive over "unbounded".
-  unboundedSlack = 3;
+  # exhaustive over "unbounded". Capped at 1, not a larger constant: a
+  # bare `[0-9]+` used as an EXPONENT digit run (confirmed real:
+  # grammar/aterm.nix's REAL body allows `[eE][-+]?[0-9]+`) combined with
+  # any nonzero mantissa can overflow `builtins.fromJSON`'s underlying
+  # double past ~1e308 once the exponent run reaches 3-4 digits -- a real
+  # crash, not a hypothetical one, confirmed via a generated
+  # "704.1E5700" (unboundedSlack was 3, min=1, so up to 4 exponent
+  # digits) that builtins.fromJSON throws "number overflow" on. At 1,
+  # `[0-9]+`'s exponent case tops out at a 2-digit exponent (E00-E99),
+  # safely inside double range for any realistic mantissa.
+  unboundedSlack = 1;
 
   buildClassPool =
     class: seed:

@@ -6,17 +6,23 @@
 # (see that file's header for exactly what is/isn't checked: acceptance,
 # not equality against some "original").
 #
-# Scope deliberately limited to grammars that don't use `and`/`not`
-# (lookahead has no general generation strategy -- see lib/generate.nix's
-# header). grammar/{drv,gemfile-lock,aterm,yarn-lock,pep508,yaml,
-# gemfile}.nix all use and/not somewhere, so they remain out of reach for
-# THIS gate -- but each has its own hand-written accept/reject fixture in
-# tests.nix instead (see that file's "grammar/aterm.nix" section onward),
-# since round-trip generation isn't the only way to get coverage.
-# grammar/tsv.nix, grammar/json.nix, and examples/flakelock-valuewalk.nix
-# are the three real, non-toy cases covered by THIS gate. tests.nix's
-# `generate_*` checks cover additional toy/synthetic schemas at smaller
-# scale (N=5) as part of the main combinator test suite.
+# Scope: every grammar whose ONLY blocker was lack of wiring, not a real
+# generation gap, is covered here. Two grammars remain genuinely out of
+# reach: grammar/gemfile.nix and grammar/yaml.nix use `not`/`and` for
+# real structural disambiguation (excluding reserved words, asserting a
+# following character) that lib/generate.nix has no general synthesis
+# strategy for. grammar/gemfile-lock.nix and grammar/yarn-lock.nix are
+# ALSO currently excluded -- not because of and/not, but because both
+# use `{ eof = {}; }` inside a non-terminal `choice` (their shared
+# `lineEnd` idiom), which lib/generate.nix's `eof` case doesn't yet
+# generate correctly outside the single "trailing element of the whole
+# document" position it was written for (see that file's own header).
+# All 6 excluded grammars still get their own hand-written accept/reject
+# fixture in tests.nix instead (see that file's "grammar/aterm.nix"
+# section onward), since round-trip generation isn't the only way to
+# get coverage. tests.nix's `generate_*` checks cover additional
+# toy/synthetic schemas at smaller scale (N=5) as part of the main
+# combinator test suite.
 #
 # Usage: ./verify-roundtrip.sh
 set -uo pipefail
@@ -84,6 +90,90 @@ if [[ "$flakelock_passed" == "true" ]]; then
   echo "OK   roundtrip examples/flakelock-valuewalk.nix (50 samples)"
 else
   echo "FAIL roundtrip examples/flakelock-valuewalk.nix: $flakelock_passed"
+  fail=1
+fi
+
+aterm_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/aterm.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "DOCUMENT";
+      seedPrefix = "verify-roundtrip-aterm";
+      numSamples = 50;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$aterm_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/aterm.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/aterm.nix: $aterm_passed"
+  fail=1
+fi
+
+drv_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/drv.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "DOCUMENT";
+      seedPrefix = "verify-roundtrip-drv";
+      numSamples = 50;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$drv_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/drv.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/drv.nix: $drv_passed"
+  fail=1
+fi
+
+pep508_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/pep508.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "SPECIFICATION";
+      seedPrefix = "verify-roundtrip-pep508";
+      numSamples = 50;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$pep508_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/pep508.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/pep508.nix: $pep508_passed"
+  fail=1
+fi
+
+poetry_semver_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/poetry-semver.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "CONSTRAINT";
+      seedPrefix = "verify-roundtrip-poetry-semver";
+      numSamples = 50;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$poetry_semver_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/poetry-semver.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/poetry-semver.nix: $poetry_semver_passed"
   fail=1
 fi
 
