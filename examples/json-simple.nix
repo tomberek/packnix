@@ -35,7 +35,14 @@ let
     };
 
     # A string is a quote, some fragments, a quote -- escapes get their
-    # own nonterminal.
+    # own nonterminal. Each escape is decoded to its real value (not left
+    # as the raw two-char `\X` sequence) the same way grammar/json.nix's/
+    # grammar/aterm.nix's own stringFragment does: `\" \\ \/ \b \f \n \r
+    # \t` -- everything JSON defines except `\uXXXX` (out of scope, see
+    # grammar/json.nix's header for why). A bare `\` with no escape
+    # partner is never valid JSON, so the choice below has no branch for
+    # it -- `[^\\\"]+` only matches non-backslash/non-quote runs, so an
+    # unpaired backslash correctly fails to match STRING_FRAG at all.
     STRING = [
       { lit = "\""; }
       "STRING_RAW"
@@ -44,8 +51,46 @@ let
     STRING_FRAG = {
       choice = [
         { regex = ''([^\\\"]+)''; }
-        { lit = ''\"''; }
-        { lit = ''\''; }
+        {
+          action = {
+            e = [
+              { lit = "\\"; }
+              {
+                choice = [
+                  { lit = "\""; }
+                  { lit = "\\"; }
+                  { lit = "/"; }
+                  { lit = "b"; }
+                  { lit = "f"; }
+                  { lit = "n"; }
+                  { lit = "r"; }
+                  { lit = "t"; }
+                ];
+              }
+            ];
+            f =
+              v:
+              let
+                c = builtins.elemAt v 1;
+              in
+              # Nix's own string literal syntax has no `\b`/`\f` escape at
+              # all (only \n \r \t \\ \" \$) -- obtained via
+              # builtins.fromJSON instead, the one builtin that does know
+              # what they mean.
+              if c == "b" then
+                builtins.fromJSON ''"\b"''
+              else if c == "f" then
+                builtins.fromJSON ''"\f"''
+              else if c == "n" then
+                "\n"
+              else if c == "r" then
+                "\r"
+              else if c == "t" then
+                "\t"
+              else
+                c; # \" \\ \/ decode to themselves minus the backslash
+          };
+        }
       ];
     };
     STRING_RAW = {

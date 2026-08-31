@@ -67,6 +67,28 @@ else
   fail=1
 fi
 
+json_simple_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./examples/json-simple.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "X";
+      seedPrefix = "verify-roundtrip-json-simple";
+      numSamples = 50;
+      maxDepth = 3;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$json_simple_passed" == "true" ]]; then
+  echo "OK   roundtrip examples/json-simple.nix (50 samples)"
+else
+  echo "FAIL roundtrip examples/json-simple.nix: $json_simple_passed"
+  fail=1
+fi
+
 flakelock_passed=$(nix eval --impure --expr '
   let
     rt = import ./lib/roundtrip.nix;
