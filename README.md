@@ -220,18 +220,16 @@ narrower than "generated value equals the original" — there is no
 original here, only "does the parser accept what was generated for it".
 `./verify-roundtrip.sh` runs this in CI at N=50 for `grammar/tsv.nix`,
 `grammar/json.nix`, `examples/flakelock-valuewalk.nix`, `grammar/aterm.nix`,
-`grammar/drv.nix`, `grammar/pep508.nix`, and `grammar/poetry-semver.nix`.
-`grammar/gemfile.nix` and `grammar/yaml.nix` use `not`/`and` for real
-structural disambiguation (excluding reserved words, asserting a following
-character) that `lib/generate.nix` has no general synthesis strategy for,
-so they remain out of scope for THIS gate. `grammar/gemfile-lock.nix` and
-`grammar/yarn-lock.nix` are also excluded for a narrower reason: both use
-`{ eof = {}; }` inside a non-terminal `choice` (their shared `lineEnd`
-idiom), a position `lib/generate.nix`'s `eof` case doesn't yet generate
-correctly. All four excluded grammars still get their own hand-written
-accept case (real corpus content where a fixture already existed) plus a
-reject case exercising a real failure mode specific to that format in
-`tests.nix`, so none of them ships with zero automated coverage.
+`grammar/drv.nix`, `grammar/pep508.nix`, `grammar/poetry-semver.nix`,
+`grammar/gemfile-lock.nix`, and `grammar/yarn-lock.nix`. Only
+`grammar/gemfile.nix` and `grammar/yaml.nix` remain out of scope for THIS
+gate — both use `not`/`and` for real structural disambiguation (excluding
+reserved words, asserting a following character) that `lib/generate.nix`
+has no general synthesis strategy for. They still get their own hand-
+written accept case (real corpus content where a fixture already
+existed) plus a reject case exercising a real failure mode specific to
+that format in `tests.nix`, so neither ships with zero automated
+coverage.
 
 ## Gemfile.lock: a real nixpkgs use case
 

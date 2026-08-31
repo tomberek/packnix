@@ -241,7 +241,17 @@ let
   # A dependency-block name: quoted iff scoped (leading "@"), same rule
   # as top-level specs (see file header) -- but here name and range are
   # two SEPARATE space-separated tokens, not one "@"-joined spec, so no
-  # splitOnLastAt is needed.
+  # splitOnLastAt is needed. The bare branch's regex excludes `"` for the
+  # same reason bareSpecText's own regex does (see that rule): an
+  # unquoted name containing a literal `"` would be indistinguishable
+  # from the quoted branch's own opening delimiter to a caller re-
+  # parsing generated output, and no real corpus name is ever anything
+  # but plain alphanumerics/`-`/`_`/`.`/`/` unquoted -- confirmed via
+  # lib/roundtrip.nix's generated samples, which (before this exclusion)
+  # could synthesize an unquoted name containing `"`, producing a
+  # depLine no parser -- generated or real -- could read back correctly
+  # (e.g. `    z" "}"` for name `z"`, colliding with the very next
+  # `" \""` literal separator).
   depName = {
     choice = [
       {
@@ -254,7 +264,7 @@ let
           f = v: builtins.elemAt v 1;
         };
       }
-      { regex = "([^ \r\n]+)"; }
+      { regex = "([^ \"\r\n]+)"; }
     ];
   };
 

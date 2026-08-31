@@ -6,23 +6,17 @@
 # (see that file's header for exactly what is/isn't checked: acceptance,
 # not equality against some "original").
 #
-# Scope: every grammar whose ONLY blocker was lack of wiring, not a real
-# generation gap, is covered here. Two grammars remain genuinely out of
-# reach: grammar/gemfile.nix and grammar/yaml.nix use `not`/`and` for
-# real structural disambiguation (excluding reserved words, asserting a
-# following character) that lib/generate.nix has no general synthesis
-# strategy for. grammar/gemfile-lock.nix and grammar/yarn-lock.nix are
-# ALSO currently excluded -- not because of and/not, but because both
-# use `{ eof = {}; }` inside a non-terminal `choice` (their shared
-# `lineEnd` idiom), which lib/generate.nix's `eof` case doesn't yet
-# generate correctly outside the single "trailing element of the whole
-# document" position it was written for (see that file's own header).
-# All 6 excluded grammars still get their own hand-written accept/reject
-# fixture in tests.nix instead (see that file's "grammar/aterm.nix"
-# section onward), since round-trip generation isn't the only way to
-# get coverage. tests.nix's `generate_*` checks cover additional
-# toy/synthetic schemas at smaller scale (N=5) as part of the main
-# combinator test suite.
+# Scope: every grammar whose ONLY blocker was lack of wiring, or the now-
+# fixed `eof`-generation gap, is covered here. Two grammars remain
+# genuinely out of reach: grammar/gemfile.nix and grammar/yaml.nix use
+# `not`/`and` for real structural disambiguation (excluding reserved
+# words, asserting a following character) that lib/generate.nix has no
+# general synthesis strategy for. They still get their own hand-written
+# accept/reject fixture in tests.nix instead (see that file's
+# "grammar/aterm.nix" section onward), since round-trip generation isn't
+# the only way to get coverage. tests.nix's `generate_*` checks cover
+# additional toy/synthetic schemas at smaller scale (N=5) as part of the
+# main combinator test suite.
 #
 # Usage: ./verify-roundtrip.sh
 set -uo pipefail
@@ -174,6 +168,48 @@ if [[ "$poetry_semver_passed" == "true" ]]; then
   echo "OK   roundtrip grammar/poetry-semver.nix (50 samples)"
 else
   echo "FAIL roundtrip grammar/poetry-semver.nix: $poetry_semver_passed"
+  fail=1
+fi
+
+gemfile_lock_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/gemfile-lock.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "DOCUMENT";
+      seedPrefix = "verify-roundtrip-gemfile-lock";
+      numSamples = 50;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$gemfile_lock_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/gemfile-lock.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/gemfile-lock.nix: $gemfile_lock_passed"
+  fail=1
+fi
+
+yarn_lock_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/yarn-lock.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "DOCUMENT";
+      seedPrefix = "verify-roundtrip-yarn-lock";
+      numSamples = 50;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$yarn_lock_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/yarn-lock.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/yarn-lock.nix: $yarn_lock_passed"
   fail=1
 fi
 
