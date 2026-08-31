@@ -656,6 +656,75 @@ let
     handlers = yamlGrammar.handlers;
   } 0 "a: 1\n b: 2\n";
 
+  # data/example.yaml alone only covers a plain scalar, a block sequence,
+  # and one nested block mapping -- none of the following documented
+  # features (this grammar's own header comment, several confirmed
+  # directly against PyYAML) are exercised by any fixture. Each is
+  # confirmed working here, individually, rather than added to
+  # data/example.yaml, so a future regression in any ONE of them fails
+  # its own specific check instead of one large fixture's aggregate
+  # comparison.
+  yamlFlowCollections = packrat.run {
+    grammar = yamlGrammar.grammar;
+    handlers = yamlGrammar.handlers;
+  } 0 "a: [1, 2, 3]\nb: {x: 1, y: 2}\n";
+  yamlComments = packrat.run {
+    grammar = yamlGrammar.grammar;
+    handlers = yamlGrammar.handlers;
+  } 0 "# a comment\na: 1 # trailing\n";
+  yamlScalarKinds =
+    packrat.run
+      {
+        grammar = yamlGrammar.grammar;
+        handlers = yamlGrammar.handlers;
+      }
+      0
+      ''
+        a: 'single'
+        b: "double"
+        c: true
+        d: false
+        e: null
+        f: 3.14
+      '';
+  # "key:" with nothing after it at all is implicit null in real YAML
+  # (confirmed via PyYAML: "on:\n  pull_request:\n" -> {pull_request:
+  # None} -- see mappingValueBranchC's own comment).
+  yamlImplicitNullMappingValue = packrat.run {
+    grammar = yamlGrammar.grammar;
+    handlers = yamlGrammar.handlers;
+  } 0 "on:\n  pull_request:\n";
+  # A bare "-" with nothing after it is likewise implicit null
+  # (confirmed via PyYAML: "items:\n  - a\n  -\n" -> {items: ["a",
+  # None]} -- see sequenceValueBranchD's own comment).
+  yamlImplicitNullSequenceItem = packrat.run {
+    grammar = yamlGrammar.grammar;
+    handlers = yamlGrammar.handlers;
+  } 0 "items:\n  - a\n  -\n";
+  # "- |"/"- >" block scalars inside a sequence (confirmed via PyYAML:
+  # "items:\n  - |\n    x\n    y\n  - z\n" -> {items: ["x\ny\n", "z"]}
+  # -- see sequenceValueBranchBlockScalar's own comment).
+  yamlBlockScalarInSequence = packrat.run {
+    grammar = yamlGrammar.grammar;
+    handlers = yamlGrammar.handlers;
+  } 0 "items:\n  - |\n    x\n    y\n  - z\n";
+  # Anchors/aliases/tags are documented as "out of scope" -- but unlike
+  # the multi-document "---" separator (which genuinely fails to parse,
+  # see yamlMultiDocRejected below), this grammar has no special
+  # handling for "&"/"*"/"!!" at all, so they're absorbed as ordinary
+  # characters by the plain-scalar regex instead of being rejected.
+  # Locked in here as the grammar's ACTUAL current behavior (not a
+  # claim that this is the "right" behavior) so a future change to
+  # either direction is a deliberate choice, not silent drift.
+  yamlAnchorAbsorbedAsPlainScalar = packrat.run {
+    grammar = yamlGrammar.grammar;
+    handlers = yamlGrammar.handlers;
+  } 0 "a: &anchor 1\nb: *anchor\n";
+  yamlMultiDocRejected = packrat.run {
+    grammar = yamlGrammar.grammar;
+    handlers = yamlGrammar.handlers;
+  } 0 "---\na: 1\n";
+
   # --- grammar/yarn-lock.nix: Yarn classic's yarn.lock ("yarn lockfile
   # v1"), confirmed against 15 real yarn.lock files (2,395 entries
   # total -- see that file's header). data/example-yarn.lock (the same
@@ -1561,6 +1630,54 @@ let
         };
       };
     yaml_rejectsSequenceItemUnderIndented = yamlInvalidResult.DOCUMENT == packrat.NO_MATCH;
+    yaml_acceptsFlowCollections =
+      yamlFlowCollections.DOCUMENT == {
+        a = [
+          1
+          2
+          3
+        ];
+        b = {
+          x = 1;
+          y = 2;
+        };
+      };
+    yaml_acceptsLeadingAndTrailingComments = yamlComments.DOCUMENT == { a = 1; };
+    yaml_acceptsQuotedBoolNullFloatScalars =
+      yamlScalarKinds.DOCUMENT == {
+        a = "single";
+        b = "double";
+        c = true;
+        d = false;
+        e = null;
+        f = 3.14;
+      };
+    yaml_mappingValueWithNoContentIsImplicitNull =
+      yamlImplicitNullMappingValue.DOCUMENT == {
+        on = {
+          pull_request = null;
+        };
+      };
+    yaml_bareSequenceDashIsImplicitNull =
+      yamlImplicitNullSequenceItem.DOCUMENT == {
+        items = [
+          "a"
+          null
+        ];
+      };
+    yaml_acceptsBlockScalarInSequence =
+      yamlBlockScalarInSequence.DOCUMENT == {
+        items = [
+          "x\ny\n"
+          "z"
+        ];
+      };
+    yaml_anchorSyntaxAbsorbedNotRejected =
+      yamlAnchorAbsorbedAsPlainScalar.DOCUMENT == {
+        a = "&anchor 1";
+        b = "*anchor";
+      };
+    yaml_rejectsMultiDocSeparator = yamlMultiDocRejected.DOCUMENT == packrat.NO_MATCH;
 
     yarnLock_acceptsRealFixture = yarnLockValidResult.DOCUMENT != packrat.NO_MATCH;
     yarnLock_rejectsYarnBerryHeader = yarnLockInvalidResult.DOCUMENT == packrat.NO_MATCH;
