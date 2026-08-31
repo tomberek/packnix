@@ -474,7 +474,14 @@ in
               kwarg
             ];
           }
-          ws
+          # Mandatory (not `ws`'s usual optional whitespace): a symbol's
+          # own regex is greedy over `[A-Za-z0-9_]`, so a directly-
+          # following "do" would otherwise be swallowed into the LAST
+          # symbol/kwarg's own name/value (e.g. "group :Cdo" reads as one
+          # symbol ":Cdo", not ":C" then "do") -- exactly matching real
+          # Ruby's own lexing (":Cdo" IS a valid symbol literal), so real
+          # Gemfiles always have a space here too.
+          { regex = "([ \t]+)"; }
           { lit = "do"; }
           {
             opt = {

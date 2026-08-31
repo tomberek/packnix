@@ -95,7 +95,7 @@
 #                              produced, not on the input being consumed.
 #                              Generation never parses, so `f` never runs
 #                              and is simply irrelevant here.
-#   { and = e; } / { not = e; } -> see NOT SUPPORTED below
+#   { and = e; } / { not = e; } -> see NOT/AND LOOKAHEAD SYNTHESIS below
 #   "Name"                  -> resolved by name against `grammar` (see
 #                              generateGrammar/run below), recursing with
 #                              depth+1
@@ -109,14 +109,53 @@
 # range, and Nix strings are byte-oriented, so full Unicode codepoint
 # generation was never in scope.
 #
+# NOT/AND LOOKAHEAD SYNTHESIS: `{ and = e; }`/`{ not = e; }` assert
+# something about the input WITHOUT consuming it. Supported ONLY as a
+# sequence element with a genuine sibling immediately following it in the
+# SAME list -- either directly (`[ ... { not = e; } sibling ... ]`) or
+# ONE level indirected through a named rule whose own body IS (or is a
+# sequence ENDING in) a bare not/and (grammar/yaml.nix's NOT_SEQ_MARKER/
+# COLON_SEP take exactly this shape: `[ ... "NOT_SEQ_MARKER" sibling ... ]`
+# where NOT_SEQ_MARKER's whole body is `{ not = ...; }`) -- see
+# `resolveLookahead`. In either shape, the sibling is generated and then
+# VERIFIED against the lookahead's body via `lookaheadHolds`, which reuses
+# lib/packrat.nix's OWN `run` as the oracle (a one-off `{ CHECK = body; }`
+# grammar) rather than re-deriving match semantics for `lit`/`regex`/
+# `choice`/sequence a second time in this file -- any divergence between
+# two independent interpretations of the same DSL forms would otherwise
+# risk unsound "verification" (this repo has hit exactly that failure mode
+# before, see grammar/aterm.nix's/examples/json-simple.nix's fixed bugs).
+# If the sibling's generated text doesn't satisfy the assertion, it is
+# regenerated from a seed-derived child seed (`seed + "/lookahead-retryN"`)
+# up to `lookaheadMaxRetries` times before throwing -- mirroring the
+# existing "generate, verify via match, retry-or-throw" discipline
+# `pattern`/`regex` generation already uses. `not`/`and` are symmetric
+# under this mechanism: same generate-then-verify step, inverted match
+# condition (`not` wants the body to NOT hold; `and` wants it to hold).
+#
+# The lookahead's BODY is validated by `checkLookaheadBodySupported`:
+# only `lit`/`range`/`regex`/`eof`, sequences, and `choice` thereof are
+# supported -- a rule reference, a NESTED not/and, or an unbounded `star`/
+# `plus`/`opt` inside the body throws immediately with the offending
+# sub-expression named, rather than silently miscompiling. `eof` inside
+# the body is additionally PRUNED before verification (`pruneEofBranches`):
+# since this whole mechanism only ever fires when a sibling
+# unconditionally follows, `eof` can never legitimately hold there, so
+# treating it as reachable would be unsound; if pruning would leave the
+# body with nothing checkable at all, that's an unconditionally
+# unsatisfiable assertion and throws immediately rather than retrying.
+#
 # NOT SUPPORTED (thrown as a clear error, not silently wrong output):
-#   { and = e; } / { not = e; } -> lookahead, asserting something about
-#                              the input WITHOUT consuming it. `not` in
-#                              particular would require synthesizing a
-#                              value that satisfies "schema `e` does NOT
-#                              match" -- genuinely harder, not attempted.
-#                              ONE exception: `{ not = { regex = "(.)"; }; }`,
-#                              a "(.)"-negated-lookahead spelling of "assert
+#   { and = e; } / { not = e; } -> as a sequence element with NO sibling
+#                              following it (nothing to constrain), or
+#                              where the body fails `checkLookaheadBodySupported`
+#                              above, or where the lookahead appears
+#                              somewhere other than a plain sequence
+#                              element / one-level-indirected named-rule
+#                              reference (e.g. nested inside a `choice` or
+#                              `opt`). ONE exception predates all of this:
+#                              `{ not = { regex = "(.)"; }; }`, a
+#                              "(.)"-negated-lookahead spelling of "assert
 #                              end of input" that predates `{ eof = {}; }`
 #                              (no grammar in this repo still uses it --
 #                              all migrated, see lib/packrat.nix's own
@@ -161,6 +200,7 @@
 # simplest").
 let
   regexGenerate = import ./regex-generate.nix;
+  packrat = import ./packrat.nix;
 in
 rec {
   # --- Seeded pseudo-randomness -----------------------------------------
@@ -338,6 +378,155 @@ rec {
   # `choice`'s own branch-eligibility filter uses this to exclude an
   # eof-like branch whenever it's not provably in trailing position.
   isEofLike = expr: (expr ? eof) || (expr ? not && (expr.not ? regex) && expr.not.regex == "(.)");
+
+  # --- not/and lookahead synthesis ---------------------------------------
+  # See this file's header (NOT/AND LOOKAHEAD SYNTHESIS) for the overall
+  # design. Resolves `expr` to a not/and LOOKAHEAD element if it either
+  # directly IS one, or -- the shape grammar/yaml.nix's NOT_SEQ_MARKER/
+  # COLON_SEP take -- is a bare-string reference to a named rule whose own
+  # body IS (or is a sequence ENDING in) a bare not/and. Anything deeper (a
+  # rule referencing a rule referencing not/and, or not/and nested inside a
+  # choice/opt) is NOT resolved here -- returns `null`, so the caller (the
+  # `isList expr` case below) falls through to ordinary generation, which
+  # throws at the point the not/and is actually reached (see the `expr ?
+  # and || expr ? not` case at the bottom of `generateWith`) rather than
+  # mishandling it silently.
+  #
+  # Returns `null` when `expr` is not a lookahead at all, otherwise
+  # `{ prefix; kind; body; }`: `prefix` is the list of sub-exprs (possibly
+  # `[]`) that must still be generated normally BEFORE the lookahead's own
+  # zero-width contribution (COLON_SEP's own leading `{lit=":";}`, for
+  # instance); `kind` is `"and"` or `"not"`; `body` is the lookahead's
+  # sub-expression to verify a sibling against.
+  resolveLookahead =
+    grammar: expr:
+    if expr ? and then
+      {
+        prefix = [ ];
+        kind = "and";
+        body = expr.and;
+      }
+    else if expr ? not then
+      {
+        prefix = [ ];
+        kind = "not";
+        body = expr.not;
+      }
+    else if builtins.isString expr && expr != "" && grammar ? ${expr} then
+      let
+        resolved = grammar.${expr};
+      in
+      if resolved ? and then
+        {
+          prefix = [ ];
+          kind = "and";
+          body = resolved.and;
+        }
+      else if resolved ? not then
+        {
+          prefix = [ ];
+          kind = "not";
+          body = resolved.not;
+        }
+      else if builtins.isList resolved && resolved != [ ] then
+        let
+          n = builtins.length resolved;
+          lastElem = builtins.elemAt resolved (n - 1);
+          # No `builtins.sublist` in Nix -- `genList` + `elemAt` is this
+          # repo's own convention for a list slice (see e.g.
+          # lib/json-toml-safety.nix).
+          prefix = builtins.genList (j: builtins.elemAt resolved j) (n - 1);
+        in
+        if lastElem ? and then
+          {
+            inherit prefix;
+            kind = "and";
+            body = lastElem.and;
+          }
+        else if lastElem ? not then
+          {
+            inherit prefix;
+            kind = "not";
+            body = lastElem.not;
+          }
+        else
+          null
+      else
+        null
+    else
+      null;
+
+  # Validates a not/and lookahead BODY is one this file knows how to
+  # verify: only lit/range/regex/eof, sequences, and choice thereof --
+  # anything else (a rule reference, nested not/and, or unbounded star/
+  # plus/opt) would need machinery this file doesn't implement, and throws
+  # with a specific message naming the culprit rather than silently
+  # miscompiling into a wrong or infinitely-looping verification.
+  checkLookaheadBodySupported =
+    expr:
+    if expr ? lit || expr ? range || expr ? regex || expr ? eof then
+      true
+    else if builtins.isList expr then
+      builtins.all checkLookaheadBodySupported expr
+    else if expr ? choice then
+      builtins.all checkLookaheadBodySupported expr.choice
+    else
+      throw "generate: { and = ...; }/{ not = ...; } lookahead body contains an unsupported form for synthesis: ${builtins.toJSON expr} -- only lit/range/regex/eof, sequences, and choice thereof are supported (no rule references, nested not/and, or star/plus/opt)";
+
+  # Removes an eof-like alternative from a not/and lookahead BODY -- only
+  # ever called in a context where the lookahead is statically known to
+  # have a sibling generated right after it (see resolveLookahead's use in
+  # the `isList expr` case below), meaning it can never be the last thing
+  # in the document, meaning `{ eof = {}; }` inside the body can never
+  # actually hold. Including an unreachable eof-like alternative in the
+  # one-off verification grammar below would wrongly treat it as
+  # reachable. Throws if pruning would leave a `choice` with no
+  # alternatives, or if the WHOLE body is a bare eof-like leaf -- both mean
+  # the assertion is unconditionally impossible to satisfy, not something
+  # retrying with a different seed could ever fix.
+  pruneEofBranches =
+    expr:
+    if isEofLike expr then
+      throw "generate: not/and lookahead body is (or reduces to) a bare eof-like leaf, but this lookahead always has a sibling following it -- eof can never hold here, making the assertion unconditionally impossible to satisfy"
+    else if builtins.isList expr then
+      map pruneEofBranches expr
+    else if expr ? choice then
+      let
+        survivors = builtins.filter (b: !(isEofLike b)) expr.choice;
+      in
+      if survivors == [ ] then
+        throw "generate: not/and lookahead body's every choice alternative is eof-like, but this lookahead always has a sibling following it -- the assertion is unconditionally impossible to satisfy"
+      else
+        { choice = map pruneEofBranches survivors; }
+    else
+      expr;
+
+  # Whether lookahead BODY matches at the very start of `candidate` --
+  # reuses lib/packrat.nix's OWN `run` as the oracle (a one-off, single-
+  # rule grammar `{ CHECK = body; }`), rather than re-deriving `lit`/
+  # `regex`/`choice`/sequence match semantics a second time in this file:
+  # any future divergence between the two engines' interpretation of the
+  # SAME DSL forms (this repo has hit that failure mode more than once --
+  # see grammar/aterm.nix's/examples/json-simple.nix's fixed bugs) would
+  # otherwise silently make this verification unsound. A PREFIX match (not
+  # requiring `body` to consume the whole of `candidate`) is correct here,
+  # matching lib/packrat.nix's own `not`/`and` semantics: `candidate` is
+  # only the sibling's own generated text, not the entire rest of the real
+  # document, but real `not`/`and` themselves only ever look at a prefix
+  # of whatever remains too.
+  lookaheadHolds =
+    body: candidate:
+    (packrat.run {
+      grammar = {
+        CHECK = body;
+      };
+    } 0 candidate).CHECK != packrat.NO_MATCH;
+
+  # Bounded retry count for lookahead-constrained sibling generation (see
+  # the `isList expr` case below) -- a schema making the assertion
+  # unconditionally true/false regardless of seed should throw, not loop
+  # forever trying seeds that can never work.
+  lookaheadMaxRetries = 10;
 
   # A generic "any JSON value" schema, in lib/valuewalk.nix's OWN DSL --
   # reused to generate for `{ json = {}; }` (see generateWith's `expr ?
@@ -541,17 +730,82 @@ rec {
       # `isLast` only ever propagates to the FINAL element -- every
       # earlier element has real content generated after it in this
       # same sequence, so it can never be the document's own last thing.
+      #
+      # BEFORE generating element `i` plain, check whether it's a not/and
+      # LOOKAHEAD (see NOT/AND LOOKAHEAD SYNTHESIS in this file's header
+      # and `resolveLookahead` above) with a genuine sibling at `i+1` in
+      # THIS SAME list -- if so, elements `i` and `i+1` are handled
+      # together as one unit (see `genLookaheadUnit` below) instead of
+      # independently, and generation continues at `i+2`. Every other
+      # element (including a lookahead with no sibling, which is
+      # deliberately left to throw via the ordinary `and`/`not` case
+      # below) is generated exactly as before.
       let
         len = builtins.length expr;
-      in
-      builtins.concatStringsSep "" (
-        map (
+        genPlain =
           i:
           generate (builtins.elemAt expr i) (seed + "/seq${builtins.toString i}") depth (
             isLast && i == len - 1
-          )
-        ) (builtins.genList (i: i) len)
-      )
+          );
+        # Handles one (lookahead, sibling) pair: generate `look.prefix`
+        # normally, then generate the sibling and verify -- retrying with
+        # a derived seed on mismatch, bounded by `lookaheadMaxRetries` --
+        # that it does/doesn't match `look.body` per `look.kind`. `eof`
+        # inside `look.body` is pruned first (see `pruneEofBranches`):
+        # since a sibling unconditionally follows here, `eof` can never
+        # legitimately hold, and MUST be excluded from the check rather
+        # than evaluated against the sibling's own (necessarily partial,
+        # not whole-document) generated text.
+        genLookaheadUnit =
+          i: look:
+          let
+            sibling = builtins.elemAt expr (i + 1);
+            prefixLen = builtins.length look.prefix;
+            prefixText = builtins.concatStringsSep "" (
+              builtins.genList (
+                j:
+                generate (builtins.elemAt look.prefix j) (
+                  seed + "/seq${builtins.toString i}-pre${builtins.toString j}"
+                ) depth false
+              ) prefixLen
+            );
+            prunedBody = builtins.seq (checkLookaheadBodySupported look.body) (pruneEofBranches look.body);
+            siblingIsLast = isLast && i + 1 == len - 1;
+            trySibling =
+              n:
+              let
+                siblingSeed =
+                  seed
+                  + "/seq${builtins.toString (i + 1)}"
+                  + (if n == 0 then "" else "/lookahead-retry${builtins.toString n}");
+                candidate = generate sibling siblingSeed depth siblingIsLast;
+                matches = lookaheadHolds prunedBody candidate;
+                ok = if look.kind == "not" then !matches else matches;
+              in
+              if ok then
+                candidate
+              else if n >= lookaheadMaxRetries then
+                throw "generate: could not satisfy { ${look.kind} = ...; } lookahead after ${builtins.toString lookaheadMaxRetries} retries -- schema may make this assertion unconditionally ${
+                  if look.kind == "not" then "true" else "false"
+                } regardless of seed"
+              else
+                trySibling (n + 1);
+          in
+          prefixText + trySibling 0;
+        genFrom =
+          i:
+          if i >= len then
+            [ ]
+          else
+            let
+              look = resolveLookahead grammar (builtins.elemAt expr i);
+            in
+            if look != null && i + 1 < len then
+              [ (genLookaheadUnit i look) ] ++ genFrom (i + 2)
+            else
+              [ (genPlain i) ] ++ genFrom (i + 1);
+      in
+      builtins.concatStringsSep "" (genFrom 0)
     else if expr ? star then
       let
         count = if depth < maxDepth then seedToIndex 5 (seed + "/count") else 0;

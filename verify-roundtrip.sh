@@ -6,17 +6,15 @@
 # (see that file's header for exactly what is/isn't checked: acceptance,
 # not equality against some "original").
 #
-# Scope: every grammar whose ONLY blocker was lack of wiring, or the now-
-# fixed `eof`-generation gap, is covered here. Two grammars remain
-# genuinely out of reach: grammar/gemfile.nix and grammar/yaml.nix use
-# `not`/`and` for real structural disambiguation (excluding reserved
-# words, asserting a following character) that lib/generate.nix has no
-# general synthesis strategy for. They still get their own hand-written
-# accept/reject fixture in tests.nix instead (see that file's
-# "grammar/aterm.nix" section onward), since round-trip generation isn't
-# the only way to get coverage. tests.nix's `generate_*` checks cover
-# additional toy/synthetic schemas at smaller scale (N=5) as part of the
-# main combinator test suite.
+# Scope: every grammar/schema shipped in this repo is covered here --
+# lib/generate.nix's not/and lookahead synthesis (generate a sibling,
+# verify it via lib/packrat.nix's own `run` as the oracle, retry-or-throw
+# on mismatch) closed the last two genuine gaps, grammar/gemfile.nix and
+# grammar/yaml.nix, which use `not`/`and` for real structural
+# disambiguation (excluding reserved words, asserting a following
+# character). tests.nix's `generate_*` checks cover additional toy/
+# synthetic schemas at smaller scale (N=5) as part of the main combinator
+# test suite.
 #
 # Usage: ./verify-roundtrip.sh
 set -uo pipefail
@@ -232,6 +230,48 @@ if [[ "$yarn_lock_passed" == "true" ]]; then
   echo "OK   roundtrip grammar/yarn-lock.nix (50 samples)"
 else
   echo "FAIL roundtrip grammar/yarn-lock.nix: $yarn_lock_passed"
+  fail=1
+fi
+
+gemfile_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/gemfile.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "DOCUMENT";
+      seedPrefix = "verify-roundtrip-gemfile";
+      numSamples = 50;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$gemfile_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/gemfile.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/gemfile.nix: $gemfile_passed"
+  fail=1
+fi
+
+yaml_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/yaml.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "DOCUMENT";
+      seedPrefix = "verify-roundtrip-yaml";
+      numSamples = 50;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$yaml_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/yaml.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/yaml.nix: $yaml_passed"
   fail=1
 fi
 

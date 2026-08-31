@@ -209,27 +209,29 @@ produces the same value, which makes a failure reproducible instead of
 flaky. `{ pattern = "..."; }`/`{ regex = "..."; }` leaves are synthesized
 automatically by `lib/regex-generate.nix` (a POSIX ERE parser + AST-
 walking generator), with an explicit `patternGenerators` override
-available as a fallback; `and`/`not` lookahead has no general generation
-strategy and is thrown as an explicit error rather than guessed at — see
-`lib/generate.nix`'s header for exactly what's covered and why.
+available as a fallback. `and`/`not` lookahead is supported when it
+appears as a sequence element (directly, or one level indirected through
+a named rule) with a genuine sibling following it: the sibling is
+generated normally, then verified against the lookahead's body by
+reusing `lib/packrat.nix`'s own `run` as the oracle, retrying with a
+derived seed on mismatch before throwing — see `lib/generate.nix`'s
+header for exactly what's covered (and what still throws: no sibling, a
+lookahead body containing a rule reference/nested lookahead/unbounded
+repetition, or a lookahead nested somewhere other than a sequence
+element).
 
 `lib/roundtrip.nix` wires the two together into a fixpoint check: generate
 N samples for a grammar/schema, feed each back through that SAME
 grammar/schema's own parser, and confirm every one is *accepted*. This is
 narrower than "generated value equals the original" — there is no
 original here, only "does the parser accept what was generated for it".
-`./verify-roundtrip.sh` runs this in CI at N=50 for `grammar/tsv.nix`,
-`grammar/json.nix`, `examples/flakelock-valuewalk.nix`, `grammar/aterm.nix`,
-`grammar/drv.nix`, `grammar/pep508.nix`, `grammar/poetry-semver.nix`,
-`grammar/gemfile-lock.nix`, and `grammar/yarn-lock.nix`. Only
-`grammar/gemfile.nix` and `grammar/yaml.nix` remain out of scope for THIS
-gate — both use `not`/`and` for real structural disambiguation (excluding
-reserved words, asserting a following character) that `lib/generate.nix`
-has no general synthesis strategy for. They still get their own hand-
-written accept case (real corpus content where a fixture already
-existed) plus a reject case exercising a real failure mode specific to
-that format in `tests.nix`, so neither ships with zero automated
-coverage.
+`./verify-roundtrip.sh` runs this in CI at N=50 for every grammar/schema
+shipped in this repo, including `grammar/gemfile.nix` and
+`grammar/yaml.nix` — both use `not`/`and` for real structural
+disambiguation (excluding reserved words, asserting a following
+character), covered via `lib/generate.nix`'s lookahead synthesis above.
+They also keep their own hand-written accept/reject fixtures in
+`tests.nix`, so coverage isn't solely dependent on the generator.
 
 ## Gemfile.lock: a real nixpkgs use case
 
