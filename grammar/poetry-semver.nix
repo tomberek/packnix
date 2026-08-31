@@ -400,10 +400,14 @@ let
 
   parseConstraint =
     packrat: constraintStr:
-    (packrat.run {
-      grammar = grammarDef;
-      handlers = handlersDef;
-    } 0 constraintStr).CONSTRAINT;
+    let
+      result =
+        (packrat.run {
+          grammar = grammarDef;
+          handlers = handlersDef;
+        } 0 constraintStr).CONSTRAINT;
+    in
+    if result == packrat.NO_MATCH then false else result;
 
   grammarDef = {
     CONSTRAINT = [
