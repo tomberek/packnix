@@ -372,6 +372,58 @@ let
     handlers = atermGrammar.handlers;
   } 0 "f(1,2";
 
+  # Semantic check: an annotated term is `{ term = t; annotation = ann;
+  # }` UNIFORMLY regardless of kind (see grammar/aterm.nix's own TERM
+  # handler comment for why this needed fixing: string/int/real/list/
+  # tuple's own handlers return a bare value, only appl/placeholder
+  # return an attrset, so `t // {annotation;}` used to crash outright on
+  # the 5 non-attrset kinds -- see this repo's git history). Checked
+  # across all 7 real term kinds with an empty annotation `{}`, so this
+  # exercises the SHAPE-UNIFORMITY fix specifically, not just "doesn't
+  # crash" -- every kind must produce the identical {term;annotation;}
+  # wrapper, not five different ad hoc shapes.
+  atermAnnotatedByKind = builtins.listToAttrs (
+    map
+      (c: {
+        name = c.kind;
+        value =
+          (packrat.run {
+            grammar = atermGrammar.grammar;
+            handlers = atermGrammar.handlers;
+          } 0 "${c.text}{}").DOCUMENT;
+      })
+      [
+        {
+          kind = "int";
+          text = "5";
+        }
+        {
+          kind = "real";
+          text = "5.0";
+        }
+        {
+          kind = "string";
+          text = ''"x"'';
+        }
+        {
+          kind = "list";
+          text = "[1,2]";
+        }
+        {
+          kind = "tuple";
+          text = "(1,2)";
+        }
+        {
+          kind = "appl";
+          text = "f(1,2)";
+        }
+        {
+          kind = "placeholder";
+          text = "<5>";
+        }
+      ]
+  );
+
   # --- grammar/drv.nix: Nix's own .drv file format's exact shape
   # (Derive(outputs, inputDrvs, inputSrcs, system, builder, args, env),
   # always exactly 7 fields). data/example.drv is a real file pulled
@@ -389,6 +441,52 @@ let
     grammar = drvGrammar.grammar;
     handlers = drvGrammar.handlers;
   } 0 ''NotDerive([],[],[],"x","y",[],[])'';
+
+  # Semantic check: outputTuple's hashAlgo/recursive decoding, across
+  # every hashAlgo value this grammar's own header confirms real (""/
+  # sha1/sha256/sha512/r:sha256 -- data/example.drv alone doesn't
+  # exercise the fixed-output cases at all, since build2.drv has neither
+  # a hash nor an "r:" prefix). Built by substituting each {algo; hash;}
+  # pair into an otherwise-fixed, minimal Derive(...) shape, so this
+  # checks the DECODING logic specifically, isolated from everything
+  # else DOCUMENT's handler does. A non-fixed-output derivation has
+  # BOTH hashAlgo and hash empty (confirmed real, see this grammar's own
+  # header) -- only the fixed-output cases carry a real hash alongside
+  # a real algo.
+  drvHashAlgoDecoding = builtins.listToAttrs (
+    map
+      (c: {
+        name = if c.algo == "" then "(none)" else c.algo;
+        value =
+          (packrat.run {
+            grammar = drvGrammar.grammar;
+            handlers = drvGrammar.handlers;
+          } 0 ''Derive([("out","/path","${c.algo}","${c.hash}")],[],[],"x86_64-linux","/bin/sh",[],[])'')
+          .DOCUMENT.outputs;
+      })
+      [
+        {
+          algo = "";
+          hash = "";
+        }
+        {
+          algo = "sha1";
+          hash = "deadbeef";
+        }
+        {
+          algo = "sha256";
+          hash = "deadbeef";
+        }
+        {
+          algo = "sha512";
+          hash = "deadbeef";
+        }
+        {
+          algo = "r:sha256";
+          hash = "deadbeef";
+        }
+      ]
+  );
 
   # --- grammar/gemfile-lock.nix: a real Gemfile.lock (Ruby Bundler
   # lockfile), confirmed against a 136-file nixpkgs corpus (see that
@@ -463,6 +561,84 @@ let
   poetrySemverInvalidResult = builtins.tryEval (
     poetrySemverGrammar.mkSatisfies packrat "1.0.0" "not a valid constraint !!!"
   );
+
+  # Semantic cross-check against builtins.compareVersions -- an
+  # INDEPENDENT comparator (Nix's own C++ implementation, not this
+  # grammar's hand-rolled evalClause), for the plain-comparison
+  # operators (>=/<=/>/</==) where "satisfies" reduces directly to a
+  # version-ordering question. `mkSatisfies version ">=X"` must agree
+  # with `compareVersions version X >= 0` for ANY two versions, not just
+  # a hand-picked pair -- checked across a small table spanning equal,
+  # less-than, and greater-than version pairs for every plain operator.
+  # (^/~/wildcard constraints are NOT reducible to a single
+  # compareVersions call this way -- see the dedicated caret/wildcard
+  # regression checks below instead, which encode this grammar's own
+  # documented fixes for poetry2nix's real, confirmed bugs.)
+  poetrySemverComparisonTable =
+    builtins.concatMap
+      (
+        { a, b }:
+        map
+          (op: {
+            inherit a b op;
+            expected =
+              let
+                cmp = builtins.compareVersions a b;
+              in
+              if op == ">=" then
+                cmp >= 0
+              else if op == "<=" then
+                cmp <= 0
+              else if op == ">" then
+                cmp > 0
+              else if op == "<" then
+                cmp < 0
+              else if op == "==" then
+                cmp == 0
+              else if op == "!=" then
+                cmp != 0
+              else
+                throw "unreachable";
+            actual = poetrySemverGrammar.mkSatisfies packrat a "${op}${b}";
+          })
+          [
+            ">="
+            "<="
+            ">"
+            "<"
+            "=="
+            "!="
+          ]
+      )
+      [
+        {
+          a = "1.2.3";
+          b = "1.2.3";
+        }
+        {
+          a = "1.2.3";
+          b = "1.3.0";
+        }
+        {
+          a = "2.0.0";
+          b = "1.9.9";
+        }
+        {
+          a = "1.0.0";
+          b = "1.0.1";
+        }
+      ];
+
+  # Regression checks for the two REAL, DEMONSTRATED poetry2nix bugs this
+  # grammar was built to fix (see this file's own header for the full
+  # writeup) -- both confirmed via mkSatisfies directly, the only public
+  # entry point any real caller uses.
+  poetrySemverCaretUpperBoundInclusive = poetrySemverGrammar.mkSatisfies packrat "1.9.9" "^1.2.3";
+  poetrySemverCaretUpperBoundExclusive = poetrySemverGrammar.mkSatisfies packrat "2.0.0" "^1.2.3";
+  poetrySemverWildcardExclusionExcludes = poetrySemverGrammar.mkSatisfies packrat "3.0.5" "!=3.0.*";
+  poetrySemverWildcardExclusionIncludesOutside =
+    poetrySemverGrammar.mkSatisfies packrat "3.1.0"
+      "!=3.0.*";
 
   # --- grammar/yaml.nix: a real (subset of) YAML grammar (block
   # mappings/sequences by indentation, plain scalars, comments -- see
@@ -1162,11 +1338,61 @@ let
         ];
       };
     aterm_rejectsUnbalancedParens = atermInvalidResult.DOCUMENT == packrat.NO_MATCH;
+    aterm_annotatesEveryTermKindUniformly =
+      builtins.all
+        (
+          kind:
+          let
+            r = atermAnnotatedByKind.${kind};
+          in
+          (r ? term) && (r ? annotation) && r.annotation == [ ]
+        )
+        [
+          "int"
+          "real"
+          "string"
+          "list"
+          "tuple"
+          "appl"
+          "placeholder"
+        ];
+    aterm_annotatedLeafTermPreservesValue =
+      atermAnnotatedByKind.int.term == 5 && atermAnnotatedByKind.string.term == "x";
 
     drv_acceptsRealNixStoreFile = drvValidResult.DOCUMENT != packrat.NO_MATCH;
     drv_extractsInputDrvOutputSelector =
       (builtins.elemAt drvValidResult.DOCUMENT.inputDrvs 0).outputNames == [ "out" ];
     drv_rejectsWrongConstructorName = drvInvalidResult.DOCUMENT == packrat.NO_MATCH;
+    drv_decodesEmptyHashAlgoAsNonFixedOutput =
+      drvHashAlgoDecoding."(none)" == [
+        {
+          outputName = "out";
+          path = "/path";
+          hashAlgo = null;
+          recursive = null;
+          hash = null;
+        }
+      ];
+    drv_decodesFlatHashAlgoAsNonRecursive =
+      drvHashAlgoDecoding.sha256 == [
+        {
+          outputName = "out";
+          path = "/path";
+          hashAlgo = "sha256";
+          recursive = false;
+          hash = "deadbeef";
+        }
+      ];
+    drv_decodesRPrefixedHashAlgoAsRecursive =
+      drvHashAlgoDecoding."r:sha256" == [
+        {
+          outputName = "out";
+          path = "/path";
+          hashAlgo = "sha256";
+          recursive = true;
+          hash = "deadbeef";
+        }
+      ];
 
     gemfileLock_acceptsRealNixpkgsFixture = gemfileLockValidResult.DOCUMENT != packrat.NO_MATCH;
     gemfileLock_rejectsPlainProse = gemfileLockInvalidResult.DOCUMENT == packrat.NO_MATCH;
@@ -1213,6 +1439,14 @@ let
     poetrySemver_satisfiesCaretWithinRange = poetrySemverSatisfied == true;
     poetrySemver_rejectsCaretOutsideRange = poetrySemverUnsatisfied == false;
     poetrySemver_throwsOnUnparseableConstraint = !poetrySemverInvalidResult.success;
+    poetrySemver_agreesWithCompareVersionsOnPlainOperators = builtins.all (
+      r: r.actual == r.expected
+    ) poetrySemverComparisonTable;
+    poetrySemver_caretUpperBoundInclusive = poetrySemverCaretUpperBoundInclusive == true;
+    poetrySemver_caretUpperBoundExclusive = poetrySemverCaretUpperBoundExclusive == false;
+    poetrySemver_wildcardExclusionExcludes = poetrySemverWildcardExclusionExcludes == false;
+    poetrySemver_wildcardExclusionIncludesOutside =
+      poetrySemverWildcardExclusionIncludesOutside == true;
 
     yaml_acceptsScalarSequenceAndNestedMapping =
       yamlValidResult.DOCUMENT == {
