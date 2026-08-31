@@ -345,7 +345,25 @@ in
             t = builtins.elemAt v 0;
             ann = builtins.elemAt v 1;
           in
-          if ann == null then t else t // { annotation = ann; };
+          # Every one of REAL/INT/APPL/STRING/LIST/TUPLE/PLACEHOLDER's own
+          # handler returns a DIFFERENT shape -- APPL/PLACEHOLDER an
+          # attrset, everything else a bare value (a number, a string, a
+          # list) -- so `t // { annotation = ann; }` only ever worked by
+          # accident for the two attrset kinds; it crashed outright for
+          # the other five (confirmed via lib/roundtrip.nix's generated
+          # samples, e.g. `""{}`/`5{}`/`[1]{}` -- annotations are absent
+          # from every real corpus file this grammar was checked against,
+          # so this went unnoticed). An annotated term is now uniformly
+          # `{ term = t; annotation = ann; }` regardless of kind, so a
+          # caller checking `? annotation` gets a consistent answer
+          # whether `t` was a number or an attrset.
+          if ann == null then
+            t
+          else
+            {
+              term = t;
+              annotation = ann;
+            };
       };
     };
 
