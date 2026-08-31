@@ -1,0 +1,6 @@
+name: test
+items:
+  - a
+  - b
+nested:
+  key: value

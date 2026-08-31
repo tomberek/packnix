@@ -223,7 +223,11 @@ original here, only "does the parser accept what was generated for it".
 that don't use `and`/`not` anywhere. `grammar/drv.nix`, `grammar/gemfile-
 lock.nix`, `grammar/aterm.nix`, `grammar/yarn-lock.nix`, `grammar/pep508.nix`,
 `grammar/yaml.nix`, and `grammar/gemfile.nix` all use lookahead and remain
-out of scope for this gate for that reason.
+out of scope for THIS gate for that reason — but `tests.nix` gives each of
+them its own hand-written accept case (real corpus content where a fixture
+already existed) plus a reject case exercising a real failure mode
+specific to that format, so none of the eight ships with zero automated
+coverage.
 
 ## Gemfile.lock: a real nixpkgs use case
 

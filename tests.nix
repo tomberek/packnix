@@ -12,6 +12,14 @@ let
   valuewalk = import ./lib/valuewalk.nix;
   generate = import ./lib/generate.nix;
   regexGenerate = import ./lib/regex-generate.nix;
+  atermGrammar = import ./grammar/aterm.nix;
+  drvGrammar = import ./grammar/drv.nix;
+  gemfileLockGrammar = import ./grammar/gemfile-lock.nix;
+  gemfileGrammar = import ./grammar/gemfile.nix;
+  pep508Grammar = import ./grammar/pep508.nix;
+  poetrySemverGrammar = import ./grammar/poetry-semver.nix;
+  yamlGrammar = import ./grammar/yaml.nix;
+  yarnLockGrammar = import ./grammar/yarn-lock.nix;
 
   run =
     grammar: count: string:
@@ -348,6 +356,146 @@ let
       ];
     };
   };
+
+  # --- grammar/aterm.nix: generic ATerm (all six term kinds -- int,
+  # real, appl, list, tuple, placeholder -- see that file's header for
+  # the corpus this was confirmed against: 500 real .drv files from a
+  # live /nix/store). Accept case exercises appl/int/real/list/tuple
+  # nested together; reject case is a plain syntax error (unbalanced
+  # parens).
+  atermValidResult = packrat.run {
+    grammar = atermGrammar.grammar;
+    handlers = atermGrammar.handlers;
+  } 0 "f(1,2.5,[3,4],(5,6))";
+  atermInvalidResult = packrat.run {
+    grammar = atermGrammar.grammar;
+    handlers = atermGrammar.handlers;
+  } 0 "f(1,2";
+
+  # --- grammar/drv.nix: Nix's own .drv file format's exact shape
+  # (Derive(outputs, inputDrvs, inputSrcs, system, builder, args, env),
+  # always exactly 7 fields). data/example.drv is a real file pulled
+  # from a live /nix/store (build2.drv, one of the small multi-step
+  # build test derivations Nix's own test suite generates) -- covers a
+  # non-fixed-output single output, a real inputDrvs entry with an
+  # explicit output-name selector, and an env table. Reject case swaps
+  # the "Derive" constructor name, the one thing this grammar never
+  # backtracks over (see that file's header).
+  drvValidResult = packrat.run {
+    grammar = drvGrammar.grammar;
+    handlers = drvGrammar.handlers;
+  } 0 (builtins.readFile ./data/example.drv);
+  drvInvalidResult = packrat.run {
+    grammar = drvGrammar.grammar;
+    handlers = drvGrammar.handlers;
+  } 0 ''NotDerive([],[],[],"x","y",[],[])'';
+
+  # --- grammar/gemfile-lock.nix: a real Gemfile.lock (Ruby Bundler
+  # lockfile), confirmed against a 136-file nixpkgs corpus (see that
+  # file's header). data/example-Gemfile.lock (already used by
+  # examples/gemfile-lock-checksums.nix) covers GEM/PLATFORMS/
+  # DEPENDENCIES/CHECKSUMS/BUNDLED WITH sections, a gem with a version
+  # constraint on another gem, and multiple CHECKSUMS entries. Reject
+  # case is plain prose with none of this format's fixed section
+  # headers.
+  gemfileLockValidResult = packrat.run {
+    grammar = gemfileLockGrammar.grammar;
+    handlers = gemfileLockGrammar.handlers;
+  } 0 (builtins.readFile ./data/example-Gemfile.lock);
+  gemfileLockInvalidResult = packrat.run {
+    grammar = gemfileLockGrammar.grammar;
+    handlers = gemfileLockGrammar.handlers;
+  } 0 "not a gemfile lock at all\njust random text\n";
+
+  # --- grammar/gemfile.nix: a real (subset of) Ruby Bundler Gemfile --
+  # NOT the lockfile, recovers Bundler *group* membership per gem (see
+  # that file's header for exact scope, confirmed against a 136-file
+  # nixpkgs corpus). data/example.Gemfile covers a bare top-level gem
+  # (implicit "default" group, i.e. groups = []), an inline `group:`
+  # kwarg, a `group ... do ... end` block with two gems, and an
+  # `if ... end` wrapper. Malformed case is a `group do` block with no
+  # matching `end` -- the "unrecognized" catch-all rule then swallows
+  # both the header line AND the `gem` line inside it as opaque text
+  # (this grammar degrades gracefully rather than raising NO_MATCH, so
+  # what's checked below is that a malformed group's gem line is
+  # silently DROPPED, not "gets a wrong group assignment").
+  gemfileValidResult = packrat.run {
+    grammar = gemfileGrammar.grammar;
+    handlers = gemfileGrammar.handlers;
+  } 0 (builtins.readFile ./data/example.Gemfile);
+  gemfileMalformedGroupResult =
+    (packrat.run {
+      grammar = gemfileGrammar.grammar;
+      handlers = gemfileGrammar.handlers;
+    } 0 "group :test do\n  gem \"x\"\n").DOCUMENT;
+
+  # --- grammar/pep508.nix: Python's PEP 508 dependency-specification
+  # format, transcribed from PEP 508's own formal grammar and verified
+  # against 2126 real Requires-Dist specifiers (see that file's header).
+  # Accept case exercises a versioned name_req with a marker expression
+  # combining `and` over two comparisons -- the exact example from this
+  # repo's own README. Reject case is a version-constraint list missing
+  # its closing paren.
+  pep508ValidResult = packrat.run {
+    grammar = pep508Grammar.grammar;
+    handlers = pep508Grammar.handlers;
+  } 0 ''requests (>=2.0,<3.0) ; python_version >= "3.6" and sys_platform == "linux"'';
+  pep508InvalidResult = packrat.run {
+    grammar = pep508Grammar.grammar;
+    handlers = pep508Grammar.handlers;
+  } 0 "requests (>=2.0";
+
+  # --- grammar/poetry-semver.nix: Poetry's version-constraint syntax,
+  # parses AND evaluates (mkSatisfies). Confirmed against 65 real
+  # python-versions/python="..." constraint strings (see that file's
+  # header, including the real nixpkgs/poetry2nix bugs this grammar
+  # fixes). Checks both a satisfied and an unsatisfied caret constraint
+  # directly through mkSatisfies (the public entry point every real
+  # caller uses), plus that an unparseable constraint throws the
+  # documented friendly error (builtins.tryEval, matching how
+  # cargoLockInvalidDoc/packageLockInvalidDoc etc. probe failure paths
+  # elsewhere in this file) rather than crashing deeper in evalClause --
+  # see grammar/poetry-semver.nix's own parseConstraint for why this can
+  # only be confirmed by actually calling mkSatisfies, not by inspecting
+  # packrat.run's raw result.
+  poetrySemverSatisfied = poetrySemverGrammar.mkSatisfies packrat "1.5.0" "^1.2.3";
+  poetrySemverUnsatisfied = poetrySemverGrammar.mkSatisfies packrat "2.0.0" "^1.2.3";
+  poetrySemverInvalidResult = builtins.tryEval (
+    poetrySemverGrammar.mkSatisfies packrat "1.0.0" "not a valid constraint !!!"
+  );
+
+  # --- grammar/yaml.nix: a real (subset of) YAML grammar (block
+  # mappings/sequences by indentation, plain scalars, comments -- see
+  # that file's header for scope limits). data/example.yaml covers a
+  # plain scalar field, a block sequence, and a nested block mapping.
+  # Reject case is a block sequence item indented one space less than
+  # its own key -- mkYamlGrammar's fixed indentStep makes this a genuine
+  # syntax error, not just unusual style.
+  yamlValidResult = packrat.run {
+    grammar = yamlGrammar.grammar;
+    handlers = yamlGrammar.handlers;
+  } 0 (builtins.readFile ./data/example.yaml);
+  yamlInvalidResult = packrat.run {
+    grammar = yamlGrammar.grammar;
+    handlers = yamlGrammar.handlers;
+  } 0 "a: 1\n b: 2\n";
+
+  # --- grammar/yarn-lock.nix: Yarn classic's yarn.lock ("yarn lockfile
+  # v1"), confirmed against 15 real yarn.lock files (2,395 entries
+  # total -- see that file's header). data/example-yarn.lock (the same
+  # fixture this grammar's own README section describes) covers a
+  # multi-key spec line, a scoped package name, and a dependencies:
+  # block. Reject case is a Yarn Berry (v2+) header line -- a different,
+  # YAML-based format this grammar must correctly refuse rather than
+  # misparse (see that file's own header).
+  yarnLockValidResult = packrat.run {
+    grammar = yarnLockGrammar.grammar;
+    handlers = yarnLockGrammar.handlers;
+  } 0 (builtins.readFile ./data/example-yarn.lock);
+  yarnLockInvalidResult = packrat.run {
+    grammar = yarnLockGrammar.grammar;
+    handlers = yarnLockGrammar.handlers;
+  } 0 "__metadata:\n  version: 6\n";
 
   # --- schemas/package-lock.nix: same "no packrat grammar" reasoning as
   # schemas/cargo-lock.nix/schemas/poetry-lock.nix, but over
@@ -994,6 +1142,91 @@ let
   ) jsonCutChoiceBranches;
 
   checks = {
+    aterm_acceptsNestedTermKinds =
+      atermValidResult.DOCUMENT == {
+        constructor = "f";
+        args = [
+          1
+          2.5
+          [
+            3
+            4
+          ]
+          [
+            5
+            6
+          ]
+        ];
+      };
+    aterm_rejectsUnbalancedParens = atermInvalidResult.DOCUMENT == packrat.NO_MATCH;
+
+    drv_acceptsRealNixStoreFile = drvValidResult.DOCUMENT != packrat.NO_MATCH;
+    drv_extractsInputDrvOutputSelector =
+      (builtins.elemAt drvValidResult.DOCUMENT.inputDrvs 0).outputNames == [ "out" ];
+    drv_rejectsWrongConstructorName = drvInvalidResult.DOCUMENT == packrat.NO_MATCH;
+
+    gemfileLock_acceptsRealNixpkgsFixture = gemfileLockValidResult.DOCUMENT != packrat.NO_MATCH;
+    gemfileLock_rejectsPlainProse = gemfileLockInvalidResult.DOCUMENT == packrat.NO_MATCH;
+
+    gemfile_acceptsGroupBlockAndInlineKwarg =
+      gemfileValidResult.DOCUMENT == [
+        {
+          kind = "gem";
+          name = "rails";
+          groups = [ ];
+        }
+        {
+          kind = "gem";
+          name = "pg";
+          groups = [ "production" ];
+        }
+        {
+          kind = "gem";
+          name = "rspec";
+          groups = [
+            "development"
+            "test"
+          ];
+        }
+        {
+          kind = "gem";
+          name = "pry";
+          groups = [
+            "development"
+            "test"
+          ];
+        }
+        {
+          kind = "gem";
+          name = "debug";
+          groups = [ ];
+        }
+      ];
+    gemfile_degradesGracefullyOnMalformedGroupBlock = gemfileMalformedGroupResult != packrat.NO_MATCH;
+
+    pep508_acceptsVersionedNameReqWithAndMarker = pep508ValidResult.SPECIFICATION != packrat.NO_MATCH;
+    pep508_rejectsUnclosedVersionSpecList = pep508InvalidResult.SPECIFICATION == packrat.NO_MATCH;
+
+    poetrySemver_satisfiesCaretWithinRange = poetrySemverSatisfied == true;
+    poetrySemver_rejectsCaretOutsideRange = poetrySemverUnsatisfied == false;
+    poetrySemver_throwsOnUnparseableConstraint = !poetrySemverInvalidResult.success;
+
+    yaml_acceptsScalarSequenceAndNestedMapping =
+      yamlValidResult.DOCUMENT == {
+        name = "test";
+        items = [
+          "a"
+          "b"
+        ];
+        nested = {
+          key = "value";
+        };
+      };
+    yaml_rejectsSequenceItemUnderIndented = yamlInvalidResult.DOCUMENT == packrat.NO_MATCH;
+
+    yarnLock_acceptsRealFixture = yarnLockValidResult.DOCUMENT != packrat.NO_MATCH;
+    yarnLock_rejectsYarnBerryHeader = yarnLockInvalidResult.DOCUMENT == packrat.NO_MATCH;
+
     cutMain_parsesFullString = cutMainResult.M != packrat.NO_MATCH;
     cutMain_correctValue =
       cutMainResult.M == [

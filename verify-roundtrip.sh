@@ -10,11 +10,13 @@
 # (lookahead has no general generation strategy -- see lib/generate.nix's
 # header). grammar/{drv,gemfile-lock,aterm,yarn-lock,pep508,yaml,
 # gemfile}.nix all use and/not somewhere, so they remain out of reach for
-# this gate. grammar/tsv.nix, grammar/json.nix, and
-# examples/flakelock-valuewalk.nix are the three real, non-toy cases
-# covered here. tests.nix's `generate_*` checks cover additional
-# toy/synthetic schemas at smaller scale (N=5) as part of the main
-# combinator test suite.
+# THIS gate -- but each has its own hand-written accept/reject fixture in
+# tests.nix instead (see that file's "grammar/aterm.nix" section onward),
+# since round-trip generation isn't the only way to get coverage.
+# grammar/tsv.nix, grammar/json.nix, and examples/flakelock-valuewalk.nix
+# are the three real, non-toy cases covered by THIS gate. tests.nix's
+# `generate_*` checks cover additional toy/synthetic schemas at smaller
+# scale (N=5) as part of the main combinator test suite.
 #
 # Usage: ./verify-roundtrip.sh
 set -uo pipefail
