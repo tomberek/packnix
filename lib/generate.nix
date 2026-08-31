@@ -188,16 +188,20 @@ rec {
   # `attrsOf`'s generated key names). Length 1-8 chars, seed-derived --
   # deliberately boring placeholder data; a schema wanting REALISTIC
   # strings needs a `pattern` override instead.
-  stringAlphabet = builtins.stringLength "abcdefghijklmnopqrstuvwxyz0123456789";
+  stringAlphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  stringAlphabetLength = builtins.stringLength stringAlphabet;
   stringAlphabetChars = builtins.genList (
-    i: builtins.substring i 1 "abcdefghijklmnopqrstuvwxyz0123456789"
-  ) 36;
+    i: builtins.substring i 1 stringAlphabet
+  ) stringAlphabetLength;
   genString =
     seed:
     let
       len = 1 + seedToIndex 8 (seed + "/len");
       chars = builtins.genList (
-        i: builtins.elemAt stringAlphabetChars (seedToIndex 36 (seed + "/c${builtins.toString i}"))
+        i:
+        builtins.elemAt stringAlphabetChars (
+          seedToIndex stringAlphabetLength (seed + "/c${builtins.toString i}")
+        )
       ) len;
     in
     builtins.concatStringsSep "" chars;
