@@ -104,41 +104,4 @@ rec {
       allPassed = builtins.all (r: r.accepted) results;
       inherit results;
     };
-
-  # Same as checkValuewalkGrammar, but for a single, UNNAMED schema (no
-  # grammar attrset) -- mirrors lib/valuewalk.nix's own `compile` vs.
-  # `run` split.
-  checkValuewalkSchema =
-    {
-      schema,
-      seedPrefix,
-      numSamples ? 20,
-      patternGenerators ? { },
-      maxDepth ? 4,
-    }:
-    let
-      matcher = valuewalk.compile schema;
-      results = builtins.genList (
-        i:
-        let
-          seed = "${seedPrefix}-${builtins.toString i}";
-          generated = generate.generateFromSchema {
-            inherit
-              schema
-              seed
-              patternGenerators
-              maxDepth
-              ;
-          };
-        in
-        {
-          inherit seed generated;
-          accepted = matcher generated != null;
-        }
-      ) numSamples;
-    in
-    {
-      allPassed = builtins.all (r: r.accepted) results;
-      inherit results;
-    };
 }
