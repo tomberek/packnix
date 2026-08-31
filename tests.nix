@@ -707,6 +707,26 @@ let
         };
       };
 
+  # schemas/package-lock.nix's own header documents `sha1-<base64>` as
+  # "also real" alongside the dominant `sha512-` -- but
+  # data/example-package-lock.json only ever has sha512- entries, and
+  # the negative test above only confirms a malformed (md5-) pattern is
+  # REJECTED, not that the other real, documented algorithm is ACCEPTED.
+  packageLockSha1Doc =
+    valuewalk.run
+      {
+        grammar = packageLockSchema;
+      }
+      {
+        packages = {
+          "node_modules/foo" = {
+            version = "1.0.0";
+            resolved = "https://registry.npmjs.org/foo/-/foo-1.0.0.tgz";
+            integrity = "sha1-1234567890abcdef1234567890abcdef12345678";
+          };
+        };
+      };
+
   # --- schemas/uv-lock.nix: same "no packrat grammar" reasoning as
   # schemas/cargo-lock.nix/schemas/poetry-lock.nix/schemas/package-lock.nix,
   # over builtins.fromTOML's output. Checked against data/example-uv.lock
@@ -747,6 +767,32 @@ let
           }
         ];
       };
+
+  # Corpus facts documented in schemas/uv-lock.nix's own header
+  # ("confirmed via the dynamic-version/virtual fixtures") but never
+  # actually exercised by data/example-uv.lock, which happens to give
+  # every one of its packages both a version AND a registry/editable/
+  # git source: a package with `source = { virtual = "."; }` (a local
+  # project with no build-system, not even installable -- distinct from
+  # `editable`) and NO `version` field at all (uv omits it entirely for
+  # a build-time-dynamic version). Built from uv2nix's own real
+  # `dynamic-version` fixture content (see schemas/uv-lock.nix's own
+  # header for the corpus this was originally confirmed against).
+  uvLockVirtualDoc =
+    valuewalk.run
+      {
+        grammar = uvLockSchema;
+      }
+      (
+        builtins.fromTOML ''
+          version = 1
+          requires-python = ">=3.12"
+
+          [[package]]
+          name = "dynamic-version"
+          source = { virtual = "." }
+        ''
+      );
 
   # --- lib/valuewalk.nix: named-grammar API (run/compileGrammar),
   # mirroring lib/packrat.nix's grammar shape and bare-string
@@ -866,6 +912,35 @@ let
         ''
       );
 
+  # Corpus fact documented in schemas/cargo-lock.nix's own header
+  # ("confirmed real via nixpkgs' own Rust sysroot Cargo.lock") but
+  # never actually exercised by data/example-Cargo.lock, which has no
+  # `patch` section at all: a `[[patch.<source-name>]]` entry recording
+  # a declared-but-unused patch, modeled as the minimal PATCH_STUB rule
+  # (name+version only, confirmed to never carry source/checksum/
+  # dependencies in the one real instance this schema was built
+  # against).
+  cargoLockPatchDoc =
+    valuewalk.run
+      {
+        grammar = cargoLockSchema;
+      }
+      (
+        builtins.fromTOML ''
+          version = 3
+
+          [[package]]
+          name = "serde"
+          version = "1.0.145"
+          source = "registry+https://github.com/rust-lang/crates.io-index"
+          checksum = "728eb6351430bccb993660dfffc5a72f91ccc1295abaa8ce19b27ebe4f75568b"
+
+          [[patch.unused]]
+          name = "unused-crate"
+          version = "0.1.0"
+        ''
+      );
+
   # --- schemas/poetry-lock.nix: same "no packrat grammar" reasoning as
   # cargoLockSchema above. Checked against data/example-poetry.lock,
   # a small file built from real content (nixpkgs' rmfuse poetry.lock)
@@ -894,6 +969,32 @@ let
 
           [metadata]
           lock-version = "2.0"
+        ''
+      );
+
+  # Corpus fact documented in schemas/poetry-lock.nix's own header
+  # ("confirmed both real, mutually exclusive per corpus file") but
+  # never actually exercised by data/example-poetry.lock, which only
+  # ever uses `category` (the lock-version 1.x/2.0 field) -- `groups`
+  # (a list of strings, its lock-version 2.1 replacement) is a
+  # documented-but-untested field.
+  poetryLockGroupsDoc =
+    valuewalk.run
+      {
+        grammar = poetryLockSchema;
+      }
+      (
+        builtins.fromTOML ''
+          [[package]]
+          name = "pytest"
+          version = "7.0.0"
+          description = ""
+          optional = false
+          python-versions = "*"
+          groups = ["dev", "testing"]
+
+          [metadata]
+          lock-version = "2.1"
         ''
       );
 
@@ -1568,6 +1669,11 @@ let
         };
       };
     packageLock_rejectsMalformedIntegrityPattern = packageLockInvalidDoc.DOCUMENT == null;
+    packageLock_acceptsSha1IntegrityPattern =
+      packageLockSha1Doc.DOCUMENT != null
+      &&
+        packageLockSha1Doc.DOCUMENT.packages."node_modules/foo".integrity
+        == "sha1-1234567890abcdef1234567890abcdef12345678";
 
     uvLock_acceptsRealUvLockfile = uvLockDoc.DOCUMENT != null;
     uvLock_extractsChecksumsForFetchableRegistryDeps =
@@ -1594,6 +1700,11 @@ let
         ];
       };
     uvLock_rejectsMalformedHashPattern = uvLockInvalidDoc.DOCUMENT == null;
+    uvLock_acceptsVirtualSourceWithNoVersionField =
+      let
+        pkg = builtins.elemAt uvLockVirtualDoc.DOCUMENT.package 0;
+      in
+      uvLockVirtualDoc.DOCUMENT != null && pkg.source == { virtual = "."; } && !(pkg ? version);
 
     valuewalk_namedGrammarMatchesAndPreservesRealFalse = rNamedGrammar.DOCUMENT == namedGrammarValidDoc;
     valuewalk_namedGrammarRejectsWrongType = rNamedGrammarInvalid.DOCUMENT == null;
@@ -1608,6 +1719,15 @@ let
         }
       ];
     cargoLock_rejectsGitSourceWithChecksum = cargoLockInvalidDoc.DOCUMENT == null;
+    cargoLock_acceptsPatchUnusedStub =
+      cargoLockPatchDoc.DOCUMENT != null
+      &&
+        cargoLockPatchDoc.DOCUMENT.patch.unused == [
+          {
+            name = "unused-crate";
+            version = "0.1.0";
+          }
+        ];
     cargoLock_extractsChecksumsForRegistryPackages =
       cargoLockChecksums == {
         "serde-1.0.145" = "728eb6351430bccb993660dfffc5a72f91ccc1295abaa8ce19b27ebe4f75568b";
@@ -1627,6 +1747,13 @@ let
         "rmfuse-0.1.0" = [ ];
       };
     poetryLock_rejectsMissingRequiredOptionalField = poetryLockMissingOptionalDoc.DOCUMENT == null;
+    poetryLock_acceptsGroupsAsCategoryReplacement =
+      poetryLockGroupsDoc.DOCUMENT != null
+      &&
+        (builtins.elemAt poetryLockGroupsDoc.DOCUMENT.package 0).groups == [
+          "dev"
+          "testing"
+        ];
     valuewalk_recursiveSchemaMatchesNestedValue = rNestedValue == nestedValue;
     valuewalk_recursiveSchemaRejectsWrongType = rWrongTypeValue == null;
 
