@@ -61,6 +61,7 @@ other Nix parsing libraries.
 | `grammar/gemfile-lock.nix` | Ruby Bundler's `Gemfile.lock` format — see below for why this one has a real nixpkgs use case. |
 | `grammar/gemfile.nix` | A real (subset of) Ruby Bundler's `Gemfile` format — NOT the lockfile; recovers Bundler *group* membership per gem (`group :x do...end` blocks, inline `group:`/`groups:` kwargs, `if`/`unless`/`else` wrapping), the one fact `Gemfile.lock` never records. See its header for exact scope. |
 | `grammar/yarn-lock.nix` | Yarn classic's `yarn.lock` ("yarn lockfile v1") format — see below for why this one has a real nixpkgs use case. Yarn Berry (v2+) lockfiles are a different, YAML-based format and out of scope. |
+| `grammar/go-sum.nix` | Go's module checksum database (`go.sum`) — a fixed 3-field-per-line format. Unlike every other lockfile grammar above, its hashes aren't consumed as per-package fetch hashes by nixpkgs; see below for why, and what this grammar is used for instead. |
 | `grammar/aterm.nix` | A generic ATerm (Annotated Term) grammar — the format Nix's own `.drv` files are written in, among other uses (ASF+SDF Meta-Environment, Stratego/XT). Covers all six real term kinds (int, real, appl, list, tuple, placeholder) plus annotations; verified against 500 real `.drv` files from a live `/nix/store`. |
 | `grammar/drv.nix` | A grammar specialized to Nix's `.drv` file format's exact shape (`Derive(outputs, inputDrvs, inputSrcs, system, builder, args, env)`, always exactly 7 fields) — semantically decodes each field (e.g. a fixed-output derivation's `hashAlgo`'s `"r:"` prefix into a `recursive` flag) rather than returning a generic ATerm tree. |
 | `grammar/pep508.nix` | Python's PEP 508 dependency-specification format (`requests (>=2.0,<3.0) ; python_version >= "3.6" and sys_platform == "linux"`) — the same format nixpkgs' `poetry2nix` parses today via ~180 lines of hand-rolled character-walking with no real `and`/`or` precedence. Transcribed directly from PEP 508's own formal grammar (restructured to avoid left recursion); verified against 2126 real, distinct `Requires-Dist` specifiers. |
@@ -290,6 +291,33 @@ package names, multi-spec lines (both bare and double-quoted forms),
 `version`/`resolved`/`integrity` field byte/value-identical between the
 two. A Yarn Berry (v2+) lockfile — a different, YAML-based format
 entirely — correctly fails to parse rather than silently mis-parsing.
+
+## go.sum: a different kind of nixpkgs use case
+
+Unlike every lockfile grammar above, Go's `go.sum` doesn't fit the
+"the fetch hash nixpkgs needs is already sitting in the file" pattern:
+nixpkgs' `buildGoModule` (`pkgs/build-support/go/module.nix`) runs `go
+mod download` inside one fixed-output derivation with `GOSUMDB=off` and
+gets a single *aggregate* `vendorHash` for the whole module graph — it
+never reads `go.sum`'s own per-module hashes at all. There's also no URL
+field to fetch from in the first place; a `go.sum` line is just `module
+version hash`, not `module version url hash`.
+
+So `grammar/go-sum.nix` is used for something else `go.sum`'s structure
+genuinely enables: `examples/go-sum-checksums.nix` cross-references the
+same `module@version` across two independently-generated `go.sum` files
+and flags a hash *mismatch* — since `go.sum`'s `h1:` hash is a content
+hash of that exact module version, two files agreeing on a shared
+dependency's version but disagreeing on its hash is a real supply-chain
+signal (a tampered proxy serving different bytes under the same tag),
+not just "two projects pinned different versions" (normal, not flagged).
+
+Correctness: confirmed against two real `go.sum` files shipped in
+nixpkgs itself — `pkgs/by-name/pa/pam_ussh/go.sum` (22 lines) and
+`pkgs/by-name/ku/kubemqctl/go.sum` (664 lines), 686 lines total, every
+one matching the grammar's fixed 3-field shape (module path, version
+optionally suffixed `+incompatible`/`/go.mod`, `h1:`-prefixed base64
+hash).
 
 ## Cargo.lock, poetry.lock, package-lock.json, uv.lock: real fetch-hash use cases
 

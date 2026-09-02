@@ -20,6 +20,7 @@ let
   poetrySemverGrammar = import ./grammar/poetry-semver.nix;
   yamlGrammar = import ./grammar/yaml.nix;
   yarnLockGrammar = import ./grammar/yarn-lock.nix;
+  goSumGrammar = import ./grammar/go-sum.nix;
 
   run =
     grammar: count: string:
@@ -821,6 +822,44 @@ let
     grammar = yarnLockGrammar.grammar;
     handlers = yarnLockGrammar.handlers;
   } 0 (builtins.readFile ./data/example2-yarn.lock);
+
+  # --- grammar/go-sum.nix: Go's module checksum database, confirmed
+  # against two real go.sum files shipped in nixpkgs itself (pam_ussh, 22
+  # lines; kubemqctl, 664 lines -- see that file's header). Unlike every
+  # other lockfile grammar in this repo, go.sum's hashes aren't consumed
+  # as per-package fetch hashes by nixpkgs (buildGoModule aggregates the
+  # whole module graph into one vendorHash), so examples/go-sum-
+  # checksums.nix demonstrates a different real use instead: detecting a
+  # hash MISMATCH for the same module@version across two independent
+  # go.sum files -- a genuine supply-chain integrity signal. Reject case
+  # is a line missing its mandatory trailing newline before EOF (see that
+  # file's header for why this format, unlike every OTHER line-oriented
+  # grammar here, never tolerates a missing final newline).
+  goSumValidResult = packrat.run {
+    grammar = goSumGrammar.grammar;
+    handlers = goSumGrammar.handlers;
+  } 0 (builtins.readFile ./data/example-go.sum);
+  goSumInvalidResult = packrat.run {
+    grammar = goSumGrammar.grammar;
+    handlers = goSumGrammar.handlers;
+  } 0 "github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=";
+
+  # A SECOND, independent real go.sum fixture (trimmed from nixpkgs'
+  # kubemqctl package) covering a "+incompatible" version suffix, a
+  # "/v2"-style major-version module path, and a module@version that ALSO
+  # appears in data/example-go.sum with a matching hash -- exactly what
+  # findHashMismatches needs a genuine shared-dependency case to exercise.
+  goSumDoc2 = packrat.run {
+    grammar = goSumGrammar.grammar;
+    handlers = goSumGrammar.handlers;
+  } 0 (builtins.readFile ./data/example2-go.sum);
+  goSumChecksums = (import ./examples/go-sum-checksums.nix).hashesByModuleVersion (
+    builtins.readFile ./data/example-go.sum
+  );
+  goSumMismatches = (import ./examples/go-sum-checksums.nix).findHashMismatches (builtins.readFile ./data/example-go.sum) (
+    builtins.readFile ./data/example2-go.sum
+  );
+  goSumMismatchesDetected = (import ./examples/go-sum-checksums.nix).findHashMismatches (builtins.readFile ./data/example-go.sum) "github.com/pmezard/go-difflib v1.0.0 h1:CORRUPTEDHASHVALUE1234567890abcdefghijk=\n";
 
   # --- schemas/package-lock.nix: same "no packrat grammar" reasoning as
   # schemas/cargo-lock.nix/schemas/poetry-lock.nix, but over
@@ -1940,6 +1979,30 @@ let
             version = "4.6.0";
           }
         ];
+
+    goSum_acceptsRealFixture = goSumValidResult.DOCUMENT != packrat.NO_MATCH;
+    goSum_rejectsLineMissingTrailingNewline = goSumInvalidResult.DOCUMENT == packrat.NO_MATCH;
+    goSum_acceptsIncompatibleAndV2ModulePath =
+      goSumDoc2.DOCUMENT != packrat.NO_MATCH
+      && builtins.any (
+        l: l.module == "github.com/Masterminds/sprig" && l.incompatible && !l.isGoModOnly
+      ) goSumDoc2.DOCUMENT
+      && builtins.any (
+        l: l.module == "github.com/AlecAivazis/survey/v2" && !l.isGoModOnly
+      ) goSumDoc2.DOCUMENT;
+    goSum_extractsBareBuildHashesOnly =
+      goSumChecksums."github.com/davecgh/go-spew@v1.1.0"
+      == "h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8="
+      && !(goSumChecksums ? "github.com/stretchr/objx@v0.1.0"); # go.mod-only line, no bare build hash
+    goSum_noMismatchBetweenTwoRealFixtures = goSumMismatches == [ ];
+    goSum_detectsHashMismatch =
+      goSumMismatchesDetected == [
+        {
+          hashA = "h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=";
+          hashB = "h1:CORRUPTEDHASHVALUE1234567890abcdefghijk=";
+          moduleVersion = "github.com/pmezard/go-difflib@v1.0.0";
+        }
+      ];
 
     cutMain_parsesFullString = cutMainResult.M != packrat.NO_MATCH;
     cutMain_correctValue =

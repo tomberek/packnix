@@ -275,6 +275,27 @@ else
   fail=1
 fi
 
+go_sum_passed=$(nix eval --impure --expr '
+  let
+    rt = import ./lib/roundtrip.nix;
+    g = import ./grammar/go-sum.nix;
+    result = rt.checkPackratGrammar {
+      grammar = g.grammar;
+      handlers = g.handlers;
+      ruleName = "DOCUMENT";
+      seedPrefix = "verify-roundtrip-go-sum";
+      numSamples = 50;
+    };
+  in result.allPassed
+' 2>&1)
+
+if [[ "$go_sum_passed" == "true" ]]; then
+  echo "OK   roundtrip grammar/go-sum.nix (50 samples)"
+else
+  echo "FAIL roundtrip grammar/go-sum.nix: $go_sum_passed"
+  fail=1
+fi
+
 if [[ "$fail" -ne 0 ]]; then
   echo
   echo "verify-roundtrip: FAILED"
