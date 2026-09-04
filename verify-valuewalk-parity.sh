@@ -13,7 +13,7 @@
 #
 # Usage: ./verify-valuewalk-parity.sh
 set -uo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
 
 fixtures=(
   bench/fixtures/synth-5.json

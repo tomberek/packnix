@@ -12,7 +12,7 @@
 #
 # Usage: ./verify-fixtures.sh
 set -uo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
 
 fixtures=(
   data/lock.json
