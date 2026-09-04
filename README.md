@@ -1,13 +1,10 @@
 # packnix
 
 A packrat/PEG parsing engine written entirely in the Nix expression
-language, plus a few grammars built on it — generic JSON, JSON specialized
-for `nix flake lock`'s exact output schema, a real (subset of) YAML, TSV,
-generic ATerm plus a grammar specialized to Nix's own `.drv` file format,
-Python's PEP 508 dependency-specification format and Poetry's version-
-constraint syntax, Ruby's Bundler `Gemfile.lock` and (a
-group-membership-focused subset of) `Gemfile` formats, and Yarn classic's
-`yarn.lock` format.
+language, plus grammars for JSON, YAML, TSV, `nix flake.lock`, Nix's own
+`.drv` format (via ATerm), Python's PEP 508 and Poetry's version
+constraints, Ruby's `Gemfile`/`Gemfile.lock`, Yarn classic's `yarn.lock`,
+and Go's `go.sum`.
 
 Built from Ford's ["Packrat Parsing: Simple, Powerful, Lazy, Linear Time"](https://bford.info/pub/lang/packrat-icfp02/)
 and Mizushima et al.'s ["Packrat Parsers Can Handle Practical Grammars in
@@ -16,29 +13,36 @@ source of the `cutSeq`/`↑` operator below).
 
 ## Quick example
 
-Parsing TSV (tab-separated values) with `grammar/tsv.nix`:
+A grammar is just data — an attrset of named rules, each built from a
+small set of combinators (see [Grammar DSL](#grammar-dsl)). Here's a
+complete one for `NAME=VALUE` lines:
 
 ```nix
 let
   packrat = import ./lib/packrat.nix;
-  tsv = import ./grammar/tsv.nix;
+  grammar = {
+    ENTRY = [ "NAME" { lit = "="; } "VALUE" ];
+    NAME = { regex = "([A-Za-z_][A-Za-z0-9_]*)"; };
+    VALUE = { regex = "([^\n]*)"; };
+  };
+  handlers.ENTRY = v: {
+    name = builtins.elemAt v 0;
+    value = builtins.elemAt v 2;
+  };
 in
-(packrat.run { grammar = tsv.grammar; handlers = tsv.handlers; } 0
-  (builtins.readFile ./data/example.tsv)).DOCUMENT
+(packrat.run { inherit grammar handlers; } 0 "PORT=8080").ENTRY
 ```
 
 ```console
-$ nix eval --impure --expr '
-    let packrat = import ./lib/packrat.nix; tsv = import ./grammar/tsv.nix;
-    in (packrat.run { grammar = tsv.grammar; handlers = tsv.handlers; } 0
-         (builtins.readFile ./data/example.tsv)).DOCUMENT' --json
-[["name","type","ref"],["nixpkgs","github","nixpkgs-unstable"],["flake-utils","github","main"]]
+$ nix eval --impure --expr '<the above>' --json
+{"name":"PORT","value":"8080"}
 ```
 
-`DOCUMENT` is a list of rows, each row a list of field strings. See
-`grammar/tsv.nix` for the ~30-line grammar itself, and the [Grammar
-DSL](#grammar-dsl) and [Usage](#usage) sections below for how to write your
-own or use the JSON/flake.lock grammars this project also ships.
+`ENTRY` references `NAME` and `VALUE` by name; `handlers.ENTRY` turns the
+raw `["PORT" "=" "8080"]` match into a clean attrset. That's the whole
+pattern this project builds on — every grammar below (`grammar/tsv.nix`
+is a good next read, at ~30 lines) is the same combinators composed at
+larger scale.
 
 ## Why
 
@@ -48,44 +52,6 @@ grammars `fromJSON` can't help with: anything with its own syntax you'd
 otherwise hand-roll with `builtins.match`/`substring`/recursion. JSON is the
 running example because it's easy to verify and easy to compare against
 other Nix parsing libraries.
-
-## Layout
-
-| Path | What |
-|---|---|
-| `lib/packrat.nix` | The engine: `mkCompile`, `buildDerivs`, `run`. Everything else is built on this. |
-| `grammar/json.nix` | A generic, from-scratch JSON grammar (`grammar`/`grammarNoCut` + cut and non-cut variants). |
-| `grammar/flakelock.nix` | A grammar specialized to `nix flake lock`'s exact schema — see below. |
-| `grammar/tsv.nix` | A small TSV (tab-separated values) grammar — see the quick example above. |
-| `grammar/yaml.nix` | A real YAML subset: block mappings/sequences nested by indentation, plain/quoted scalars, flow collections, comments. `mkYamlGrammar { indentStep; maxDepth; }` generates the grammar; see its header for scope limits (no anchors/tags/multi-doc/block-scalars, fixed indent step, bounded depth). |
-| `grammar/gemfile-lock.nix` | Ruby Bundler's `Gemfile.lock` format — see below for why this one has a real nixpkgs use case. |
-| `grammar/gemfile.nix` | A real (subset of) Ruby Bundler's `Gemfile` format — NOT the lockfile; recovers Bundler *group* membership per gem (`group :x do...end` blocks, inline `group:`/`groups:` kwargs, `if`/`unless`/`else` wrapping), the one fact `Gemfile.lock` never records. See its header for exact scope. |
-| `grammar/yarn-lock.nix` | Yarn classic's `yarn.lock` ("yarn lockfile v1") format — see below for why this one has a real nixpkgs use case. Yarn Berry (v2+) lockfiles are a different, YAML-based format and out of scope. |
-| `grammar/go-sum.nix` | Go's module checksum database (`go.sum`) — a fixed 3-field-per-line format. Unlike every other lockfile grammar above, its hashes aren't consumed as per-package fetch hashes by nixpkgs; see below for why, and what this grammar is used for instead. |
-| `grammar/aterm.nix` | A generic ATerm (Annotated Term) grammar — the format Nix's own `.drv` files are written in, among other uses (ASF+SDF Meta-Environment, Stratego/XT). Covers all six real term kinds (int, real, appl, list, tuple, placeholder) plus annotations; verified against 500 real `.drv` files from a live `/nix/store`. |
-| `grammar/drv.nix` | A grammar specialized to Nix's `.drv` file format's exact shape (`Derive(outputs, inputDrvs, inputSrcs, system, builder, args, env)`, always exactly 7 fields) — semantically decodes each field (e.g. a fixed-output derivation's `hashAlgo`'s `"r:"` prefix into a `recursive` flag) rather than returning a generic ATerm tree. |
-| `grammar/pep508.nix` | Python's PEP 508 dependency-specification format (`requests (>=2.0,<3.0) ; python_version >= "3.6" and sys_platform == "linux"`) — the same format nixpkgs' `poetry2nix` parses today via ~180 lines of hand-rolled character-walking with no real `and`/`or` precedence. Transcribed directly from PEP 508's own formal grammar (restructured to avoid left recursion); verified against 2126 real, distinct `Requires-Dist` specifiers. |
-| `grammar/poetry-semver.nix` | Poetry's version-constraint syntax (`^1.2.3`, `~1.2`, `1.*`, `~2.7 \|\| ^3.5`) — parses AND evaluates (`mkSatisfies packrat version constraint`). Fixes several real, demonstrated bugs found in nixpkgs' `poetry2nix/semver.nix`/`lib.nix` while building this (wrong caret/tilde upper bounds that accept clearly-incompatible major versions, `!=X.Y.*` not actually excluding anything, bare versions/wildcards throwing instead of parsing). Verified against 65 real `python-versions`/`python = "..."` constraint strings from real `poetry.lock`/`pyproject.toml` files. See its header for the specific bugs and how they were confirmed. |
-| `examples/json-simple.nix` | A plain, unoptimized JSON grammar — every construct gets its own named rule, no attention paid to allocation. Good starting point for reading/writing your own grammar. |
-| `examples/json-optimized.nix` | Re-exports `grammar/json.nix`, annotated with what changed vs. `json-simple.nix` and why (rule inlining via the `action` combinator, fewer redundant whitespace scans, etc). |
-| `examples/flakelock-specialized.nix` | Re-exports `grammar/flakelock.nix`, annotated with the schema-specialization technique and measured wins. |
-| `examples/gemfile-lock-checksums.nix` | Extracts `{ <gem name> = <sha256>; }` from a `Gemfile.lock`'s `CHECKSUMS` section — the piece a `bundlerEnv` replacement would need. See below. |
-| `lib/valuewalk.nix` | A schema-validation engine over an already-parsed value tree (from `fromJSON`/`fromTOML`), not string positions — see [Value-tree validation and generation](#value-tree-validation-and-generation) below. |
-| `lib/generate.nix` | Generates a sample value/string that a `lib/valuewalk.nix` schema or `lib/packrat.nix` grammar would accept — the reverse direction of validation, deterministically seeded. |
-| `lib/regex-generate.nix` | Inverts a POSIX ERE pattern into a sample string it would accept; backs `generate`'s automatic `pattern`/`regex` synthesis. |
-| `lib/roundtrip.nix` | Generates N samples for a grammar/schema and confirms its own parser accepts every one — the fixpoint gate `verify-roundtrip.sh` runs. |
-| `examples/flakelock-valuewalk.nix` | The `grammar/flakelock.nix` schema rewritten against `lib/valuewalk.nix`, over `builtins.fromJSON`'s output instead of string positions. |
-| `schemas/cargo-lock.nix` | A `lib/valuewalk.nix` schema for Rust's `Cargo.lock` (v3/v4) over `builtins.fromTOML`'s output — no `lib/packrat.nix` grammar counterpart at all, since Cargo.lock is plain TOML with nothing `fromTOML` can't already parse. See below for why this one has a real nixpkgs use case. |
-| `examples/cargo-lock-checksums.nix` | Extracts `{ "<crate>-<version>" = <sha256>; ... }` from a `Cargo.lock`'s `checksum` fields — the piece `importCargoLock` needs. See below. |
-| `schemas/poetry-lock.nix` | A `lib/valuewalk.nix` schema for Poetry's `poetry.lock`, over `builtins.fromTOML`'s output — same no-grammar reasoning as `cargo-lock.nix`. Handles both real hash-storage layouts confirmed against a real corpus (per-package `files`, and the older top-level `metadata.files`) — see its header for the corpus/source evidence, including why the oldest `metadata.hashes` generation is deliberately out of scope (no real sample exists to verify against). See below for why this one has a real nixpkgs use case. |
-| `examples/poetry-lock-checksums.nix` | Extracts `{ "<package>-<version>" = [<sha256> ...]; ... }` from a `poetry.lock`, checking both hash-storage locations. See below. |
-| `schemas/package-lock.nix` | A `lib/valuewalk.nix` schema for npm's `package-lock.json` (lockfileVersion 2/3), over `builtins.fromJSON`'s output — no `lib/packrat.nix` grammar counterpart, since `package-lock.json` is plain JSON with nothing bespoke `fromJSON` can't already parse. See below for why this one has a real nixpkgs use case. |
-| `examples/package-lock-checksums.nix` | Extracts `{ "<node_modules path>" = { url; hash; }; ... }` from a `package-lock.json`'s `resolved`/`integrity` pairs — the piece `importNpmLock` needs. See below. |
-| `schemas/uv-lock.nix` | A `lib/valuewalk.nix` schema for uv's `uv.lock` (schema version 1), over `builtins.fromTOML`'s output — no `lib/packrat.nix` grammar counterpart, same reasoning as `schemas/package-lock.nix`. See below for why this one has a real use case even though nixpkgs itself doesn't consume `uv.lock`. |
-| `examples/uv-lock-checksums.nix` | Extracts `{ "<name>-<version>" = [ { url; hash; } ... ]; ... }` from a `uv.lock`'s `sdist`/`wheels` entries — the piece `uv2nix` needs. See below. |
-| `default.nix` | Thin wrapper: `pack ./somefile.json` parses a file with the JSON grammar. |
-| `tests.nix` | Standalone combinator test suite (cut-operator semantics, star/regex edge cases, etc). |
-| `bench/` | Fixture generators, measurement scripts, `comparison-report.md`, `arcnmx-json-comparison.md`. |
 
 ## Grammar DSL
 
@@ -144,7 +110,7 @@ header comment — so `false` alone can't distinguish a real match from a
 failure).
 
 Using the flake.lock-specialized grammar instead (only accepts documents
-matching that exact schema — see next section):
+matching that exact schema — see [The specialized grammar](#the-specialized-grammar)):
 
 ```nix
 let
@@ -159,6 +125,34 @@ Writing your own grammar: start from `examples/json-simple.nix` as a
 template (every rule named, no optimization), then read
 `examples/json-optimized.nix` and `examples/flakelock-specialized.nix` for
 what to change once it works and you care about performance.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `lib/packrat.nix` | The engine: `mkCompile`, `buildDerivs`, `run`. Everything else is built on this. |
+| `grammar/json.nix` | A generic, from-scratch JSON grammar (`grammar`/`grammarNoCut` + cut and non-cut variants). |
+| `grammar/flakelock.nix` | A grammar specialized to `nix flake lock`'s exact schema — see [The specialized grammar](#the-specialized-grammar). |
+| `grammar/tsv.nix` | A small TSV (tab-separated values) grammar. |
+| `grammar/yaml.nix` | A real YAML subset: block mappings/sequences nested by indentation, plain/quoted scalars, flow collections, comments. `mkYamlGrammar { indentStep; maxDepth; }` generates the grammar; see its header for scope limits (no anchors/tags/multi-doc/block-scalars, fixed indent step, bounded depth). |
+| `grammar/aterm.nix` | A generic ATerm (Annotated Term) grammar — the format Nix's own `.drv` files are written in. Covers all six real term kinds plus annotations; verified against 500 real `.drv` files from a live `/nix/store`. |
+| `grammar/drv.nix` | A grammar specialized to Nix's `.drv` file format's exact shape — semantically decodes each field (e.g. `hashAlgo`'s `"r:"` prefix into a `recursive` flag) rather than returning a generic ATerm tree. |
+| `grammar/pep508.nix` | Python's PEP 508 dependency-specification format — transcribed from PEP 508's own formal grammar; verified against 2126 real, distinct `Requires-Dist` specifiers. |
+| `grammar/poetry-semver.nix` | Poetry's version-constraint syntax (`^1.2.3`, `~1.2`, `1.*`, `~2.7 \|\| ^3.5`) — parses AND evaluates (`mkSatisfies packrat version constraint`). Fixes several real bugs found in nixpkgs' own `poetry2nix/semver.nix` while building this; see its header. |
+| `grammar/gemfile-lock.nix`, `grammar/gemfile.nix`, `grammar/yarn-lock.nix`, `grammar/go-sum.nix` | Real dependency-lockfile formats with a real nixpkgs (or nixpkgs-ecosystem) use case — see [Lockfile formats](#lockfile-formats). |
+| `schemas/cargo-lock.nix`, `schemas/poetry-lock.nix`, `schemas/package-lock.nix`, `schemas/uv-lock.nix` | `lib/valuewalk.nix` schemas (not `lib/packrat.nix` grammars) for lockfiles that are plain TOML/JSON — see [Lockfile formats](#lockfile-formats). |
+| `examples/*-checksums.nix` | Extracts each lockfile's fetch hashes into the shape its real Nix consumer needs — see [Lockfile formats](#lockfile-formats). |
+| `examples/json-simple.nix` | A plain, unoptimized JSON grammar — every construct gets its own named rule, no attention paid to allocation. Good starting point for reading/writing your own grammar. |
+| `examples/json-optimized.nix` | Re-exports `grammar/json.nix`, annotated with what changed vs. `json-simple.nix` and why (rule inlining via the `action` combinator, fewer redundant whitespace scans, etc). |
+| `examples/flakelock-specialized.nix` | Re-exports `grammar/flakelock.nix`, annotated with the schema-specialization technique and measured wins. |
+| `lib/valuewalk.nix` | A schema-validation engine over an already-parsed value tree (from `fromJSON`/`fromTOML`), not string positions — see [Value-tree validation and generation](#value-tree-validation-and-generation). |
+| `lib/generate.nix` | Generates a sample value/string that a `lib/valuewalk.nix` schema or `lib/packrat.nix` grammar would accept — the reverse direction of validation, deterministically seeded. |
+| `lib/regex-generate.nix` | Inverts a POSIX ERE pattern into a sample string it would accept; backs `generate`'s automatic `pattern`/`regex` synthesis. |
+| `lib/roundtrip.nix` | Generates N samples for a grammar/schema and confirms its own parser accepts every one — the fixpoint gate `verify-roundtrip.sh` runs. |
+| `examples/flakelock-valuewalk.nix` | The `grammar/flakelock.nix` schema rewritten against `lib/valuewalk.nix`, over `builtins.fromJSON`'s output instead of string positions. |
+| `default.nix` | Thin wrapper: `pack ./somefile.json` parses a file with the JSON grammar. |
+| `tests.nix` | Standalone combinator test suite (cut-operator semantics, star/regex edge cases, etc). |
+| `bench/` | Fixture generators, measurement scripts, `comparison-report.md`, `arcnmx-json-comparison.md`. |
 
 ## The specialized grammar
 
@@ -201,11 +195,10 @@ positions — see its header comment for the full form list and its
 `lib/generate.nix` runs either engine's DSL in reverse: given a
 `lib/packrat.nix` grammar or `lib/valuewalk.nix` schema, it produces a
 sample string/value that DSL would accept, instead of validating one that
-already exists. Nix has no RNG at all (no `builtins.random`, no
-`builtins.currentTime`), so generation is deterministically SEEDED
-instead of random: every choice derives from `builtins.hashString "sha256"
-seed`, and every recursive call derives a fresh child seed, so `generate
-schema seed` is a pure function — same schema + same seed always
+already exists. Nix has no RNG at all, so generation is deterministically
+SEEDED instead of random: every choice derives from `builtins.hashString
+"sha256" seed`, and every recursive call derives a fresh child seed, so
+`generate schema seed` is a pure function — same schema + same seed always
 produces the same value, which makes a failure reproducible instead of
 flaky. `{ pattern = "..."; }`/`{ regex = "..."; }` leaves are synthesized
 automatically by `lib/regex-generate.nix` (a POSIX ERE parser + AST-
@@ -216,10 +209,7 @@ a named rule) with a genuine sibling following it: the sibling is
 generated normally, then verified against the lookahead's body by
 reusing `lib/packrat.nix`'s own `run` as the oracle, retrying with a
 derived seed on mismatch before throwing — see `lib/generate.nix`'s
-header for exactly what's covered (and what still throws: no sibling, a
-lookahead body containing a rule reference/nested lookahead/unbounded
-repetition, or a lookahead nested somewhere other than a sequence
-element).
+header for the exact coverage.
 
 `lib/roundtrip.nix` wires the two together into a fixpoint check: generate
 N samples for a grammar/schema, feed each back through that SAME
@@ -227,152 +217,46 @@ grammar/schema's own parser, and confirm every one is *accepted*. This is
 narrower than "generated value equals the original" — there is no
 original here, only "does the parser accept what was generated for it".
 `./verify-roundtrip.sh` runs this in CI at N=50 for every grammar/schema
-shipped in this repo, including `grammar/gemfile.nix` and
-`grammar/yaml.nix` — both use `not`/`and` for real structural
-disambiguation (excluding reserved words, asserting a following
-character), covered via `lib/generate.nix`'s lookahead synthesis above.
-They also keep their own hand-written accept/reject fixtures in
-`tests.nix`, so coverage isn't solely dependent on the generator.
+shipped in this repo.
 
-## Gemfile.lock: a real nixpkgs use case
+## Lockfile formats
 
-Today, turning a `Gemfile.lock` into the `gemset.nix` that `bundlerEnv`
-needs (see `pkgs/development/ruby-modules/bundled-common` in nixpkgs)
-requires running [`bundix`](https://github.com/nix-community/bundix), an
-external Ruby tool that needs network access (or `nix-prefetch-git`) to
-compute each gem's fetch hash. But Bundler ≥2.7 lockfiles have a
-`CHECKSUMS` section with a hex sha256 per gem — and that hash is *exactly*
-what `bundix` ends up storing, just hex instead of Nix's base32 encoding.
-Verified against a real nixpkgs package's paired `Gemfile.lock`/`gemset.nix`:
+Six dependency-lockfile formats, each with a real (or plausible) Nix
+consumer. `grammar/gemfile-lock.nix`/`grammar/gemfile.nix`/
+`grammar/yarn-lock.nix`/`grammar/go-sum.nix` are `lib/packrat.nix`
+grammars, since those formats have bespoke syntax no native Nix parser
+handles. `schemas/cargo-lock.nix`/`poetry-lock.nix`/`package-lock.nix`/
+`uv-lock.nix` are `lib/valuewalk.nix` schemas instead — those four formats
+are plain TOML/JSON, so a from-scratch grammar would just re-parse text
+`fromTOML`/`fromJSON` already handles (see [Why](#why)). Every corpus
+claim below is confirmed against real files, not derived from a format's
+docs alone — see each grammar/schema file's own header for the full
+breakdown and edge cases.
 
-```console
-$ nix hash convert --to base32 --hash-algo sha256 \
-    3b9270d8e19f0afb534b11c52f439937dc30028adcbbae2b244f3383ce75de4b
-0jyyfp786csg4hmsxfywi8131p1pk51jzi8i9d9zn2lzw7c714iv
-```
-
-That's the exact string `gemset.nix` stores for that gem (`actionmailer`).
-So for any lockfile with a `CHECKSUMS` section, the dependency graph *and*
-every gem's fetch hash are already sitting in the file — `grammar/gemfile-lock.nix`
-plus a small base32 re-encode (not reimplemented here — see
-`examples/gemfile-lock-checksums.nix`) is enough to skip `bundix` and
-network access entirely for those lockfiles.
-
-Correctness: cross-validated against an independent Python reference
-parser across 134 real `Gemfile.lock` files pulled from a nixpkgs
-checkout — every field (multiple GEM/GIT/PATH blocks, platform-qualified
-spec versions, `!`-pinned/multi-constraint dependencies, CHECKSUMS, RUBY
-VERSION) byte/value-identical between the two. Deliberately out of
-scope: Bundler `PLUGIN SOURCES` (not seen in the corpus at all).
-
-## yarn.lock: a real nixpkgs use case
-
-Today, resolving a `yarn.lock` into Nix-consumable fetch info (as
-`yarn2nix`/`mkYarnPackage` need — see
-`pkgs/development/tools/yarn2nix-moretea` in nixpkgs) requires running an
-external Node-based tool, or a per-package network prefetch, to compute
-each package's fetch hash. But a Yarn classic (`yarn lockfile v1`)
-lockfile already embeds a `resolved` URL *and* an `integrity` value (SRI
-format, `sha512-<base64>` or `sha1-<base64>`) per package inline — the
-same "the hash is already sitting in the file" situation as
-`Gemfile.lock`'s `CHECKSUMS` section above, just SRI-base64 instead of
-hex. `grammar/yarn-lock.nix` reads the whole dependency graph and every
-package's fetch info directly out of the lockfile — no `yarn2nix`, no
-network, no external Node interpreter needed at eval time. (Converting
-the SRI base64 value to the base32 `nix-hash` format a fixed-output
-derivation wants is a separate, small step, not reimplemented here — same
-category as `examples/gemfile-lock-checksums.nix`'s hex-to-base32
-conversion for `Gemfile.lock`.)
-
-Correctness: cross-validated against an independent Python reference
-parser across 15 real `yarn.lock` files (2,395 entries total) — scoped
-package names, multi-spec lines (both bare and double-quoted forms),
-`dependencies:`/`optionalDependencies:` blocks, and every
-`version`/`resolved`/`integrity` field byte/value-identical between the
-two. A Yarn Berry (v2+) lockfile — a different, YAML-based format
-entirely — correctly fails to parse rather than silently mis-parsing.
-
-## go.sum: a different kind of nixpkgs use case
-
-Unlike every lockfile grammar above, Go's `go.sum` doesn't fit the
-"the fetch hash nixpkgs needs is already sitting in the file" pattern:
-nixpkgs' `buildGoModule` (`pkgs/build-support/go/module.nix`) runs `go
-mod download` inside one fixed-output derivation with `GOSUMDB=off` and
-gets a single *aggregate* `vendorHash` for the whole module graph — it
-never reads `go.sum`'s own per-module hashes at all. There's also no URL
-field to fetch from in the first place; a `go.sum` line is just `module
-version hash`, not `module version url hash`.
-
-So `grammar/go-sum.nix` is used for something else `go.sum`'s structure
-genuinely enables: `examples/go-sum-checksums.nix` cross-references the
-same `module@version` across two independently-generated `go.sum` files
-and flags a hash *mismatch* — since `go.sum`'s `h1:` hash is a content
-hash of that exact module version, two files agreeing on a shared
-dependency's version but disagreeing on its hash is a real supply-chain
-signal (a tampered proxy serving different bytes under the same tag),
-not just "two projects pinned different versions" (normal, not flagged).
-
-Correctness: confirmed against two real `go.sum` files shipped in
-nixpkgs itself — `pkgs/by-name/pa/pam_ussh/go.sum` (22 lines) and
-`pkgs/by-name/ku/kubemqctl/go.sum` (664 lines), 686 lines total, every
-one matching the grammar's fixed 3-field shape (module path, version
-optionally suffixed `+incompatible`/`/go.mod`, `h1:`-prefixed base64
-hash).
-
-## Cargo.lock, poetry.lock, package-lock.json, uv.lock: real fetch-hash use cases
-
-Four ecosystems' package managers write a lockfile that already contains
-every fetch hash their Nix build tooling would otherwise need to
-recompute over the network. Each `schemas/*.nix` here is a
-`lib/valuewalk.nix` schema over `fromTOML`/`fromJSON`'s output, not a
-`lib/packrat.nix` grammar — none of the four formats has any syntax a
-native parser can't already handle, so a from-scratch packrat grammar
-would just re-parse text for no benefit (the same reasoning this repo's
-own [Why](#why) section gives for not competing with `builtins.fromJSON`
-on plain JSON). Each `examples/*-checksums.nix` extracts the hashes; each
-schema's own header has the full field-presence breakdown.
-
-| Lockfile | Consumer | Hash field → Nix `hash`/`sha256` | Corpus |
+| Format | Consumer | Fetch-hash field | Corpus |
 |---|---|---|---|
-| `Cargo.lock` | nixpkgs' `importCargoLock` (`pkgs/build-support/rust/import-cargo-lock.nix`) | `checksum`, used as-is (`sha256 = checksum;`, no re-encoding) | 100 real files from a nixpkgs checkout (149B–225KB) |
-| `poetry.lock` | poetry2nix's `fetchFromPypi` (`pkgs/development/tools/poetry2nix/poetry2nix/lib.nix`) | `"sha256:<hex>"`, strip the prefix (not a base32 re-encode) | 5 real files (nixpkgs' `rmfuse`/`nixops`, poetry2nix's own vendored copy, two more from live checkouts) |
-| `package-lock.json` | nixpkgs' `importNpmLock` (`pkgs/build-support/node/import-npm-lock/default.nix`) | `integrity`, already SRI (`sha512-<base64>`), zero conversion | 43 real files from a nixpkgs checkout |
-| `uv.lock` | the external [`uv2nix`](https://github.com/pyproject-nix/uv2nix) project's `lib/build.nix` — nixpkgs itself has no `uv.lock` consumer | `"sha256:<hex>"` on `sdist`/each `wheels[]` entry, zero conversion | uv2nix's own public MIT-licensed test fixtures (`lib/fixtures/*/uv.lock`) |
+| `Gemfile.lock` | `bundlerEnv`'s `gemset.nix` (today via external [`bundix`](https://github.com/nix-community/bundix)) | `CHECKSUMS`' hex sha256, base32-re-encode to match `bundix` | 134 real files from a nixpkgs checkout |
+| `Gemfile` | *(no lockfile equivalent — see below)* | — | 136-file nixpkgs corpus (6 use `group`) |
+| `yarn.lock` | `yarn2nix`/`mkYarnPackage` (today via external Node tooling) | `integrity`, SRI `sha512-`/`sha1-`, base32-re-encode | 15 real files (2,395 entries) |
+| `go.sum` | *(not a per-package fetch hash — see below)* | `h1:`-prefixed base64, content hash only | 2 real nixpkgs files (686 lines) |
+| `Cargo.lock` | nixpkgs' `importCargoLock` | `checksum`, used as-is | 100 real files (149B–225KB) |
+| `poetry.lock` | poetry2nix's `fetchFromPypi` | `"sha256:<hex>"`, strip prefix | 5 real files |
+| `package-lock.json` | nixpkgs' `importNpmLock` | `integrity`, already SRI, zero conversion | 43 real files |
+| `uv.lock` | external [`uv2nix`](https://github.com/pyproject-nix/uv2nix) (nixpkgs has no consumer) | `"sha256:<hex>"` per `sdist`/`wheels[]` entry | uv2nix's own public fixtures |
 
-Format-specific complications each schema/example handles:
+Two exceptions worth calling out:
 
-- **Cargo.lock**: `checksum` is present *iff* `source` is
-  `registry+`/`sparse+` (git-sourced/workspace packages never have one,
-  confirmed zero exceptions in the corpus); a `dependencies` entry is a
-  bare crate name, or `"name version"` when 2+ versions of that name are
-  locked at once (one corpus file locks `bitflags` at both 1.3.2 and
-  2.4.1); one corpus file has a `[[patch.unused]]` section (nixpkgs' own
-  Rust sysroot lockfile).
-- **poetry.lock**: a real hash can live in EITHER of two places
-  depending on `lock-version` — a package's own `files` field (current)
-  or a top-level `metadata.files.<name>` table (older) — confirmed via
-  Poetry's own `locker.py` (`src/poetry/packages/locker.py`), which reads
-  both itself and documents a third, filename-less `metadata.hashes`
-  layout with no real sample in this corpus to verify against, so it's
-  out of scope. `examples/poetry-lock-checksums.nix` checks both,
-  preferring `files` when present, matching `locker.py`'s own order.
-- **package-lock.json**: `resolved`+`integrity` are NOT a reliable pair
-  — a git-sourced package has `resolved` but no `integrity` (nothing for
-  npm's registry to hash), and a bundled/workspace package has neither.
-  `packages` is keyed by `node_modules/` path, not name — the same
-  name+version can legitimately recur at multiple paths (confirmed real:
-  `data/example-package-lock.json`'s own `minimist`, locked at the top
-  level and nested under `mocha`). Legacy `lockfileVersion` 1 (flat
-  `dependencies` tree, no `packages` key) is out of scope.
-- **uv.lock**: a package can have BOTH an `sdist` and multiple `wheels`
-  (one per platform/Python tag), each independently hashed —
-  `examples/uv-lock-checksums.nix` extracts every hash-bearing one. A
-  git-sourced, editable, or virtual package has neither, so it's simply
-  absent from the result. `source` is a discriminated attrset
-  (`registry`/`git`/`editable`/`virtual` confirmed real); `version`
-  itself is optional, absent for a build-time-dynamic version (confirmed
-  real in the `dynamic-version` fixture) — confirmed against uv2nix's own
-  `lib/lock1.nix` (`parseLock`/`parsePackage`) read directly.
+- **`Gemfile`** has no fetch hash of its own — `grammar/gemfile.nix`
+  instead recovers Bundler *group* membership per gem (`group :x
+  do...end` blocks, inline `group:`/`groups:` kwargs, `if`/`unless`/
+  `else` wrapping), the one fact `Gemfile.lock` never records.
+- **`go.sum`** doesn't fit the "hash is already in the file" pattern at
+  all: nixpkgs' `buildGoModule` computes one *aggregate* `vendorHash` for
+  the whole module graph via `go mod download`, never reading `go.sum`'s
+  per-module hashes. `examples/go-sum-checksums.nix` uses this format's
+  structure for something else instead — cross-referencing the same
+  `module@version` across two independent `go.sum` files to flag a hash
+  *mismatch*, a real supply-chain integrity signal.
 
 ## Benchmarks
 
